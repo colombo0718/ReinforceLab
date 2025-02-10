@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Reinforce Lab</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+
+  <!-- Blockly -->
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+
+  <style>
+    /************************************************************
+     * 整體頁面佈局：body使用flex
+     ************************************************************/
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Consolas, sans-serif;
+      height: 100vh; /* 若需要整頁滿版，可用 100vh；若需要可捲動，則移除。 */
+      display: flex;
+    }
+
+    /************************************************************
+     * 左側：子遊戲 (iframe) 區域
+     ************************************************************/
+    #leftPanel {
+      width: 40%;               /* 預設 30% (或根據需求調成40%) */
+      flex-shrink: 0;          /* 避免視窗縮小時被壓縮 */
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #ddd;
+      transition: width 0.3s ease; /* 全屏/半屏轉換動畫 */
+    }
+
+    /* 若按下「全屏」時，切換 class，置於頂層、寬高100%，並鎖定位置 */
+    #leftPanel.fullscreen {
+      width: 100vw;  /* 全螢幕寬度 */
+      height: 100vh; /* 全螢幕高度 */
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 999;  
+    }
+
+    /* 左側上方控制列 (固定高度 35px，垂直置中) */
+    #controls {
+      display: flex;
+      align-items: center;
+      height: 35px;
+      background-color: #cfe;
+      border-bottom: 1px solid #ddd;
+      padding: 0 8px;
+    }
+    #controls button,
+    #controls input {
+      margin-right: 6px;
+      padding: 4px 6px;
+      font-size: 13px;
+      line-height: 1;
+    }
+    #controls button:last-child,
+    #controls input:last-child {
+      margin-right: 0;
+    }
+    /* 讓輸入框可撐開剩餘空間 */
+    #gameUrlInput {
+      flex-grow: 1;
+    }
+
+    /* 左側 iframe (子遊戲) */
+    iframe {
+      flex-grow: 1;   /* 撐滿剩餘空間 */
+      width: 100%;
+      border: none;
+    }
+
+    /************************************************************
+     * 右側：父平台 (多Agent / 多 Tabs)
+     ************************************************************/
+    #rightPanel {
+      width: 70%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Tabs 上方的按鈕列 (固定高度 35px)，與底部線對齊 */
+    .sub-tab-buttons {
+      font-family: Consolas, sans-serif;
+      display: flex;
+      align-items: flex-end; /* 讓按鈕與容器底緣貼齊 */
+      height: 36px;
+      background: #cef;
+      border-bottom: 1px solid #ddd;
+      padding: 0 8px;
+    }
+
+    /* 「Agent 1:」等標籤 */
+    .sub-tab-buttons .agent-label {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 8px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    /* Tabs 按鈕 */
+    .sub-tab-buttons button {
+      font-family: Consolas, sans-serif;
+      margin-bottom: -1px; /* 為了讓按鈕底邊與容器對齊 */
+      margin-right: 6px;
+      min-height: 28px;
+      padding: 4px 8px;
+      font-size: 13px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #e9e9e9;
+      border: 1px solid #ccc;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sub-tab-buttons button:last-child {
+      margin-right: 0;
+    }
+    .sub-tab-buttons button:hover {
+      background: #ddd;
+    }
+    .sub-tab-buttons button.active {
+      background: #fff;
+      border-bottom: 1px solid #fff; /* 讓 active 的按鈕看起來像「浮起」 */
+      font-weight: bold;
+      color: #0078d7;
+    }
+    
+    /************************************************************
+     * 下面是每個Tab裡的細部內容：Blockly / config / Logs 等
+    ************************************************************/
+
+    /* 6 個對應的 Tab 內容區塊 */
+    .sub-tab-content {
+      display: none;
+      flex-grow: 1;
+      padding: 10px;
+      background: #fff;
+      overflow: auto;
+    }
+    .sub-tab-content.active {
+      display: block;
+    }
+
+
+    /* 按鈕美化 */
+    button {
+      margin: 5px 0;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #eee;
+    }
+
+    #p1-blocklyDiv, #p2-blocklyDiv {
+      width: 100%;
+      height: 100%;
+    }
+    .blocklyPath {
+      stroke: white;
+    }
+    /* ARS 紀錄區 */
+    #p1-log {
+      box-sizing: border-box;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 14px;
+      /* 讓換行符 \n 生效 */
+      white-space: pre-wrap; 
+    }
+
+
+
+  </style>
+</head>
+
+<body>
+  <!-- 左側：子遊戲區 (可全屏/半屏切換) -->
+  <div id="leftPanel">
+    <!-- 上方控制列 (如：載入網址、暫停、全屏等) -->
+    <div id="controls">
+      <button id="toggleFullscreen">全屏</button>
+      <input id="gameUrlInput" type="text" value="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck"
+             placeholder="輸入遊戲網址" />
+      <button id="loadGame">載入</button>
+      <button id="togglePause">暫停</button>
+    </div>
+
+    <!-- 下方 iframe：用於嵌入子遊戲 -->
+    <iframe id="game-iframe" src="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck"></iframe>
+  </div>
+
+  <!-- 右側：父平台 (多 Agent、多 Tabs) -->
+  <div id="rightPanel">
+  
+    <!-- Tabs 按鈕列 -->
+    <div class="sub-tab-buttons">
+      <button class="sub-tab-link active" data-subtab="tutorial">Tutorial</button>
+      <!-- Agent1 -->
+      <span class="agent-label">Agent 1:</span>
+      <button id='me' class="sub-tab-link" data-subtab="p1-config">Config</button>
+      <button class="sub-tab-link" data-subtab="p1-blocks">Blocks</button>
+      
+      <button class="sub-tab-link" data-subtab="p1-logs">Logs</button>
+
+      <!-- Agent2 -->
+      <span class="agent-label">Agent 2:</span>
+      <button class="sub-tab-link" data-subtab="p2-config">Config</button>
+      <button class="sub-tab-link" data-subtab="p2-blocks">Blocks</button>
+      
+      <!--<button class="sub-tab-link" data-subtab="p2-logs">Logs</button>-->
+      
+      <!-- Agent3 -->
+      <!--<span class="agent-label" style="margin-left: 16px;">Agent 3:</span>-->
+      <!--<button class="sub-tab-link" data-subtab="p3-blocks">Blocks</button>-->
+      <!--<button class="sub-tab-link" data-subtab="p3-config">config</button>-->
+      <!--<button class="sub-tab-link" data-subtab="p3-logs">Logs</button>-->
+      
+      <!-- Agent4 -->
+      <!--<span class="agent-label" style="margin-left: 16px;">Agent 4:</span>-->
+      <!--<button class="sub-tab-link" data-subtab="p4-blocks">Blocks</button>-->
+      <!--<button class="sub-tab-link" data-subtab="p4-config">config</button>-->
+      <!--<button class="sub-tab-link" data-subtab="p4-logs">Logs</button>-->
+      
+
+    </div>
+
+    <!-- Tabs 對應的內容區 (共6塊) -->
+    <div id="tutorial" class="sub-tab-content active"  style="width:100%; height: 100%">
+      AI Reinforce Lab: Explore. Train. Compete.
+      <p>選擇下列遊戲快速載入：</p>
+      <div>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/MAB">Multi-Armed Bandit</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck">Dinosaur Jump</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">Taiko Beat</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">Easy Shoot</button>
+        <button id='game-maze' class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D">Maze2D</button>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+    <!-- 1. p1-blocks -->
+    <div id="p1-blocks" class="sub-tab-content"  style="width:100%; height: 100%; padding:0px">
+      <!--<div id="blockly-container">-->
+        <div id="p1-blocklyDiv"></div>
+      <!--</div>-->
+    </div>
+    <!-- 2. p1-config -->
+    <div id="p1-config" class="sub-tab-content"  style="width:100%; height: 100%">
+      <label for="algorithm-select">RL演算法:</label>
+      <select id="algorithm-select" onchange="handleSelection()">
+        <option value="Qtable">Q-Learn</option>
+        <option value="DQN">DQN</option>
+      </select>       
+      <!-- 第一區：Cumulative Reward Chart -->
+      <div id="p1-rewards-chart" style="width: 600px; height: 300px;"></div>
+    
+      <!-- 第二區：Q-Table Heatmap -->
+      <div id="p1-qValues-chart" style="width: 600px; height: 400px;"></div>
+    
+      <!-- 第三區：按鈕 -->
+      <div style="width: 100%; ">
+        <button onclick="exportQtable()" style="margin: 5px ;">Export Q-table</button>
+        <input type="file" style="margin: 5px ;" id="importQtableInput" accept=".json,.txt" 
+       onchange="importQtable(event)" />
+      </div>
+    </div>
+    <!-- 3. p1-logs -->
+    <div id="p1-logs" class="sub-tab-content" style="width:100%; height: 100%">
+    
+    </div>
+    
+    
+    
+    
+
+    <!-- 4. p2-blocks -->
+    <div id="p2-blocks" class="sub-tab-content" style="width:100%; height: 100%">
+      <div id="p2-blocklyDiv"></div>
+    </div>
+    <!-- 5. p2-config -->
+    <div id="p2-config" class="sub-tab-content"  style="width:100%; height: 100%">
+      <div style="width:100%; height: 33%">
+        <canvas id="p2-rewards-chart"></canvas>
+        
+      </div>
+      
+      <div style="width:100%; height: 33%">
+        <canvas id="p2-qValues-chart"></canvas>
+      </div>
+    </div>
+    <!-- 6. p2-logs -->
+    <div id="p2-logs" class="sub-tab-content"  style="width:100%; height: 100%">
+      <div id="p2-log" style="width: 100%; height: 100%;"></div>
+    </div>
+    
+    
+  </div>
+
+  <!-- (可選) jQuery UI Dialog 用於顯示 Q 值圖表的彈窗 (若要用彈窗) -->
+
+
+  <!-- ================================ -->
+  <!-- JS 區段：包括 全屏切換、多 Tabs 控制、Q-Learning程式邏輯、Blockly初始設定 等 -->
+  <!-- ================================ -->
+  <script>
+    /***************************************************
+     * [1] 全屏 / 半屏 切換功能
+     ***************************************************/
+    const leftPanel = document.getElementById("leftPanel");
+    const rightPanel = document.getElementById("rightPanel"); // 取得右側面板
+    const fullscreenButton = document.getElementById("toggleFullscreen");
+
+    fullscreenButton.addEventListener("click", () => {
+      if (leftPanel.classList.contains("fullscreen")) {
+        // 若目前全屏，則恢復
+        leftPanel.classList.remove("fullscreen");
+        rightPanel.style.display = "flex";
+        fullscreenButton.textContent = "全屏";
+      } else {
+        // 進入全屏
+        leftPanel.classList.add("fullscreen");
+        rightPanel.style.display = "none"; // 隱藏右側面板
+        fullscreenButton.textContent = "半屏";
+      }
+    });
+
+    /***************************************************
+     * [2] 左側：載入/暫停/繼續 等控制
+     ***************************************************/
+    const loadGameBtn = document.getElementById("loadGame");
+    const gameUrlInput = document.getElementById("gameUrlInput");
+    const gameIframe = document.getElementById("game-iframe");
+    const togglePauseBtn = document.getElementById("togglePause");
+
+    loadGameBtn.addEventListener("click", () => {
+      const url = gameUrlInput.value.trim();
+      if (url) {
+        gameIframe.src = url;
+      }
+      isPaused = false;
+      togglePauseBtn.textContent = "暫停";
+      // gameIframe.addEventListener("load", () => {
+      //   // const iframe = document.getElementById("game-iframe");
+      //   gameIframe.contentWindow.postMessage({ type: "questInfo" }, "*");
+      // }, { once: true }); // 使用 { once: true } 確保事件僅執行一次
+    });
+
+    let isPaused = false;
+    togglePauseBtn.addEventListener("click", () => {
+      if (!isPaused) {
+        // 這裡可做暫停遊戲 or 停止訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
+        togglePauseBtn.textContent = "繼續";
+
+      } else {
+        // 這裡可做恢復遊戲 or 繼續訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
+        gameIframe.contentWindow.postMessage({ type: "action",action:0}, "*");
+        togglePauseBtn.textContent = "暫停";
+      }
+      isPaused = !isPaused;
+    });
+
+    /***************************************************
+     * [3] 多 Agent 多 Tabs 切換
+     ***************************************************/
+    const subTabLinks = document.querySelectorAll(".sub-tab-link");
+    const subTabContents = document.querySelectorAll(".sub-tab-content");
+
+    subTabLinks.forEach(link => {
+      link.addEventListener("click", () => {
+        // 先移除全部 active
+        subTabLinks.forEach(l => l.classList.remove("active"));
+        subTabContents.forEach(c => c.classList.remove("active"));
+
+        // 啟用當前被點擊的
+        link.classList.add("active");
+        const target = link.getAttribute("data-subtab");
+        document.getElementById(target).classList.add("active");
+        
+            // 檢查是否需要重新渲染 Blockly
+            if (target === "p1-blocks" && workspace1) {
+              Blockly.svgResize(workspace1);
+            }
+            if (target === "p2-blocks" && workspace2) {
+              Blockly.svgResize(workspace2);
+            }
+      });
+    });
+    
+    
+    // 快速載入遊戲按鈕
+    document.querySelectorAll('.quick-load-button').forEach(button => {
+      button.addEventListener('click', () => {
+        const url = button.getAttribute('data-url');
+        if (url) {
+          gameUrlInput.value= url
+          gameIframe.src = url; // 設定 iframe 的 src
+        }
+        isPaused = false;
+        togglePauseBtn.textContent = "暫停";
+      });
+    });
+
+
+
+    /***************************************************
+     * [4] Blockly 初始化
+     ***************************************************/
+    var workspace1 = Blockly.inject('p1-blocklyDiv', {
+      toolbox: 
+        `<xml>
+          <block type="controls_repeat_ext"></block>
+          <block type="math_number"></block>
+          <block type="math_arithmetic"></block>
+          <block type="logic_compare"></block>
+          <block type="variables_get"></block>
+          <block type="variables_set"></block>
+          <block type="controls_if"></block>
+          <block type="text_print"></block>
+         </xml>`,
+      trashcan: true,
+      theme: Blockly.Themes.Zelos,
+      renderer: 'thrasos',
+    });
+
+    // 預載一些積木
+    const initialBlocks = 
+      `<xml>
+        <block type="controls_repeat_ext" x="20" y="20">
+          <value name="TIMES">
+            <shadow type="math_number">
+              <field name="NUM">5</field>
+            </shadow>
+          </value>
+          <statement name="DO">
+            <block type="text_print">
+              <value name="TEXT">
+                <shadow type="text">
+                  <field name="TEXT">Q-Learning</field>
+                </shadow>
+              </value>
+            </block>
+          </statement>
+        </block>
+      </xml>`;
+    loadInitialBlocks(initialBlocks, workspace1);
+
+    function loadInitialBlocks(xmlText, workspace) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      Blockly.Xml.domToWorkspace(xmlDoc.documentElement, workspace);
+    }
+    
+    
+    var workspace2 = Blockly.inject('p2-blocklyDiv', {
+      toolbox: 
+        `<xml>
+          <block type="controls_repeat_ext"></block>
+          <block type="math_number"></block>
+          <block type="math_arithmetic"></block>
+          <block type="logic_compare"></block>
+          <block type="variables_get"></block>
+         </xml>`,
+      trashcan: true,
+      theme: Blockly.Themes.Zelos,
+      renderer: 'thrasos',
+    });
+    
+    
+        // // 預載一些積木
+    const initialBlocks2 = 
+      `<xml>
+        <block type="controls_repeat_ext" x="20" y="20">
+          <value name="TIMES">
+            <shadow type="math_number">
+              <field name="NUM">5</field>
+            </shadow>
+          </value>
+          <statement name="DO">
+            <block type="text_print">
+              <value name="TEXT">
+                <shadow type="text">
+                  <field name="TEXT">Q-Learning</field>
+                </shadow>
+              </value>
+            </block>
+          </statement>
+        </block>
+      </xml>`;
+    loadInitialBlocks(initialBlocks, workspace2);
+
+    /***************************************************
+     * [5] Q-Learning 相關設定 (範例)
+     ***************************************************/
+
+    let QTable = {};
+    let Alpha   = .01;  // 學習率
+    let Gamma   = 0.95; // 折扣因子
+    let Epsilon = .2;  // 探索率
+    let Psi     = 1;    // 樂觀值   
+    
+    let delayTime =1
+
+
+    // Q 值更新
+    function qTableUpdate(prevS, prevA, r, nextS,nextA) {
+      // 初始化當前狀態和下一狀態的 Q 值空間
+      if (!QTable[prevS]) QTable[prevS] = Array(action_size).fill(0);
+      if (!QTable[nextS]) QTable[nextS] = Array(action_size).fill(0);
+
+      
+      // 計算下一狀態的最大值和最小值
+      let maxQNext = 0; // 初始化为默认值
+      let minQNext = 0;
+      if (QTable[nextS] && QTable[nextS].length > 0) {
+        maxQNext = Math.max(...QTable[nextS]);
+        minQNext = Math.min(...QTable[nextS]);
+      }
+      
+      let actualQNext = QTable[nextS][nextA] || 0; // 實際選擇的動作 Q 值
+      
+      
+      // 根據 λ 的值計算目標 Q 值
+      let targetQ = (1 - Math.abs(Psi)) * actualQNext +
+                    Math.max(0, Psi) * maxQNext +
+                    Math.max(0, -Psi) * minQNext;
+                    
+                    
+      if (isNaN(targetQ)) {
+        console.error("Invalid Q update detected.", { QTable,nextS ,actualQNext , maxQNext , minQNext});
+      }
+      // 計算 Q 值更新
+      let oldQ = QTable[prevS][prevA] || 0;
+      let newQ = oldQ + Alpha * (r + Gamma * targetQ - oldQ);
+      
+      
+      // 檢查數據有效性，防止 NaN
+      
+      if (isNaN(oldQ)) {
+        console.error(QTable[prevS][prevA]);
+      }
+      if (isNaN(newQ)) {
+        console.error("Invalid Q update detected.", {oldQ , Alpha , r , Gamma , targetQ});
+      }
+    
+      // 更新 Q 表
+      QTable[prevS][prevA] = newQ;
+    }
+    
+    // ε-greedy 選擇動作
+    function eGreedyChooseAction(stateKey) {
+      if (Math.random() < Epsilon ||  !QTable[stateKey]) {
+        return Math.floor(Math.random() * action_size);
+      } else {
+        if (!QTable[stateKey]){
+          console.warn(`QTable[${stateKey}] 未初始化，將自動初始化。`);
+          QTable[stateKey] = Array(action_size).fill(0);
+        }
+        let qVals = QTable[stateKey];
+        let maxQ  = Math.max(...qVals);
+        let chosenAction = qVals.indexOf(maxQ);
+        if (chosenAction === -1) {
+          console.error("無法找到最大 Q 值的索引，qVals:", qVals, "maxQ:", maxQ);
+        }
+        return chosenAction;
+      }
+    }
+
+         
+
+    /***************************************************
+     * [6] 父/子頁面 postMessage 通訊：
+     *     接收子頁面 (遊戲)傳回的 (reward, state)，並回傳動作
+     ***************************************************/
+    let stateRange = []; 
+    let numBins = [];
+
+    // 計算當下狀態對應到Q表的鍵值
+    function getStateKey(stateValues) {
+      let indices = []; // 用於儲存每個維度的離散化索引
+      // console.log(stateValues)
+      stateValues.forEach((value,dim) => {
+         // 設定預設範圍
+        let min = 0, max = 100;
+        // // 取得該狀態有效範圍
+        // if (stateRange[index]) {
+        //   min = stateRange[index].min;
+        //   max = stateRange[index].max;
+        // }
+        // // 計算桶的大小
+        // let binSize = (max - min) / numBins[index]; 
+        // // 限制值在範圍內
+        // let clipped = Math.max(min, Math.min(max, value)); 
+        // // 計算索引
+        // let idx = Math.floor((clipped - min) / binSize);
+        // // 確保索引在合法範圍內
+        // idx = Math.min(Math.max(idx, 0), numBins[index] - 1); 
+        const bucketIdx = getBucketIndex(value,dim);
+        // 將索引加入陣列
+        indices.push(bucketIdx); 
+      });
+      // 索引轉成字串標籤
+      // console.log(indices.join("_"))
+      return indices.join("_");
+    }
+    
+    function getBucketIndex(value,dim){
+        // 取得該狀態有效範圍
+        if (stateRange[dim]) {
+          min = stateRange[dim].min;
+          max = stateRange[dim].max;
+        }
+        // 計算桶的大小
+        let binSize = (max - min) / numBins[dim]; 
+        // 限制值在範圍內
+        let clipped = Math.max(min, Math.min(max, value)); 
+        // 計算索引
+        let idx = Math.floor((clipped - min) / binSize);
+        // 確保索引在合法範圍內
+        idx = Math.min(Math.max(idx, 0), numBins[dim] - 1); 
+        
+        return idx;
+    }
+    
+    
+    let stateInfo
+    let actionInfo
+    let state_size  
+    let action_size   
+    
+    // 每當遊戲頁面載入完成，就詢問遊戲資訊
+    gameIframe.addEventListener("load", () => {
+      gameIframe.contentWindow.postMessage({ type: "questInfo" }, "*");
+    });     
+     
+    window.addEventListener("message", (event) => {
+      const message = event.data;
+      
+      if (message.type === "gameInfo") {
+        stateInfo=message.stateInfo
+        actionInfo=message.actionInfo
+        writeLog(1,stateInfo)  
+        writeLog(1,actionInfo)         
+        state_size=stateInfo.length
+        action_size=actionInfo[0].level
+        
+        // 價值型算法專屬
+        QTable = {};     // 清空Q表
+        stateRange = []; // 清空狀態範圍
+        numBins = [];    // 清空每軸桶數
+        message.stateInfo.forEach((info) => {
+          stateRange.push({ min: info.min, max: info.max });
+          if(info.bin){
+            numBins.push(info.bin);
+          }else{
+            numBins.push(20); // 預設每個狀態分成 20 桶，可根據需求調整
+          }
+        });
+        
+        // 發送第一個動作
+        gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
+      }
+    });   
+      
+    let currentState 
+    let prevAction,prevStateKey
+    let nextAction,nextStateKey
+    let reward  
+    let cumulativeReward = 0; // 用於畫獎勵圖表 
+    
+    window.addEventListener("message", (event) => {
+      const message = event.data;  
+      // 從子頁面拿到報酬與狀態
+      if (message.type === "reward_state") {
+        // 更新瞬間報酬
+        reward = message.reward;
+        // 更新繪圖用的累計報酬
+        cumulativeReward += message.reward;
+        // console.log(reward,cumulativeReward)
+        // 取得當下狀態對應到Q表的鍵值
+        currentState=message.state
+        nextStateKey = getStateKey(message.state);
+        // console.log(message.state,nextStateKey)
+        // 選擇下一次動作
+        nextAction = eGreedyChooseAction(nextStateKey);
+        // 更新Q表
+        if (reward !== null  && 
+        // prevAction必須是正整數
+        Number.isInteger(prevAction) && prevAction >= 0) {
+          qTableUpdate(prevStateKey, prevAction, reward, nextStateKey,nextAction);
+        }
+        // 繼承狀態與動作資訊
+        prevStateKey = nextStateKey;
+        prevAction   = nextAction;
+        // console.log(nextAction)
+
+
+        // 回傳動作給子頁面
+        if(isPaused){return}
+        setTimeout(() => {
+          gameIframe.contentWindow.postMessage({
+            type: "action",
+            action: prevAction
+          }, "*");
+        // 故意設置的延遲時間
+        }, delayTime);
+      }
+    });
+    
+    
+    /***************************************************
+     * [7] ARS (Action, Reward, State) 日誌紀錄
+     ***************************************************/
+
+
+    let lastTime = null;
+    
+    function updateARSLog(agentId,action, reward, state) {
+      const now = new Date();
+      let dt = lastTime ? now - lastTime : 0;
+      lastTime = now;
+      let sIndex = getStateKey(state);
+    
+      // Create the log entry
+      const logEntry = `dt=${dt}ms, A=${action}, R=${reward}, state=${state}, sIndex=${sIndex}`;
+    
+      // Write the log for the specified agent
+      writeLog(agentId, logEntry);
+    }
+    
+    function writeLog(agentId, logEntry) {
+      // Get the log element for the specified agent
+      const logElement = document.getElementById(`p${agentId}-logs`);
+      if (!logElement) {
+        console.error(`Log element for agent ${agentId} not found.`);
+        return;
+      }
+    
+      // Append the log entry
+      logElement.textContent += (logElement.textContent ? "\n" : "") + logEntry;
+    
+      // Automatically scroll to the bottom
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+
+
+    
+    
+/***************************************************
+ * [8] Rewards Chart  
+ ***************************************************/
+    let rewardsChart;
+    let rewardData = [];
+    let rewardLabels = [];
+
+    // 初始化 Rewards 图表
+    function initRewardsChart() {
+      const layout = {
+        title: 'Cumulative Reward Over Time',
+        xaxis: { title: 'Time (s)' },
+        yaxis: { title: 'Cumulative Reward' },
+      };
+
+      Plotly.newPlot('p1-rewards-chart', [{
+        x: rewardLabels,
+        y: rewardData,
+        mode: 'lines',
+        fill: 'tozeroy',
+        line: { color: 'rgba(54, 162, 235, 1)' },
+      }], layout);
+    }
+    let startTime=Date.now()
+    // 更新 Rewards 图表的函数
+    function updateRewardsChart() {
+      
+      const currentTime = ((Date.now() - startTime) / 1000).toFixed(1); // 计算经过时间
+      rewardLabels.push(currentTime);
+      rewardData.push(cumulativeReward);
+      // console.log(cumulativeReward)
+
+      // 保证 rewardLabels 和 rewardData 的数量始终一致
+      if (rewardData.length > 60) {
+        rewardLabels.shift(); // 移除最旧的时间点
+        rewardData.shift();   // 移除最旧的数据
+      }
+
+      // 更新图表
+      Plotly.update('p1-rewards-chart', {
+        x: [rewardLabels],
+        y: [rewardData],
+      });
+
+      // 重置累积 Reward
+      cumulativeReward = 0;
+    }
+
+    // 初始化图表
+    initRewardsChart();
+
+    // 模拟每秒更新一次图表
+    // let cumulativeReward = 0; // 初始化累计 Reward
+    setInterval(() => {
+      // cumulativeReward += Math.random() * 10 - 5; // 模拟累积 Reward 的变化
+      updateRewardsChart();
+    }, 1000);
+    
+    
+    
+    
+/***************************************************
+ * [9] QTable Chart  
+ ***************************************************/
+/****************************************************************
+ * 1) HSV→RGB: 將 (h, s, v) 轉換成 rgb(r,g,b)
+ ****************************************************************/
+function hsvToRgb(h, s, v) {
+  // h: [0, 360], s: [0,1], v: [0,1]
+  const c = v * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = v - c;
+  let r, g, b;
+  if (h < 60) {
+    r = c; g = x; b = 0;
+  } else if (h < 120) {
+    r = x; g = c; b = 0;
+  } else if (h < 180) {
+    r = 0; g = c; b = x;
+  } else if (h < 240) {
+    r = 0; g = x; b = c;
+  } else if (h < 300) {
+    r = x; g = 0; b = c;
+  } else {
+    r = c; g = 0; b = x;
+  }
+  r = Math.round((r + m) * 255);
+  g = Math.round((g + m) * 255);
+  b = Math.round((b + m) * 255);
+  return `rgb(${r},${g},${b})`;
+}
+
+/****************************************************************
+ * 2) 給定 (gap, bestAction) → 傳回對應漸層色
+ *    - action=0 => hue=0° (紅) 
+ *    - action=1 => hue=180° (青)
+ *    - gap=0 => 白色, gap≥gapMax => 純色
+ ****************************************************************/
+ // 預設 gap 最大值，用於控制漸層飽和度
+const gapMax = 10;
+ 
+/**
+ * 通用著色函式：
+ * - gap: (最佳 Q - 第二佳 Q)
+ * - bestAction: 最佳動作編號 (0 ~ action_size-1)
+ * - gapMax: gap 超過此值時，飽和度視為 1
+ * - actionSize: 總動作數
+ *
+ * 規則：
+ * 1) gap=0 => 白色
+ * 2) bestAction=0 => 以黑色表示 (可由 ratio=gap/gapMax 做漸層)
+ * 3) 其餘動作 => 在色環上平分
+ *    例如 action=1 => hue=0°, action=2 => hue=120°, action=3 => hue=240° (若 actionSize=4)
+ *    gap越大 => 飽和度越高 => 顏色更純
+ */
+
+function colorByGapAndBest(gap, bestAction, gapMax) {
+  // 先計算 0..1 的 ratio
+  let ratio = Math.max(0, Math.min(gap / gapMax, 1));
+
+  // (1) gap=0: 表示動作價值無差，直接白色
+  if (ratio === 0) {
+    return 'rgb(255,255,255)';
+  }
+
+  // (2) 若動作 0 = 「不動作」，用黑色 (可隨 gap 變化在白~黑之間)
+  if (bestAction === 0) {
+    // 白(255,255,255) → 黑(0,0,0) 做線性插值
+    // ratio=1 => 全黑；ratio=0 => 全白(上面已經擋掉)
+    let c = Math.round(255 * (1 - ratio));
+    return `rgb(${c},${c},${c})`;
+  }
+
+  // (3) 其餘動作均勻分佈於 360° 的色相環
+  // 假設 action=1,2,...,actionSize-1；總共有 (actionSize-1) 種顏色
+  // hueStep = 360 / (actionSize - 1)
+  let hueStep = 360 / (action_size - 1);
+  // hue  = (bestAction-1) * hueStep
+  let hue = (bestAction - 1) * hueStep;
+
+  // 飽和度 = ratio；value = 1 => gap越大，顏色越飽和
+  let s = ratio;
+  let v = 1;
+  return hsvToRgb(hue, s, v);
+}
+
+/****************************************************************
+ * 3) 產生 Plotly Scatter 的資料
+ *    - 只針對前兩個維度 i, j => i in [0..numBins[0]-1], j in [0..numBins[1]-1]
+ *    - 每個網格對應 QTable["i_j"] = [q0, q1], 若不存在 => 白色
+ ****************************************************************/
+function generatePlotlyData2D() {
+  const xvals = [];
+  const yvals = [];
+  const colors = [];
+  const texts  = [];
+
+  // 假設只用前兩個維度 x, y
+  const binsX = numBins[0];
+  const binsY = numBins[1];
+
+    
+  for (let i = 0; i < binsX; i++) {
+    for (let j = 0; j < binsY; j++) {
+      
+      // console.log(currentState[2],getBucketIndex(currentState[2],2))
+      let i2=getBucketIndex(currentState[2],2)
+      
+      let stateKey = `${i}_${j}`; // 與 getStateKey([i,j]) 產生的key一致
+      // if(!isNaN(i2)){stateKey = `${i}_${j}_${i2}`}
+      if(!isNaN(i2)){stateKey = `0_${j}_${i}`}
+      // console.log(stateKey)
+
+      let qArr = QTable[stateKey]; // e.g. [q0, q1]
+      if (!qArr || qArr.length < 2) {
+        // 若查無資料或資料不足，顯示白色
+        xvals.push(i);
+        yvals.push(j);
+        colors.push('rgb(255,255,255)');
+        texts.push(`(i=${i}, j=${j})<br>No Data`);
+      } else {
+        // 有 Q 值 => 找出最佳與第二佳
+        let sortedQ = qArr.slice().sort((a, b) => b - a); // 由大到小排序
+        let bestAction = qArr.indexOf(sortedQ[0]); // 最佳動作
+        let secondBestQ = sortedQ[1] !== undefined ? sortedQ[1] : sortedQ[0]; // 確保至少有兩個 Q 值比較
+        let gap = sortedQ[0] //- secondBestQ; // 計算 Q 值差距
+        let col = colorByGapAndBest(gap, bestAction, gapMax, qArr.length); // 計算顏色
+
+        xvals.push(i);
+        yvals.push(j);
+        colors.push(col);
+      texts.push(`(i=${i}, j=${j})<br>Q=${qArr.map(q => q.toFixed(2)).join(', ')}<br>
+                  gap=${gap.toFixed(2)}, best=${bestAction}`);
+      }
+    }
+  }
+
+  // 回傳 Plotly Scatter 數據
+  return {
+    x: xvals,
+    y: yvals,
+    text: texts,
+    mode: 'markers',
+    marker: {
+      symbol: 'square', // 方形點
+      size: 25,         // 可視需求調整
+      color: colors,
+      line: { width: 0 } // 若不要網格外框就設0
+    },
+    hoverinfo: 'text'
+  };
+}
+
+
+    /************************************************
+     * 5. 用 Plotly 畫圖
+     ************************************************/
+    let trace = generatePlotlyData2D();
+    let layout = {
+      title: 'Q-table Heatmap (Two Actions)',
+      xaxis: {
+        title: 'State Dimension X',
+      },
+      yaxis: {
+        title: 'State Dimension Y',
+        scaleratio: .5,
+        // autorange: 'reversed', // 讓 Y 軸上下顛倒
+      },
+    };
+
+    Plotly.newPlot('p1-qValues-chart', [trace], layout);
+    
+    /************************************************
+     * 6. 每隔 2 秒隨機更新 Qtable => 更新圖表
+     ************************************************/
+    setInterval(() => {
+      // 重新生成資料，更新 Plotly
+      let newTrace = generatePlotlyData2D();
+      Plotly.react('p1-qValues-chart', [newTrace], layout);
+    }, 1000);
+    
+    
+    
+/***************************************************
+ * [10] QTable Export / Import 
+ ***************************************************/
+ 
+ function exportQtable() {
+  // 將 QTable 序列化為 JSON 字串
+  const dataStr = JSON.stringify(QTable, null, 2); 
+  // 建立一個 Blob 物件，型態為 text/plain 或 application/json
+  const blob = new Blob([dataStr], { type: "application/json" });
+  // 建立臨時連結並點擊，觸發下載
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "Qtable.json"; // 檔名可自訂
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importQtable(evt) {
+  const file = evt.target.files[0];me
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const fileContent = e.target.result;
+      // 解析 JSON
+      const obj = JSON.parse(fileContent);
+      
+      // 如果檔案裡只有 QTable 物件
+      QTable = obj;
+      
+      console.log("QTable imported successfully:", QTable);
+      // alert("QTable 已成功載入，後續訓練可沿用此表格。");
+
+    } catch (error) {
+      console.error("Error parsing QTable file", error);
+      // alert("無法解析此 QTable 檔案");
+    }
+  };
+  reader.readAsText(file, "utf-8");
+}
+    
+  </script>
+</body>
+</html>
