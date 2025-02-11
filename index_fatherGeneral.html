@@ -2,20 +2,14 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>AI Reinforce Lab</title>
-
+  <title>🕹️ Reinforce Lab 🧪</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='75'>🤖</text></svg>">
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
 
   <!-- Blockly -->
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-
-    <!-- 引入 MathJax -->
-    <script type="text/javascript" async
-      src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script type="text/javascript" async
-      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
   <style>
     /************************************************************
@@ -198,12 +192,12 @@
   <div id="leftPanel">
     <!-- 上方控制列 (如：載入網址、暫停、全屏等) -->
     <div id="controls">
-      <button id="toggleFullscreen">全屏</button>
+      <button id="toggleFullscreen">🕹️全屏</button>
       <input id="gameUrlInput" type="text" value="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck"
              placeholder="輸入遊戲網址" />
-      <button id="loadGame">載入</button>
-      <button id="togglePause">暫停</button>
-      <button id="toggleAccel">加速</button>
+      <button id="loadGame">♻️載入</button>
+      <button id="togglePause">⏸️暫停</button>
+      <button id="toggleAccel">🚀加速</button>
     </div>
 
     <!-- 下方 iframe：用於嵌入子遊戲 -->
@@ -215,20 +209,20 @@
   
     <!-- Tabs 按鈕列 -->
     <div class="sub-tab-buttons">
-      <button class="sub-tab-link active" data-subtab="tutorial">Tutorial</button>
+      <button class="sub-tab-link active" data-subtab="tutorial">💡指南</button>
       <!-- Agent1 -->
       <span class="agent-label">Agent 1:</span>
-      <button id='me' class="sub-tab-link" data-subtab="p1-config">Config</button>
-      <button class="sub-tab-link" data-subtab="p1-qtable">Q-Table</button>
-      <!-- <button class="sub-tab-link" data-subtab="p1-blocks">Blocks</button> -->
-      <!-- <button class="sub-tab-link" data-subtab="p1-logs">Logs</button> -->
+      <button id='me' class="sub-tab-link" data-subtab="p1-config">🛠️設定</button>
+      <button class="sub-tab-link" data-subtab="p1-qtable">📊分析</button>
+      <button class="sub-tab-link" data-subtab="p1-blocks">🧩積木</button>
+      <button class="sub-tab-link" data-subtab="p1-logs">📜紀錄</button>
 
       <!-- Agent2 -->
       <span class="agent-label">Agent 2:</span>
-      <button class="sub-tab-link" data-subtab="p2-config">Config</button>
-      <button class="sub-tab-link" data-subtab="p2-blocks">Blocks</button>
-      
-      <!--<button class="sub-tab-link" data-subtab="p2-logs">Logs</button>-->
+      <button class="sub-tab-link" data-subtab="p2-config">🛠️設定</button>
+      <button class="sub-tab-link" data-subtab="p2-qtable">📊分析</button>
+      <button class="sub-tab-link" data-subtab="p2-blocks">🧩積木</button>
+      <button class="sub-tab-link" data-subtab="p2-logs">📜紀錄</button>
       
       <!-- Agent3 -->
       <!--<span class="agent-label" style="margin-left: 16px;">Agent 3:</span>-->
@@ -275,28 +269,37 @@
       <img src="q_learning_formula.png" alt="Q-learning 更新公式">
       <br><br> -->
       <label for="learning-rate-slider">學習率 (α):</label>
-      <input id="learning-rate-slider" type="range" min="0.01" max="1" step="0.01" value="0.1" oninput="updateValue('learning-rate', this.value)">
-      <span class="value-display" id="learning-rate-value">0.1</span>
+      <input id="learning-rate-slider" type="range" min="0.01" max="1" step="0.01" value="0.1" 
+             oninput="updateValue('Alpha', this.value)">
+      <span class="value-display" id="alpha-value">0.1</span>
       <br>
+      
       <label for="discount-factor-slider">折扣率 (γ):</label>
-      <input id="discount-factor-slider" type="range" min="0" max="1" step="0.01" value="0.95" oninput="updateValue('discount-factor', this.value)">
-      <span class="value-display" id="discount-factor-value">0.95</span>
+      <input id="discount-factor-slider" type="range" min="0" max="1" step="0.01" value="0.95" 
+             oninput="updateValue('Gamma', this.value)">
+      <span class="value-display" id="gamma-value">0.95</span>
       <br>
+      
       <label for="exploration-rate-slider">探索率 (ε):</label>
-      <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.01" value="0.2" oninput="updateValue('exploration-rate', this.value)">
-      <span class="value-display" id="exploration-rate-value">0.2</span>
+      <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.01" value="0.2" 
+             oninput="updateValue('Epsilon', this.value)">
+      <span class="value-display" id="epsilon-value">0.2</span>
       <br>
+      
       <label for="optimism-slider">樂觀值 (ψ):</label>
-      <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="1" oninput="updateValue('optimism', this.value)">
-      <span class="value-display" id="optimism-value">1</span>
+      <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="0" 
+             oninput="updateValue('Psi', this.value)">
+      <span class="value-display" id="psi-value">0</span>
       <br><br>
-      <label for="optimism-slider">延遲量(ms):</label>
-      <input id="optimism-slider" type="range" min="10" max="100" step="10" value="50" oninput="updateValue('optimism', this.value)">
-      <span class="value-display" id="optimism-value">1</span>
+      
+      <label for="delay-slider">延遲量(ms):</label>
+      <input id="delay-slider" type="range" min="10" max="100" step="10" value="50" 
+             oninput="updateValue('delayTime', this.value)">
+      <span class="value-display" id="delaytime-value">50</span>
       <!-- 第一區：Cumulative Reward Chart -->
-      <div id="p1-rewards-chart" style="width: 600px; height: 300px;"></div>
-      <!-- <div id="p1-episode-reward" style="width: 600px; height: 300px;"></div> -->
-      <div id="p1-episode-steps" style="width: 600px; height: 300px;"></div>
+      <div id="p1-rewards-chart" style="width: 600px; height: 200px;"></div>
+      <div id="p1-episode-reward" style="width: 600px; height: 200px;"></div>
+      <div id="p1-episode-steps" style="width: 600px; height: 200px;"></div>
     
 
     
@@ -311,7 +314,7 @@
        onchange="importQtable(event)" />
       </div>
       <!-- 第二區：Q-Table Heatmap -->
-      <div id="p1-qValues-chart" style="width: 600px; height: 400px;"></div>
+      <div id="p1-qValues-chart" style="width: 600px; height: 300px;"></div>
     </div>
 
     <div id="p1-blocks" class="sub-tab-content">
@@ -369,12 +372,12 @@
         // 若目前全屏，則恢復
         leftPanel.classList.remove("fullscreen");
         rightPanel.style.display = "flex";
-        fullscreenButton.textContent = "全屏";
+        fullscreenButton.textContent = "🕹️全屏";
       } else {
         // 進入全屏
         leftPanel.classList.add("fullscreen");
         rightPanel.style.display = "none"; // 隱藏右側面板
-        fullscreenButton.textContent = "半屏";
+        fullscreenButton.textContent = "🧪半屏";
       }
     });
 
@@ -393,7 +396,7 @@
         gameIframe.src = url;
       }
       isPaused = false;
-      togglePauseBtn.textContent = "暫停";
+      togglePauseBtn.textContent = "⏸️暫停";
       // gameIframe.addEventListener("load", () => {
       //   // const iframe = document.getElementById("game-iframe");
       //   gameIframe.contentWindow.postMessage({ type: "questInfo" }, "*");
@@ -405,14 +408,14 @@
       if (!isPaused) {
         // 這裡可做暫停遊戲 or 停止訓練的動作
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
-        togglePauseBtn.textContent = "繼續";
+        togglePauseBtn.textContent = "▶️繼續";
 
       } else {
         // 這裡可做恢復遊戲 or 繼續訓練的動作
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
         gameIframe.contentWindow.postMessage({ type: "action",action:0}, "*");
         console.log('keep go')
-        togglePauseBtn.textContent = "暫停";
+        togglePauseBtn.textContent = "⏸️暫停";
       }
       isPaused = !isPaused;
     });
@@ -422,12 +425,12 @@
       if (!isAccel) {
         // 這裡可做暫停遊戲 or 停止訓練的動作
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
-        toggleAccelBtn.textContent = "正常";
+        toggleAccelBtn.textContent = "🐢正常";
         delayTime/=10
       } else {
         // 這裡可做恢復遊戲 or 繼續訓練的動作
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
-        toggleAccelBtn.textContent = "加速";
+        toggleAccelBtn.textContent = "🚀加速";
         delayTime*=10
       }
       isAccel = !isAccel;
@@ -470,7 +473,7 @@
           gameIframe.src = url; // 設定 iframe 的 src
         }
         isPaused = false;
-        togglePauseBtn.textContent = "暫停";
+        togglePauseBtn.textContent = "⏸️暫停";
       });
     });
 
@@ -572,7 +575,41 @@
     let Epsilon = .1;  // 探索率
     let Psi     = 0;    // 樂觀值   
     
-    let delayTime =1
+    let delayTime =50
+
+        // 更新 UI 和變數
+  function updateValue(parameter, value) {
+  value = parseFloat(value);
+
+  switch (parameter) {
+    case "Alpha":
+      Alpha = value;
+      break;
+    case "Gamma":
+      Gamma = value;
+      break;
+    case "Epsilon":
+      Epsilon = value;
+      break;
+    case "Psi":
+      Psi = value;
+      break;
+    case "delayTime":
+      delayTime = value;
+      break;
+    default:
+      console.warn(`未知參數: ${parameter}`);
+  }
+
+  // 更新對應的 HTML 顯示數值
+  let targetSpan = document.getElementById(parameter.toLowerCase() + "-value");
+  if (targetSpan) {
+    targetSpan.textContent = value;
+  }
+
+  console.log(`${parameter} 更新為 ${value}`);
+  console.log([Alpha,Gamma,Epsilon,Psi,delayTime])
+}
 
 
     // Q 值更新
@@ -838,6 +875,7 @@
         title: 'Reward Flow',
         xaxis: { title: 'Time (s)' },
         yaxis: { title: 'Reward per Second' },
+        margin: { t: 30, b: 40, l: 50, r: 20 }  // 調整 margin 讓圖表撐滿 div
       };
 
       Plotly.newPlot('p1-rewards-chart', [{
@@ -889,22 +927,57 @@
        // 初始化數據
   let episodeIndex = [];  // X 軸: 回合編號
   let episodeStepsData = []; // Y 軸: 每回合步數
+  let episodeRewardData = []; // Y 軸: 每回合累計 Reward
   // let episodeCount = 0; // 用於計數回合數
+
+
+  // 初始化 Reward 圖表
+Plotly.newPlot("p1-episode-reward", [{
+  x: episodeIndex,
+  y: episodeRewardData,
+  type: 'bar'
+}], {
+  title: {
+    text: "每回合累積 Reward",
+    font: { size: 18 },
+    yanchor: "top",
+    y: 0.95,
+    pad: { b: 0 }
+  },
+  xaxis: { title: "回合數 (Episode)" },
+  yaxis: { title: "累積 Reward" },
+  margin: { t: 30, b: 40, l: 50, r: 20 }
+}); 
+
+
   Plotly.newPlot("p1-episode-steps", [{
     x: episodeIndex,
     y: episodeStepsData,
     type: 'bar'
   }], {
-    title: "每回合累積步數",
+    title: {
+    text: "每回合累積步數",
+    font: { size: 18 },
+    yanchor: "top",  // 讓標題貼近圖表
+    y: 0.95,         // 控制標題的垂直位置，0~1 之間 (越接近 1 越上方)
+    pad: { b: 0 }    // 縮短標題與圖表的間距
+  },
     xaxis: { title: "回合數 (Episode)" },
-    yaxis: { title: "步數 (Steps)" }
+    yaxis: { title: "步數 (Steps)" },
+    margin: { t: 30, b: 40, l: 50, r: 20 }  // 調整 margin 讓圖表撐滿 div
   }); 
     
   function updateEpisodeChart(){
     episodeIndex.push(episodeCount);
     episodeStepsData.push(episodeSteps);
+    episodeRewardData.push(episodeReward);
 
-    // 更新圖表
+    // 更新 Reward 圖表
+    Plotly.update("p1-episode-reward", {
+      x: [episodeIndex],
+      y: [episodeRewardData]
+    });
+    // 更新 Steps 圖表
     Plotly.update("p1-episode-steps", {
       x: [episodeIndex],
       y: [episodeStepsData]
@@ -1035,7 +1108,7 @@ function generatePlotlyData2D() {
         let sortedQ = qArr.slice().sort((a, b) => b - a); // 由大到小排序
         let bestAction = qArr.indexOf(sortedQ[0]); // 最佳動作
         let secondBestQ = sortedQ[1] !== undefined ? sortedQ[1] : sortedQ[0]; // 確保至少有兩個 Q 值比較
-        let gap = sortedQ[0] //- secondBestQ; // 計算 Q 值差距
+        let gap = sortedQ[0] - secondBestQ; // 計算 Q 值差距
         let col = colorByGapAndBest(gap, bestAction, gapMax, qArr.length); // 計算顏色
 
         xvals.push(i);
@@ -1078,6 +1151,7 @@ function generatePlotlyData2D() {
         scaleratio: .5,
         // autorange: 'reversed', // 讓 Y 軸上下顛倒
       },
+      margin: { t: 30, b: 40, l: 50, r: 20 }  // 調整 margin 讓圖表撐滿 div
     };
 
     Plotly.newPlot('p1-qValues-chart', [trace], layout);
