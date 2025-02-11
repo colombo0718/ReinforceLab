@@ -255,19 +255,30 @@
     
     
     
-    <!-- 1. p1-blocks -->
-    <div id="p1-blocks" class="sub-tab-content"  style="width:100%; height: 100%; padding:0px">
-      <!--<div id="blockly-container">-->
-        <div id="p1-blocklyDiv"></div>
-      <!--</div>-->
-    </div>
-    <!-- 2. p1-config -->
+
+    <!-- 1. p1-config -->
     <div id="p1-config" class="sub-tab-content"  style="width:100%; height: 100%">
-      <label for="algorithm-select">RL演算法:</label>
+      <label for="algorithm-select">演算法:</label>
       <select id="algorithm-select" onchange="handleSelection()">
         <option value="Qtable">Q-Learn</option>
         <option value="DQN">DQN</option>
-      </select>       
+      </select>   
+      <br><br>
+      <label for="learning-rate-slider">學習率 (α):</label>
+      <input id="learning-rate-slider" type="range" min="0.01" max="1" step="0.01" value="0.1" oninput="updateValue('learning-rate', this.value)">
+      <span class="value-display" id="learning-rate-value">0.1</span>
+      <br>
+      <label for="discount-factor-slider">折扣率 (γ):</label>
+      <input id="discount-factor-slider" type="range" min="0" max="1" step="0.01" value="0.95" oninput="updateValue('discount-factor', this.value)">
+      <span class="value-display" id="discount-factor-value">0.95</span>
+      <br>
+      <label for="exploration-rate-slider">探索率 (ε):</label>
+      <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.01" value="0.2" oninput="updateValue('exploration-rate', this.value)">
+      <span class="value-display" id="exploration-rate-value">0.2</span>
+      <br>
+      <label for="optimism-slider">樂觀值 (ψ):</label>
+      <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="0" oninput="updateValue('optimism', this.value)">
+      <span class="value-display" id="optimism-value">0</span>
       <!-- 第一區：Cumulative Reward Chart -->
       <div id="p1-rewards-chart" style="width: 600px; height: 300px;"></div>
     
@@ -280,6 +291,12 @@
         <input type="file" style="margin: 5px ;" id="importQtableInput" accept=".json,.txt" 
        onchange="importQtable(event)" />
       </div>
+    </div>
+    <!-- 2. p1-blocks -->
+    <div id="p1-blocks" class="sub-tab-content"  style="width:100%; height: 100%; padding:0px">
+      <!--<div id="blockly-container">-->
+        <div id="p1-blocklyDiv"></div>
+      <!--</div>-->
     </div>
     <!-- 3. p1-logs -->
     <div id="p1-logs" class="sub-tab-content" style="width:100%; height: 100%">
