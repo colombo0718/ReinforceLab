@@ -11,6 +11,12 @@
   <!-- Blockly -->
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
 
+    <!-- 引入 MathJax -->
+    <script type="text/javascript" async
+      src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script type="text/javascript" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
   <style>
     /************************************************************
      * 整體頁面佈局：body使用flex
@@ -92,7 +98,7 @@
       font-family: Consolas, sans-serif;
       display: flex;
       align-items: flex-end; /* 讓按鈕與容器底緣貼齊 */
-      height: 36px;
+      height: 35px;
       background: #cef;
       border-bottom: 1px solid #ddd;
       padding: 0 8px;
@@ -197,6 +203,7 @@
              placeholder="輸入遊戲網址" />
       <button id="loadGame">載入</button>
       <button id="togglePause">暫停</button>
+      <button id="toggleAccel">加速</button>
     </div>
 
     <!-- 下方 iframe：用於嵌入子遊戲 -->
@@ -212,9 +219,9 @@
       <!-- Agent1 -->
       <span class="agent-label">Agent 1:</span>
       <button id='me' class="sub-tab-link" data-subtab="p1-config">Config</button>
-      <button class="sub-tab-link" data-subtab="p1-blocks">Blocks</button>
-      
-      <button class="sub-tab-link" data-subtab="p1-logs">Logs</button>
+      <button class="sub-tab-link" data-subtab="p1-qtable">Q-Table</button>
+      <!-- <button class="sub-tab-link" data-subtab="p1-blocks">Blocks</button> -->
+      <!-- <button class="sub-tab-link" data-subtab="p1-logs">Logs</button> -->
 
       <!-- Agent2 -->
       <span class="agent-label">Agent 2:</span>
@@ -239,7 +246,7 @@
     </div>
 
     <!-- Tabs 對應的內容區 (共6塊) -->
-    <div id="tutorial" class="sub-tab-content active"  style="width:100%; height: 100%">
+    <div id="tutorial" class="sub-tab-content active" >
       AI Reinforce Lab: Explore. Train. Compete.
       <p>選擇下列遊戲快速載入：</p>
       <div>
@@ -257,13 +264,16 @@
     
 
     <!-- 1. p1-config -->
-    <div id="p1-config" class="sub-tab-content"  style="width:100%; height: 100%">
+    <div id="p1-config" class="sub-tab-content" >
       <label for="algorithm-select">演算法:</label>
       <select id="algorithm-select" onchange="handleSelection()">
         <option value="Qtable">Q-Learn</option>
         <option value="DQN">DQN</option>
       </select>   
       <br><br>
+      <!-- <label>Q-Learning 更新公式：</label><br>
+      <img src="q_learning_formula.png" alt="Q-learning 更新公式">
+      <br><br> -->
       <label for="learning-rate-slider">學習率 (α):</label>
       <input id="learning-rate-slider" type="range" min="0.01" max="1" step="0.01" value="0.1" oninput="updateValue('learning-rate', this.value)">
       <span class="value-display" id="learning-rate-value">0.1</span>
@@ -277,29 +287,40 @@
       <span class="value-display" id="exploration-rate-value">0.2</span>
       <br>
       <label for="optimism-slider">樂觀值 (ψ):</label>
-      <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="0" oninput="updateValue('optimism', this.value)">
-      <span class="value-display" id="optimism-value">0</span>
+      <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="1" oninput="updateValue('optimism', this.value)">
+      <span class="value-display" id="optimism-value">1</span>
+      <br><br>
+      <label for="optimism-slider">延遲量(ms):</label>
+      <input id="optimism-slider" type="range" min="10" max="100" step="10" value="50" oninput="updateValue('optimism', this.value)">
+      <span class="value-display" id="optimism-value">1</span>
       <!-- 第一區：Cumulative Reward Chart -->
       <div id="p1-rewards-chart" style="width: 600px; height: 300px;"></div>
+      <!-- <div id="p1-episode-reward" style="width: 600px; height: 300px;"></div> -->
+      <div id="p1-episode-steps" style="width: 600px; height: 300px;"></div>
     
-      <!-- 第二區：Q-Table Heatmap -->
-      <div id="p1-qValues-chart" style="width: 600px; height: 400px;"></div>
+
     
+
+    </div>
+    <!-- 2. p1-blocks -->
+    <div id="p1-qtable" class="sub-tab-content">
       <!-- 第三區：按鈕 -->
       <div style="width: 100%; ">
         <button onclick="exportQtable()" style="margin: 5px ;">Export Q-table</button>
         <input type="file" style="margin: 5px ;" id="importQtableInput" accept=".json,.txt" 
        onchange="importQtable(event)" />
       </div>
+      <!-- 第二區：Q-Table Heatmap -->
+      <div id="p1-qValues-chart" style="width: 600px; height: 400px;"></div>
     </div>
-    <!-- 2. p1-blocks -->
-    <div id="p1-blocks" class="sub-tab-content"  style="width:100%; height: 100%; padding:0px">
+
+    <div id="p1-blocks" class="sub-tab-content">
       <!--<div id="blockly-container">-->
         <div id="p1-blocklyDiv"></div>
       <!--</div>-->
     </div>
     <!-- 3. p1-logs -->
-    <div id="p1-logs" class="sub-tab-content" style="width:100%; height: 100%">
+    <div id="p1-logs" class="sub-tab-content">
     
     </div>
     
@@ -308,11 +329,11 @@
     
 
     <!-- 4. p2-blocks -->
-    <div id="p2-blocks" class="sub-tab-content" style="width:100%; height: 100%">
+    <div id="p2-blocks" class="sub-tab-content" >
       <div id="p2-blocklyDiv"></div>
     </div>
     <!-- 5. p2-config -->
-    <div id="p2-config" class="sub-tab-content"  style="width:100%; height: 100%">
+    <div id="p2-config" class="sub-tab-content" >
       <div style="width:100%; height: 33%">
         <canvas id="p2-rewards-chart"></canvas>
         
@@ -323,8 +344,7 @@
       </div>
     </div>
     <!-- 6. p2-logs -->
-    <div id="p2-logs" class="sub-tab-content"  style="width:100%; height: 100%">
-      <div id="p2-log" style="width: 100%; height: 100%;"></div>
+    <div id="p2-logs" class="sub-tab-content" >
     </div>
     
     
@@ -365,6 +385,7 @@
     const gameUrlInput = document.getElementById("gameUrlInput");
     const gameIframe = document.getElementById("game-iframe");
     const togglePauseBtn = document.getElementById("togglePause");
+    const toggleAccelBtn = document.getElementById("toggleAccel");
 
     loadGameBtn.addEventListener("click", () => {
       const url = gameUrlInput.value.trim();
@@ -390,9 +411,26 @@
         // 這裡可做恢復遊戲 or 繼續訓練的動作
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
         gameIframe.contentWindow.postMessage({ type: "action",action:0}, "*");
+        console.log('keep go')
         togglePauseBtn.textContent = "暫停";
       }
       isPaused = !isPaused;
+    });
+
+    let isAccel = false;
+    toggleAccelBtn.addEventListener("click", () => {
+      if (!isAccel) {
+        // 這裡可做暫停遊戲 or 停止訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
+        toggleAccelBtn.textContent = "正常";
+        delayTime/=10
+      } else {
+        // 這裡可做恢復遊戲 or 繼續訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
+        toggleAccelBtn.textContent = "加速";
+        delayTime*=10
+      }
+      isAccel = !isAccel;
     });
 
     /***************************************************
@@ -529,10 +567,10 @@
      ***************************************************/
 
     let QTable = {};
-    let Alpha   = .01;  // 學習率
+    let Alpha   = .1;  // 學習率
     let Gamma   = 0.95; // 折扣因子
-    let Epsilon = .2;  // 探索率
-    let Psi     = 1;    // 樂觀值   
+    let Epsilon = .1;  // 探索率
+    let Psi     = 0;    // 樂觀值   
     
     let delayTime =1
 
@@ -615,31 +653,17 @@
       let indices = []; // 用於儲存每個維度的離散化索引
       // console.log(stateValues)
       stateValues.forEach((value,dim) => {
-         // 設定預設範圍
-        let min = 0, max = 100;
-        // // 取得該狀態有效範圍
-        // if (stateRange[index]) {
-        //   min = stateRange[index].min;
-        //   max = stateRange[index].max;
-        // }
-        // // 計算桶的大小
-        // let binSize = (max - min) / numBins[index]; 
-        // // 限制值在範圍內
-        // let clipped = Math.max(min, Math.min(max, value)); 
-        // // 計算索引
-        // let idx = Math.floor((clipped - min) / binSize);
-        // // 確保索引在合法範圍內
-        // idx = Math.min(Math.max(idx, 0), numBins[index] - 1); 
         const bucketIdx = getBucketIndex(value,dim);
         // 將索引加入陣列
         indices.push(bucketIdx); 
       });
       // 索引轉成字串標籤
-      // console.log(indices.join("_"))
       return indices.join("_");
     }
     
     function getBucketIndex(value,dim){
+        // 設定預設範圍
+        let min = 0, max = 100;
         // 取得該狀態有效範圍
         if (stateRange[dim]) {
           min = stateRange[dim].min;
@@ -695,13 +719,17 @@
         // 發送第一個動作
         gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
       }
+
     });   
       
     let currentState 
     let prevAction,prevStateKey
     let nextAction,nextStateKey
     let reward  
-    let cumulativeReward = 0; // 用於畫獎勵圖表 
+    let rewardPerSecond = 0; // 用於畫獎勵圖表 
+    let episodeCount = 1
+    let episodeReward = 0 
+    let episodeSteps = 0
     
     window.addEventListener("message", (event) => {
       const message = event.data;  
@@ -709,9 +737,13 @@
       if (message.type === "reward_state") {
         // 更新瞬間報酬
         reward = message.reward;
-        // 更新繪圖用的累計報酬
-        cumulativeReward += message.reward;
-        // console.log(reward,cumulativeReward)
+        // 加入每秒報酬累計
+        rewardPerSecond += message.reward;
+        // 加入回合報酬累計
+        episodeReward += message.reward;
+        // 回合步數+1
+        episodeSteps += 1;
+        // console.log(reward,rewardPerSecond)
         // 取得當下狀態對應到Q表的鍵值
         currentState=message.state
         nextStateKey = getStateKey(message.state);
@@ -739,6 +771,18 @@
           }, "*");
         // 故意設置的延遲時間
         }, delayTime);
+      }
+
+      
+      if (message.type === "endEpisode"){
+        console.log('Episode'+episodeCount)
+        console.log('episodeReward='+episodeReward)
+        console.log('episodeSteps='+episodeSteps)
+        updateEpisodeChart()
+        episodeCount += 1
+        episodeReward=0
+        episodeSteps=0
+        
       }
     });
     
@@ -791,9 +835,9 @@
     // 初始化 Rewards 图表
     function initRewardsChart() {
       const layout = {
-        title: 'Cumulative Reward Over Time',
+        title: 'Reward Flow',
         xaxis: { title: 'Time (s)' },
-        yaxis: { title: 'Cumulative Reward' },
+        yaxis: { title: 'Reward per Second' },
       };
 
       Plotly.newPlot('p1-rewards-chart', [{
@@ -810,8 +854,8 @@
       
       const currentTime = ((Date.now() - startTime) / 1000).toFixed(1); // 计算经过时间
       rewardLabels.push(currentTime);
-      rewardData.push(cumulativeReward);
-      // console.log(cumulativeReward)
+      rewardData.push(rewardPerSecond);
+      // console.log(rewardPerSecond)
 
       // 保证 rewardLabels 和 rewardData 的数量始终一致
       if (rewardData.length > 60) {
@@ -826,22 +870,47 @@
       });
 
       // 重置累积 Reward
-      cumulativeReward = 0;
+      rewardPerSecond = 0;
     }
 
     // 初始化图表
     initRewardsChart();
 
     // 模拟每秒更新一次图表
-    // let cumulativeReward = 0; // 初始化累计 Reward
+    // let rewardPerSecond = 0; // 初始化累计 Reward
     setInterval(() => {
-      // cumulativeReward += Math.random() * 10 - 5; // 模拟累积 Reward 的变化
+      // rewardPerSecond += Math.random() * 10 - 5; // 模拟累积 Reward 的变化
       updateRewardsChart();
     }, 1000);
     
+/*************************************************** 
+ ***************************************************/   
+     // 初始化 Plotly 圖表
+       // 初始化數據
+  let episodeIndex = [];  // X 軸: 回合編號
+  let episodeStepsData = []; // Y 軸: 每回合步數
+  // let episodeCount = 0; // 用於計數回合數
+  Plotly.newPlot("p1-episode-steps", [{
+    x: episodeIndex,
+    y: episodeStepsData,
+    type: 'bar'
+  }], {
+    title: "每回合累積步數",
+    xaxis: { title: "回合數 (Episode)" },
+    yaxis: { title: "步數 (Steps)" }
+  }); 
     
-    
-    
+  function updateEpisodeChart(){
+    episodeIndex.push(episodeCount);
+    episodeStepsData.push(episodeSteps);
+
+    // 更新圖表
+    Plotly.update("p1-episode-steps", {
+      x: [episodeIndex],
+      y: [episodeStepsData]
+    });
+  }
+
 /***************************************************
  * [9] QTable Chart  
  ***************************************************/
