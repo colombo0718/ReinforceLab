@@ -138,6 +138,15 @@
       color: #0078d7;
     }
     
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;         /* 設定每個格子之間的間距 */
+    }
+    .chart {
+        width: 500px; 
+        height: 300px;
+    }
     /************************************************************
      * 下面是每個Tab裡的細部內容：Blockly / config / Logs 等
     ************************************************************/
@@ -214,14 +223,14 @@
       <span class="agent-label">Agent 1:</span>
       <button id='me' class="sub-tab-link" data-subtab="p1-config">🛠️設定</button>
       <button class="sub-tab-link" data-subtab="p1-qtable">📊分析</button>
-      <button class="sub-tab-link" data-subtab="p1-blocks">🧩積木</button>
+      <button class="sub-tab-link" data-subtab="p1-blocks">🧩程式</button>
       <button class="sub-tab-link" data-subtab="p1-logs">📜紀錄</button>
 
       <!-- Agent2 -->
       <span class="agent-label">Agent 2:</span>
       <button class="sub-tab-link" data-subtab="p2-config">🛠️設定</button>
       <button class="sub-tab-link" data-subtab="p2-qtable">📊分析</button>
-      <button class="sub-tab-link" data-subtab="p2-blocks">🧩積木</button>
+      <button class="sub-tab-link" data-subtab="p2-blocks">🧩程式</button>
       <button class="sub-tab-link" data-subtab="p2-logs">📜紀錄</button>
       
       <!-- Agent3 -->
@@ -285,7 +294,7 @@
              oninput="updateValue('Epsilon', this.value)">
       <span class="value-display" id="epsilon-value">0.2</span>
       <br>
-      
+      <!-- 環境超參數 -->
       <label for="optimism-slider">樂觀值 (ψ):</label>
       <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="0" 
              oninput="updateValue('Psi', this.value)">
@@ -297,13 +306,12 @@
              oninput="updateValue('delayTime', this.value)">
       <span class="value-display" id="delaytime-value">50</span>
       <!-- 第一區：Cumulative Reward Chart -->
-      <div id="p1-rewards-chart" style="width: 600px; height: 200px;"></div>
-      <div id="p1-episode-reward" style="width: 600px; height: 200px;"></div>
-      <div id="p1-episode-steps" style="width: 600px; height: 200px;"></div>
-    
-
-    
-
+      <div class="grid-container">
+        <div id="p1-second-reward" class="chart"></div>  <!-- 左上 -->
+        <div id="p1-second-steps" class="chart"></div>   <!-- 右上 (gauge) -->
+        <div id="p1-episode-reward" class="chart"></div> <!-- 左下 -->
+        <div id="p1-episode-steps" class="chart"></div>  <!-- 右下 -->
+      </div>
     </div>
     <!-- 2. p1-blocks -->
     <div id="p1-qtable" class="sub-tab-content">
@@ -318,11 +326,9 @@
     </div>
 
     <div id="p1-blocks" class="sub-tab-content">
-      <!--<div id="blockly-container">-->
         <div id="p1-blocklyDiv"></div>
-      <!--</div>-->
     </div>
-    <!-- 3. p1-logs -->
+    <!-- 4. p1-logs -->
     <div id="p1-logs" class="sub-tab-content">
     
     </div>
@@ -763,10 +769,12 @@
     let prevAction,prevStateKey
     let nextAction,nextStateKey
     let reward  
-    let rewardPerSecond = 0; // 用於畫獎勵圖表 
-    let episodeCount = 1
-    let episodeReward = 0 
-    let episodeSteps = 0
+
+    // let secondReward = 0; // 用於畫獎勵圖表 
+    // let secondSteps = 0
+    // let episodeCount = 1
+    // let episodeReward = 0 
+    // let episodeSteps = 0
     
     window.addEventListener("message", (event) => {
       const message = event.data;  
@@ -775,12 +783,13 @@
         // 更新瞬間報酬
         reward = message.reward;
         // 加入每秒報酬累計
-        rewardPerSecond += message.reward;
+        secondReward += message.reward;
+        secondSteps += 1
         // 加入回合報酬累計
         episodeReward += message.reward;
         // 回合步數+1
         episodeSteps += 1;
-        // console.log(reward,rewardPerSecond)
+        // console.log(reward,secondReward)
         // 取得當下狀態對應到Q表的鍵值
         currentState=message.state
         nextStateKey = getStateKey(message.state);
@@ -812,9 +821,9 @@
 
       
       if (message.type === "endEpisode"){
-        console.log('Episode'+episodeCount)
-        console.log('episodeReward='+episodeReward)
-        console.log('episodeSteps='+episodeSteps)
+        // console.log('Episode'+episodeCount)
+        // console.log('episodeReward='+episodeReward)
+        // console.log('episodeSteps='+episodeSteps)
         updateEpisodeChart()
         episodeCount += 1
         episodeReward=0
@@ -863,126 +872,194 @@
     
     
 /***************************************************
- * [8] Rewards Chart  
+ * 全局變數 (請確保這些變數在其他邏輯中也有適當更新)
  ***************************************************/
-    let rewardsChart;
-    let rewardData = [];
-    let rewardLabels = [];
+ let secondReward = 0;    // 每秒累計 Reward，其他邏輯中需要累加此值
+let secondSteps  = 0;    // 每秒累計步數，其他邏輯中需要累加此值
 
-    // 初始化 Rewards 图表
-    function initRewardsChart() {
-      const layout = {
-        title: 'Reward Flow',
-        xaxis: { title: 'Time (s)' },
-        yaxis: { title: 'Reward per Second' },
-        margin: { t: 30, b: 40, l: 50, r: 20 }  // 調整 margin 讓圖表撐滿 div
-      };
+let rewardData   = [];
+let rewardLabels = [];
+let stepsData    = [];
+let stepsLabels  = [];
 
-      Plotly.newPlot('p1-rewards-chart', [{
-        x: rewardLabels,
-        y: rewardData,
-        mode: 'lines',
-        fill: 'tozeroy',
-        line: { color: 'rgba(54, 162, 235, 1)' },
-      }], layout);
-    }
-    let startTime=Date.now()
-    // 更新 Rewards 图表的函数
-    function updateRewardsChart() {
-      
-      const currentTime = ((Date.now() - startTime) / 1000).toFixed(1); // 计算经过时间
-      rewardLabels.push(currentTime);
-      rewardData.push(rewardPerSecond);
-      // console.log(rewardPerSecond)
+let startTime = Date.now();
 
-      // 保证 rewardLabels 和 rewardData 的数量始终一致
-      if (rewardData.length > 60) {
-        rewardLabels.shift(); // 移除最旧的时间点
-        rewardData.shift();   // 移除最旧的数据
-      }
+// 每回合數據（episode）相關變數
+let episodeIndex      = [];  // 回合編號
+let episodeRewardData = [];  // 每回合累積 Reward
+let episodeStepsData  = [];  // 每回合累積步數
 
-      // 更新图表
-      Plotly.update('p1-rewards-chart', {
-        x: [rewardLabels],
-        y: [rewardData],
-      });
-
-      // 重置累积 Reward
-      rewardPerSecond = 0;
-    }
-
-    // 初始化图表
-    initRewardsChart();
-
-    // 模拟每秒更新一次图表
-    // let rewardPerSecond = 0; // 初始化累计 Reward
-    setInterval(() => {
-      // rewardPerSecond += Math.random() * 10 - 5; // 模拟累积 Reward 的变化
-      updateRewardsChart();
-    }, 1000);
-    
-/*************************************************** 
- ***************************************************/   
-     // 初始化 Plotly 圖表
-       // 初始化數據
-  let episodeIndex = [];  // X 軸: 回合編號
-  let episodeStepsData = []; // Y 軸: 每回合步數
-  let episodeRewardData = []; // Y 軸: 每回合累計 Reward
-  // let episodeCount = 0; // 用於計數回合數
+// 假設這些變數在每回合結束時被更新：
+let episodeCount = 1;    // 當前回合編號
+let episodeReward = 0;   // 當前回合累積 Reward
+let episodeSteps  = 0;   // 當前回合累積步數
 
 
-  // 初始化 Reward 圖表
-Plotly.newPlot("p1-episode-reward", [{
-  x: episodeIndex,
-  y: episodeRewardData,
-  type: 'bar'
-}], {
-  title: {
-    text: "每回合累積 Reward",
-    font: { size: 18 },
-    yanchor: "top",
-    y: 0.95,
-    pad: { b: 0 }
-  },
-  xaxis: { title: "回合數 (Episode)" },
-  yaxis: { title: "累積 Reward" },
-  margin: { t: 30, b: 40, l: 50, r: 20 }
-}); 
+/***************************************************
+ * 配色方案
+ ***************************************************/
+// Reward 相關統一使用藍綠色系
+const rewardLineColor   = 'rgba(75, 192, 192, 1)';
+const rewardMarkerColor = 'rgba(75, 192, 192, 0.7)';
+
+// Steps 相關統一使用橙色系
+const stepsLineColor    = 'rgba(255, 159, 64, 1)';
+const stepsMarkerColor  = 'rgba(255, 159, 64, 0.7)';
 
 
+/***************************************************
+ * Second Charts (每秒數據圖表)
+ ***************************************************/
+
+// 初始化每秒數據的 Reward 與 Steps 圖表
+function initSecondChart() {
+  // Reward Flow 圖表
+  const rewardLayout = {
+    title: 'Reward Flow',
+    xaxis: { title: 'Time (s)' },
+    yaxis: { title: 'Reward per Second' },
+    margin: { t: 30, b: 40, l: 50, r: 20 }
+  };
+
+  Plotly.newPlot('p1-second-reward', [{
+    x: rewardLabels,
+    y: rewardData,
+    mode: 'lines',
+    fill: 'tozeroy',
+    line: { color: rewardLineColor }
+  }], rewardLayout);
+
+  // Steps Flow 圖表
+  const stepsLayout = {
+    title: 'Steps Flow',
+    xaxis: { title: 'Time (s)' },
+    yaxis: { title: 'Steps per Second' },
+    margin: { t: 30, b: 40, l: 50, r: 20 }
+  };
+
+  Plotly.newPlot('p1-second-steps', [{
+    x: stepsLabels,
+    y: stepsData,
+    mode: 'lines',
+    fill: 'tozeroy',
+    line: { color: stepsLineColor }
+  }], stepsLayout);
+}
+
+// 更新每秒數據圖表（Reward 與 Steps）
+function updateSecondChart() {
+  // 取得目前時間（秒）
+  const currentTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  // 更新 Reward 資料
+  rewardLabels.push(currentTime);
+  rewardData.push(secondReward);
+  if (rewardData.length > 60) {
+    rewardLabels.shift();
+    rewardData.shift();
+  }
+  Plotly.update('p1-second-reward', {
+    x: [rewardLabels],
+    y: [rewardData]
+  });
+  // 重置累計 Reward
+  secondReward = 0;
+
+  // 更新 Steps 資料
+  stepsLabels.push(currentTime);
+  stepsData.push(secondSteps);
+  if (stepsData.length > 60) {
+    stepsLabels.shift();
+    stepsData.shift();
+  }
+  Plotly.update('p1-second-steps', {
+    x: [stepsLabels],
+    y: [stepsData]
+  });
+  // 重置累計 Steps
+  secondSteps = 0;
+}
+
+
+/***************************************************
+ * Episode Charts (每回合數據圖表)
+ ***************************************************/
+
+// 初始化每回合數據的圖表（Reward 與 Steps）
+function initEpisodeChart() {
+  // 每回合累積 Reward 柱狀圖
+  Plotly.newPlot("p1-episode-reward", [{
+    x: episodeIndex,
+    y: episodeRewardData,
+    type: 'bar',
+    marker: { color: rewardMarkerColor }
+  }], {
+    title: {
+      text: "每回合累積 Reward",
+      font: { size: 18 },
+      yanchor: "top",
+      y: 0.95,
+      pad: { b: 0 }
+    },
+    xaxis: { title: "回合數 (Episode)" },
+    yaxis: { title: "累積 Reward" },
+    margin: { t: 30, b: 40, l: 50, r: 20 }
+  });
+
+  // 每回合累積 Steps 柱狀圖
   Plotly.newPlot("p1-episode-steps", [{
     x: episodeIndex,
     y: episodeStepsData,
-    type: 'bar'
+    type: 'bar',
+    marker: { color: stepsMarkerColor }
   }], {
     title: {
-    text: "每回合累積步數",
-    font: { size: 18 },
-    yanchor: "top",  // 讓標題貼近圖表
-    y: 0.95,         // 控制標題的垂直位置，0~1 之間 (越接近 1 越上方)
-    pad: { b: 0 }    // 縮短標題與圖表的間距
-  },
+      text: "每回合累積步數",
+      font: { size: 18 },
+      yanchor: "top",
+      y: 0.95,
+      pad: { b: 0 }
+    },
     xaxis: { title: "回合數 (Episode)" },
     yaxis: { title: "步數 (Steps)" },
-    margin: { t: 30, b: 40, l: 50, r: 20 }  // 調整 margin 讓圖表撐滿 div
-  }); 
-    
-  function updateEpisodeChart(){
-    episodeIndex.push(episodeCount);
-    episodeStepsData.push(episodeSteps);
-    episodeRewardData.push(episodeReward);
+    margin: { t: 30, b: 40, l: 50, r: 20 }
+  });
+}
 
-    // 更新 Reward 圖表
-    Plotly.update("p1-episode-reward", {
-      x: [episodeIndex],
-      y: [episodeRewardData]
-    });
-    // 更新 Steps 圖表
-    Plotly.update("p1-episode-steps", {
-      x: [episodeIndex],
-      y: [episodeStepsData]
-    });
-  }
+// 更新每回合數據圖表
+function updateEpisodeChart() {
+  // 將本回合資料加入陣列（假設 episodeCount、episodeReward、episodeSteps 由其他邏輯更新）
+  episodeIndex.push(episodeCount);
+  episodeRewardData.push(episodeReward);
+  episodeStepsData.push(episodeSteps);
+
+  Plotly.update("p1-episode-reward", {
+    x: [episodeIndex],
+    y: [episodeRewardData]
+  });
+
+  Plotly.update("p1-episode-steps", {
+    x: [episodeIndex],
+    y: [episodeStepsData]
+  });
+}
+
+
+/***************************************************
+ * 初始化與定時更新調用
+ ***************************************************/
+// 初始化每秒數據圖表
+initSecondChart();
+
+// 初始化每回合數據圖表
+initEpisodeChart();
+
+// 每秒更新一次 Reward 與 Steps 的數據圖表
+setInterval(() => {
+  updateSecondChart();
+}, 1000);
+
+
 
 /***************************************************
  * [9] QTable Chart  
