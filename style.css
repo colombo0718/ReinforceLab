@@ -1,0 +1,182 @@
+
+/************************************************************
+ * 整體頁面佈局：body使用flex
+ ************************************************************/
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Consolas, sans-serif;
+  height: 100vh; /* 若需要整頁滿版，可用 100vh；若需要可捲動，則移除。 */
+  display: flex;
+}
+
+/************************************************************
+ * 左側：子遊戲 (iframe) 區域
+ ************************************************************/
+#leftPanel {
+  width: 40%;               /* 預設 30% (或根據需求調成40%) */
+  flex-shrink: 0;          /* 避免視窗縮小時被壓縮 */
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #ddd;
+  transition: width 0.3s ease; /* 全屏/半屏轉換動畫 */
+}
+
+/* 若按下「全屏」時，切換 class，置於頂層、寬高100%，並鎖定位置 */
+#leftPanel.fullscreen {
+  width: 100vw;  /* 全螢幕寬度 */
+  height: 100vh; /* 全螢幕高度 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;  
+}
+
+/* 左側上方控制列 (固定高度 35px，垂直置中) */
+#controls {
+  display: flex;
+  align-items: center;
+  height: 35px;
+  background-color: #cfe;
+  border-bottom: 1px solid #ddd;
+  padding: 0 8px;
+}
+#controls button,
+#controls input {
+  margin-right: 6px;
+  padding: 4px 6px;
+  font-size: 13px;
+  line-height: 1;
+}
+#controls button:last-child,
+#controls input:last-child {
+  margin-right: 0;
+}
+/* 讓輸入框可撐開剩餘空間 */
+#gameUrlInput {
+  flex-grow: 1;
+}
+
+/* 左側 iframe (子遊戲) */
+iframe {
+  flex-grow: 1;   /* 撐滿剩餘空間 */
+  width: 100%;
+  border: none;
+}
+
+/************************************************************
+ * 右側：父平台 (多Agent / 多 Tabs)
+ ************************************************************/
+#rightPanel {
+  width: 70%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tabs 上方的按鈕列 (固定高度 35px)，與底部線對齊 */
+.sub-tab-buttons {
+  font-family: Consolas, sans-serif;
+  display: flex;
+  align-items: flex-end; /* 讓按鈕與容器底緣貼齊 */
+  height: 35px;
+  background: #cef;
+  border-bottom: 1px solid #ddd;
+  padding: 0 8px;
+}
+
+/* 「Agent 1:」等標籤 */
+.sub-tab-buttons .agent-label {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Tabs 按鈕 */
+.sub-tab-buttons button {
+  font-family: Consolas, sans-serif;
+  margin-bottom: -1px; /* 為了讓按鈕底邊與容器對齊 */
+  margin-right: 6px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9e9e9;
+  border: 1px solid #ccc;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sub-tab-buttons button:last-child {
+  margin-right: 0;
+}
+.sub-tab-buttons button:hover {
+  background: #ddd;
+}
+.sub-tab-buttons button.active {
+  background: #fff;
+  border-bottom: 1px solid #fff; /* 讓 active 的按鈕看起來像「浮起」 */
+  font-weight: bold;
+  color: #0078d7;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;         /* 設定每個格子之間的間距 */
+}
+.chart {
+    width: 500px; 
+    height: 300px;
+}
+/************************************************************
+ * 下面是每個Tab裡的細部內容：Blockly / config / Logs 等
+************************************************************/
+
+/* 6 個對應的 Tab 內容區塊 */
+.sub-tab-content {
+  display: none;
+  flex-grow: 1;
+  padding: 10px;
+  background: #fff;
+  overflow: auto;
+}
+.sub-tab-content.active {
+  display: block;
+}
+
+
+/* 按鈕美化 */
+button {
+  margin: 5px 0;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #eee;
+}
+
+#p1-blocklyDiv, #p2-blocklyDiv {
+  width: 100%;
+  height: 100%;
+}
+.blocklyPath {
+  stroke: white;
+}
+/* ARS 紀錄區 */
+#p1-log {
+  box-sizing: border-box;
+  padding: 10px;
+  overflow-y: auto;
+  font-size: 14px;
+  /* 讓換行符 \n 生效 */
+  white-space: pre-wrap; 
+}
+
+
+
