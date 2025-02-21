@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>疊加熱力圖 - Hover 顯示 Action 與 Opacity</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body { font-family: sans-serif; }
+    #plotDiv {
+      width: 600px;
+      height: 600px;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">疊加熱力圖：下層隨機 0~4，上層隨機 0~0.2 (白色遮罩)，Hover 顯示 Action 與 Opacity</h2>
+  <div id="plotDiv"></div>
+
+  <script>
+    // 全域參數
+    var numBins = [10, 10];      // 10x10 的格子
+    var action_size = 5;         // 總共 5 個動作（0～4），其中 a0 為黑色
+    // 這裡我們不用真正的 Q-table，只用隨機數模擬下層與上層資料
+
+    // 產生下層數據：隨機整數 0~4，並以 2D 矩陣表示
+    function generateLowerData() {
+      var lowerZ = [];
+      for (var i = 0; i < numBins[0]; i++) {
+        var row = [];
+        for (var j = 0; j < numBins[1]; j++) {
+          var val = Math.floor(Math.random() * action_size); // 隨機 0~4
+          row.push(val);
+        }
+        lowerZ.push(row);
+      }
+      return lowerZ;
+    }
+
+    // 產生上層數據：隨機 0～0.2，計算方式：0.2 - 隨機數，讓原始隨機數越小，遮罩效果越強
+    function generateUpperData() {
+      var upperZ = [];
+      for (var i = 0; i < numBins[0]; i++) {
+        var row = [];
+        for (var j = 0; j < numBins[1]; j++) {
+          var r = Math.random() * 0.2;
+          var overlay = 0.2 - r;  // 結果介於 0 到 0.2，值越大代表白色遮罩效果越強
+          row.push(overlay);
+        }
+        upperZ.push(row);
+      }
+      return upperZ;
+    }
+
+    // HSV to RGB 函式
+    function hsvToRgb(h, s, v) {
+      var c = v * s;
+      var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      var m = v - c;
+      var r, g, b;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+      r = Math.round((r + m) * 255);
+      g = Math.round((g + m) * 255);
+      b = Math.round((b + m) * 255);
+      return "rgb(" + r + "," + g + "," + b + ")";
+    }
+
+    // 根據 action_size 生成離散色階：a0 為黑色，其餘 a1~a4 在色環上等分
+    function generateDiscreteColorscale(actionSize) {
+      var colorscale = [];
+      // a0 固定為黑色
+      colorscale.push([0, 'black']);
+      // 從 a1 到 a4 等分色環
+      for (var i = 1; i < actionSize; i++) {
+        var norm = i / (actionSize - 1); // 從 0 到 1
+        var hue = ((i - 1) * 360 / (actionSize - 1)) % 360; // 等分 360 度
+        var color = hsvToRgb(hue, 1, 1);
+        colorscale.push([norm, color]);
+      }
+      return colorscale;
+    }
+    var discreteColorscale = generateDiscreteColorscale(action_size);
+
+    // 產生下層與上層數據
+    var lowerZ = generateLowerData();
+    var upperZ = generateUpperData();
+
+    // 合併 hover 資訊：建立一個 2D 陣列，每個 cell 的文字顯示 Action 與 Opacity
+    var hoverText = [];
+    for (var i = 0; i < numBins[0]; i++) {
+      var rowText = [];
+      for (var j = 0; j < numBins[1]; j++) {
+        rowText.push("Action: " + lowerZ[i][j] + "<br>Opacity: " + upperZ[i][j].toFixed(2));
+      }
+      hoverText.push(rowText);
+    }
+
+    // 下層 heatmap trace：顯示離散動作色階
+    var lowerTrace = {
+      x: [...Array(numBins[0]).keys()],
+      y: [...Array(numBins[1]).keys()],
+      z: lowerZ,
+      type: 'heatmap',
+      colorscale: discreteColorscale,
+      showscale: true,
+      hoverinfo: 'text',
+      text: hoverText  // 使用合併後的 hover 文字
+    };
+
+    // 上層 heatmap trace：白色遮罩
+    var upperTrace = {
+      x: [...Array(numBins[0]).keys()],
+      y: [...Array(numBins[1]).keys()],
+      z: upperZ,
+      type: 'heatmap',
+      colorscale: [
+        [0, 'rgba(255,255,255,1)'],
+        [1, 'rgba(255,255,255,0)']
+      ],
+      zmin: 0,
+      zmax: 0.2,
+      showscale: false,
+      hoverinfo: 'skip'
+    };
+
+    // 疊加兩個 trace
+    var data = [lowerTrace, upperTrace];
+    var layout = {
+      title: '疊加熱力圖：下層隨機 Action (0～4) 及上層隨機白色透明度<br>(Hover 顯示 Action 與 Opacity)',
+      xaxis: { title: 'X', range: [-0.5, numBins[0] - 0.5] },
+      yaxis: { title: 'Y', range: [-0.5, numBins[1] - 0.5] },
+      margin: { t: 40, b: 40, l: 40, r: 40 }
+    };
+
+    Plotly.newPlot('plotDiv', data, layout);
+  </script>
+</body>
+</html>

@@ -73,8 +73,12 @@ function initSecondChart() {
 
 // 更新每秒數據圖表（Reward 與 Steps）
 function updateSecondChart() {
+  // 按下暫停後圖表停止更新
+  // startTime向後延一秒
+  if(isPaused){startTime+=1000;return}
   // 取得目前時間（秒）
   const currentTime = ((Date.now() - startTime) / 1000).toFixed(1);
+  // console.log(currentTime)
 
   // 更新 Reward 資料
   rewardLabels.push(currentTime);
@@ -158,10 +162,18 @@ function updateEpisodeChart() {
   episodeRewardData.push(episodeReward);
   episodeStepsData.push(episodeSteps);
 
+  if (episodeIndex.length > 100) {
+    episodeIndex.shift();
+    episodeRewardData.shift();
+    episodeStepsData.shift();
+  }
+
   Plotly.update("p1-episode-reward", {
     x: [episodeIndex],
     y: [episodeRewardData]
   });
+
+
 
   Plotly.update("p1-episode-steps", {
     x: [episodeIndex],

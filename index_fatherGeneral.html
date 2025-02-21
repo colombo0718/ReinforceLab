@@ -22,7 +22,7 @@
     <!-- 上方控制列 (如：載入網址、暫停、全屏等) -->
     <div id="controls">
       <button id="toggleFullscreen">🕹️全屏</button>
-      <input id="gameUrlInput" type="text" value="https://colombo0718.neocities.org/graphicalGYM/games/Maze1D"
+      <input id="gameUrlInput" type="text" value="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D_emoji"
              placeholder="輸入遊戲網址" />
       <button id="loadGame">♻️載入</button>
       <button id="togglePause">⏸️暫停</button>
@@ -30,7 +30,7 @@
     </div>
 
     <!-- 下方 iframe：用於嵌入子遊戲 -->
-    <iframe id="game-iframe" src="https://colombo0718.neocities.org/graphicalGYM/games/Maze1D"></iframe>
+    <iframe id="game-iframe" src="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D_emoji"></iframe>
   </div>
 
   <!-- 右側：父平台 (多 Agent、多 Tabs) -->
@@ -59,13 +59,13 @@
       AI Reinforce Lab: Explore. Train. Compete.
       <p>選擇下列遊戲快速載入：</p>
       <div>
-        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/MAB">Multi-Armed Bandit</button>
-        <button id='game-maze' class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze1D">Maze1D</button>
-        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D">Maze2D</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/MAB">🎰Multi-Armed Bandit</button>
+        <button id='game-maze' class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze1D">📏Maze1D</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D_emoji">🗺️Maze2D</button>
         <br>
-        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck">Dinosaur Jump</button>
-        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">Taiko Beat</button>
-        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">Easy Shoot</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck">🦖Dinosaur Jump</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">🥁Taiko Beat</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">🎯Easy Shoot</button>
       </div>
     </div>
 
@@ -110,7 +110,7 @@
       <br><br>
 
       <label for="delay-slider">延遲量(ms):</label>
-      <input id="delay-slider" type="range" min="10" max="100" step="10" value="50"
+      <input id="delay-slider" type="range" min="0" max="100" step="10" value="50"
              oninput="updateValue('delayTime', this.value)">
       <span class="value-display" id="delaytime-value">50</span>
       <!-- 第一區：Cumulative Reward Chart -->
@@ -123,13 +123,11 @@
     </div>
     <!-- 2. p1-blocks -->
     <div id="p1-qtable" class="sub-tab-content">
-      <!-- 第三區：按鈕 -->
       <div style="width: 100%; ">
         <button onclick="exportQtable()" style="margin: 5px ;">Export Q-table</button>
         <input type="file" style="margin: 5px ;" id="importQtableInput" accept=".json,.txt"
        onchange="importQtable(event)" />
       </div>
-      <!-- 第二區：Q-Table Heatmap -->
       <div class="grid-container">
         <div id="p1-diff-value" class="chart"></div>
         <div id="p1-action-ring" class="chart"></div>
@@ -552,8 +550,9 @@
       const message = event.data;
 
       if (message.type === "gameInfo") {
-        stateInfo=message.stateInfo
-        actionInfo=message.actionInfo
+        console.log(message)
+        stateInfo=message.players[0].stateInfo
+        actionInfo=message.players[0].actionInfo
         writeLog(1,stateInfo)
         writeLog(1,actionInfo)
         state_size=stateInfo.length
@@ -563,7 +562,7 @@
         QTable = {};     // 清空Q表
         stateRange = []; // 清空狀態範圍
         numBins = [];    // 清空每軸桶數
-        message.stateInfo.forEach((info) => {
+        message.players[0].stateInfo.forEach((info) => {
           stateRange.push({ min: info.min, max: info.max });
           if(info.bin){
             numBins.push(info.bin);
@@ -713,23 +712,96 @@ let episodeSteps  = 0;   // 當前回合累積步數
 
 /***************************************************
  * [9] QTable Chart
- ***************************************************/
-/****************************************************************
- * 1) HSV→RGB: 將 (h, s, v) 轉換成 rgb(r,g,b)
- ****************************************************************/
+ ***************************************************/// 假設全域變數：
+// numBins = [xBins, yBins]
+// QTable 為物件，鍵為 `${i}_${j}`，值為 Q 值陣列
+// gapMax 為你設定的最大 gap 值
+gapMax =10
+
+
+// 動作選擇熱力圖：下層動作色塊 + 上層白色遮罩
+function generateActionHeatmap() {
+  const z = [], text = [];
+
+  for (let j = 0; j < numBins[1]; j++) {
+    const row = [];
+    const textRow = [];
+    for (let i = 0; i < numBins[0]; i++) {
+      const stateKey = `${i}_${j}`;
+      const qArr = QTable[stateKey] || [0, 0];
+      const bestAction = qArr.indexOf(Math.max(...qArr));
+      row.push(bestAction);
+      textRow.push(`State ${stateKey}<br>Best action: ${bestAction}`);
+      // text.push(`State ${stateKey}<br>Best action: ${bestAction}`);
+    }
+    z.push(row);
+    text.push(textRow);
+  }
+
+  const colorscale = generateDiscreteColorscale(action_size);
+
+  const lowerTrace = {
+    x: [...Array(numBins[0]).keys()],
+    y: [...Array(numBins[1]).keys()],
+    z: z,
+    type: 'heatmap',
+    colorscale: colorscale,
+    // showscale: false,
+    hoverinfo: 'text',
+    text: text
+  };
+
+  const overlayMatrix = generateWhiteOverlayMatrix();
+
+  const upperTrace = {
+    x: [...Array(numBins[0]).keys()],
+    y: [...Array(numBins[1]).keys()],
+    z: overlayMatrix,
+    type: 'heatmap',
+    colorscale: [
+      [0, 'rgba(255,255,255,0)'],
+      [1, 'rgba(255,255,255,1)']
+    ],
+    zmin: 0,
+    zmax: 1,
+    showscale: false,
+    hoverinfo: 'skip'
+  };
+
+  const layout = {
+    title: '動作選擇熱力圖（含白色遮罩）',
+    xaxis: { title: 'State Dimension X' },
+    yaxis: { title: 'State Dimension Y' },
+    margin: { t: 30, b: 40, l: 50, r: 20 }
+  };
+
+  Plotly.newPlot('p1-diff-value', [lowerTrace, upperTrace], layout);
+}
+
+// 生成離散色階（a0=黑色，剩下等分色環）
+function generateDiscreteColorscale(actionSize) {
+  const colorscale = [[0, 'black']];
+  for (let i = 1; i < actionSize; i++) {
+    const hue = ((i - 1) * 360 / (actionSize - 1)) % 360;
+    const color = hsvToRgb(hue, 1, 1);
+    colorscale.push([i / (actionSize - 1), color]);
+  }
+  return colorscale;
+}
+
+// HSV轉RGB
 function hsvToRgb(h, s, v) {
-  // h: [0, 360], s: [0,1], v: [0,1]
   const c = v * s;
   const x = c * (1 - Math.abs((h / 60) % 2 - 1));
   const m = v - c;
-  let r, g, b;
+  let r = 0, g = 0, b = 0;
 
-  if (h < 60) { r = c; g = x; b = 0; }
-  else if (h < 120) { r = x; g = c; b = 0; }
-  else if (h < 180) { r = 0; g = c; b = x; }
-  else if (h < 240) { r = 0; g = x; b = c; }
-  else if (h < 300) { r = x; g = 0; b = c; }
-  else { r = c; g = 0; b = x; }
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
 
   r = Math.round((r + m) * 255);
   g = Math.round((g + m) * 255);
@@ -737,127 +809,225 @@ function hsvToRgb(h, s, v) {
   return `rgb(${r},${g},${b})`;
 }
 
-/****************************************************************
- * 2) 給定 (gap, bestAction) → 傳回對應漸層色
- *    - action=0 => hue=0° (紅)
- *    - action=1 => hue=180° (青)
- *    - gap=0 => 白色, gap≥gapMax => 純色
- ****************************************************************/
- // 預設 gap 最大值，用於控制漸層飽和度
-const gapMax = 10;
-
-/**
- * 根據 gap 和最佳動作決定顏色
- * @param {number} gap - (最佳 Q - 第二佳 Q)
- * @param {number} bestAction - 最佳動作編號 (0 ~ action_size-1)
- * @param {number} gapMax - gap 超過此值時，飽和度視為 1
- * @param {number} actionSize - 總動作數
- * @returns {string} RGB 顏色
- */
-
- function colorByGapAndBest(gap, bestAction, gapMax) {
-  let ratio = Math.max(0, Math.min(gap / gapMax, 1));
-  if (ratio === 0) return 'rgb(255,255,255)'; // 無區別時為白色
-
-  if (bestAction === 0) {
-    let c = Math.round(255 * (1 - ratio));
-    return `rgb(${c},${c},${c})`; // 動作 0：黑白漸變
+// 生成白色遮罩
+function generateWhiteOverlayMatrix() {
+  const overlay = [];
+  for (let j = 0; j < numBins[1]; j++) {
+    const row = [];
+    for (let i = 0; i < numBins[0]; i++) {
+      const stateKey = `${i}_${j}`;
+      const qArr = QTable[stateKey] || [0, 0];
+      const sorted = qArr.slice().sort((a, b) => b - a);
+      const gap = sorted[0] - (sorted[1] ?? sorted[0]);
+      const opacity = 1 - Math.min(gap / gapMax, 1);
+      row.push(opacity);
+    }
+    overlay.push(row);
   }
-
-  let hueStep = 360 / (action_size - 1); // 統一使用 action_size
-  let hue = (bestAction - 1) * hueStep;
-  return hsvToRgb(hue, ratio, 1); // 設定色相、飽和度
+  return overlay;
 }
 
-/****************************************************************
- * 3) 產生 Plotly Scatter 的資料
- *    - 只針對前兩個維度 i, j => i in [0..numBins[0]-1], j in [0..numBins[1]-1]
- *    - 每個網格對應 QTable["i_j"] = [q0, q1], 若不存在 => 白色
- ****************************************************************/
-function generatePlotlyData2D() {
-  const xvals = [], yvals = [], colors = [], texts = [];
+
+
+// 最大 Q 值熱力圖：藍→白→紅
+function generateMaxQHeatmap() {
+  const xvals = [], yvals = [], zvals = [], texts = [];
 
   for (let i = 0; i < numBins[0]; i++) {
     for (let j = 0; j < numBins[1]; j++) {
+      const stateKey = `${i}_${j}`;
+      const qArr = QTable[stateKey] || [0];
+      const maxQ = Math.max(...qArr);
 
-      // console.log(currentState[2],getBucketIndex(currentState[2],2))
-      let i2=getBucketIndex(currentState[2],2)
-
-      let stateKey = `${i}_${j}`; // 與 getStateKey([i,j]) 產生的key一致
-      // if(!isNaN(i2)){stateKey = `${i}_${j}_${i2}`}
-      if(!isNaN(i2)){stateKey = `0_${j}_${i}`}
-      // console.log(stateKey)
-
-      let qArr = QTable[stateKey]; // e.g. [q0, q1]
-      if (!qArr || qArr.length < 2) {
-        // 若查無資料或資料不足，顯示白色
-        xvals.push(i);
-        yvals.push(j);
-        colors.push('rgb(255,255,255)');
-        texts.push(`(i=${i}, j=${j})<br>No Data`);
-      } else {
-        // 有 Q 值 => 找出最佳與第二佳
-        let sortedQ = qArr.slice().sort((a, b) => b - a); // 由大到小排序
-        let bestAction = qArr.indexOf(sortedQ[0]); // 最佳動作
-        let secondBestQ = sortedQ[1] !== undefined ? sortedQ[1] : sortedQ[0]; // 確保至少有兩個 Q 值比較
-        let gap = sortedQ[0] - secondBestQ; // 計算 Q 值差距
-        let col = colorByGapAndBest(gap, bestAction, gapMax, qArr.length); // 計算顏色
-
-        xvals.push(i);
-        yvals.push(j);
-        colors.push(col);
-      texts.push(`(i=${i}, j=${j})<br>Q=${qArr.map(q => q.toFixed(2)).join(', ')}<br>
-                  gap=${gap.toFixed(2)}, best=${bestAction}`);
-      }
+      xvals.push(i);
+      yvals.push(j);
+      zvals.push(maxQ);
+      texts.push(`(i=${i}, j=${j})<br>Max Q: ${maxQ.toFixed(2)}`);
     }
   }
 
-  // 回傳 Plotly Scatter 數據
-  return {
+  const trace = {
     x: xvals,
     y: yvals,
+    z: zvals,
+    type: 'heatmap',
+    colorscale: [
+      [0, 'blue'],
+      [0.5, 'white'],
+      [1, 'red']
+    ],
+    zmid: 0,
+    // showscale: false,
     text: texts,
-    mode: 'markers',
-    marker: {
-      symbol: 'square', // 方形點
-      size: 20,         // 可視需求調整
-      color: colors,
-      line: { width: 0 } // 若不要網格外框就設0
-    },
     hoverinfo: 'text'
   };
+
+  const layout = {
+    title: '最大 Q 值熱力圖（藍→白→紅）',
+    xaxis: { title: 'State Dimension X' },
+    yaxis: { title: 'State Dimension Y' },
+    margin: { t: 30, b: 40, l: 50, r: 20 }
+  };
+
+  Plotly.newPlot('p1-maxi-value', [trace], layout);
 }
 
-
-    /************************************************
-     * 5. 用 Plotly 畫圖
-     ************************************************/
-    let trace = generatePlotlyData2D();
-    let layout = {
-      title: 'Q-table Heatmap (Two Actions)',
-      xaxis: {
-        title: 'State Dimension X',
-      },
-      yaxis: {
-        title: 'State Dimension Y',
-        scaleratio: .5,
-        // autorange: 'reversed', // 讓 Y 軸上下顛倒
-      },
-      margin: { t: 30, b: 40, l: 50, r: 20 }  // 調整 margin 讓圖表撐滿 div
-    };
-
-    Plotly.newPlot('p1-diff-value', [trace], layout);
-
-    /************************************************
-     * 6. 每隔 2 秒隨機更新 Qtable => 更新圖表
-     ************************************************/
-    setInterval(() => {
-      // 重新生成資料，更新 Plotly
-      let newTrace = generatePlotlyData2D();
-      Plotly.react('p1-diff-value', [newTrace], layout);
-    }, 1000);
+// 初始繪圖
+generateActionHeatmap();
+generateMaxQHeatmap();
 
 
+// 每秒更新
+setInterval(() => {
+  generateActionHeatmap();
+  generateMaxQHeatmap();
+
+}, 1000);
+
+
+
+    // /****************************************************************
+    //  * 1) HSV→RGB: 將 (h, s, v) 轉換成 rgb(r,g,b)
+    //  ****************************************************************/
+    // function hsvToRgb(h, s, v) {
+    //   // h: [0, 360], s: [0,1], v: [0,1]
+    //   const c = v * s;
+    //   const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    //   const m = v - c;
+    //   let r, g, b;
+    //
+    //   if (h < 60) { r = c; g = x; b = 0; }
+    //   else if (h < 120) { r = x; g = c; b = 0; }
+    //   else if (h < 180) { r = 0; g = c; b = x; }
+    //   else if (h < 240) { r = 0; g = x; b = c; }
+    //   else if (h < 300) { r = x; g = 0; b = c; }
+    //   else { r = c; g = 0; b = x; }
+    //
+    //   r = Math.round((r + m) * 255);
+    //   g = Math.round((g + m) * 255);
+    //   b = Math.round((b + m) * 255);
+    //   return `rgb(${r},${g},${b})`;
+    // }
+    //
+    // /****************************************************************
+    //  * 2) 給定 (gap, bestAction) → 傳回對應漸層色
+    //  *    - action=0 => hue=0° (紅)
+    //  *    - action=1 => hue=180° (青)
+    //  *    - gap=0 => 白色, gap≥gapMax => 純色
+    //  ****************************************************************/
+    //  // 預設 gap 最大值，用於控制漸層飽和度
+    // const gapMax = 10;
+    //
+    // /**
+    //  * 根據 gap 和最佳動作決定顏色
+    //  * @param {number} gap - (最佳 Q - 第二佳 Q)
+    //  * @param {number} bestAction - 最佳動作編號 (0 ~ action_size-1)
+    //  * @param {number} gapMax - gap 超過此值時，飽和度視為 1
+    //  * @param {number} actionSize - 總動作數
+    //  * @returns {string} RGB 顏色
+    //  */
+    //
+    //  function colorByGapAndBest(gap, bestAction, gapMax) {
+    //   let ratio = Math.max(0, Math.min(gap / gapMax, 1));
+    //   if (ratio === 0) return 'rgb(255,255,255)'; // 無區別時為白色
+    //
+    //   if (bestAction === 0) {
+    //     let c = Math.round(255 * (1 - ratio));
+    //     return `rgb(${c},${c},${c})`; // 動作 0：黑白漸變
+    //   }
+    //
+    //   let hueStep = 360 / (action_size - 1); // 統一使用 action_size
+    //   let hue = (bestAction - 1) * hueStep;
+    //   return hsvToRgb(hue, ratio, 1); // 設定色相、飽和度
+    // }
+    //
+    // /****************************************************************
+    //  * 3) 產生 Plotly Scatter 的資料
+    //  *    - 只針對前兩個維度 i, j => i in [0..numBins[0]-1], j in [0..numBins[1]-1]
+    //  *    - 每個網格對應 QTable["i_j"] = [q0, q1], 若不存在 => 白色
+    //  ****************************************************************/
+    // function generatePlotlyData2D() {
+    //   const xvals = [], yvals = [], colors = [], texts = [];
+    //
+    //   for (let i = 0; i < numBins[0]; i++) {
+    //     for (let j = 0; j < numBins[1]; j++) {
+    //
+    //       // console.log(currentState[2],getBucketIndex(currentState[2],2))
+    //       let i2=getBucketIndex(currentState[2],2)
+    //
+    //       let stateKey = `${i}_${j}`; // 與 getStateKey([i,j]) 產生的key一致
+    //       // if(!isNaN(i2)){stateKey = `${i}_${j}_${i2}`}
+    //       if(!isNaN(i2)){stateKey = `0_${j}_${i}`}
+    //       // console.log(stateKey)
+    //
+    //       let qArr = QTable[stateKey]; // e.g. [q0, q1]
+    //       if (!qArr || qArr.length < 2) {
+    //         // 若查無資料或資料不足，顯示白色
+    //         xvals.push(i);
+    //         yvals.push(j);
+    //         colors.push('rgb(255,255,255)');
+    //         texts.push(`(i=${i}, j=${j})<br>No Data`);
+    //       } else {
+    //         // 有 Q 值 => 找出最佳與第二佳
+    //         let sortedQ = qArr.slice().sort((a, b) => b - a); // 由大到小排序
+    //         let bestAction = qArr.indexOf(sortedQ[0]); // 最佳動作
+    //         let secondBestQ = sortedQ[1] !== undefined ? sortedQ[1] : sortedQ[0]; // 確保至少有兩個 Q 值比較
+    //         let gap = sortedQ[0] - secondBestQ; // 計算 Q 值差距
+    //         let col = colorByGapAndBest(gap, bestAction, gapMax, qArr.length); // 計算顏色
+    //
+    //         xvals.push(i);
+    //         yvals.push(j);
+    //         colors.push(col);
+    //       texts.push(`(i=${i}, j=${j})<br>Q=${qArr.map(q => q.toFixed(2)).join(', ')}<br>
+    //                   gap=${gap.toFixed(2)}, best=${bestAction}`);
+    //       }
+    //     }
+    //   }
+    //
+    //   // 回傳 Plotly Scatter 數據
+    //   return {
+    //     x: xvals,
+    //     y: yvals,
+    //     text: texts,
+    //     mode: 'markers',
+    //     marker: {
+    //       symbol: 'square', // 方形點
+    //       size: 20,         // 可視需求調整
+    //       color: colors,
+    //       line: { width: 0 } // 若不要網格外框就設0
+    //     },
+    //     hoverinfo: 'text'
+    //   };
+    // }
+    //
+    //
+    //     /************************************************
+    //      * 5. 用 Plotly 畫圖
+    //      ************************************************/
+    //     let trace = generatePlotlyData2D();
+    //     let layout = {
+    //       title: 'Q-table Heatmap (Two Actions)',
+    //       xaxis: {
+    //         title: 'State Dimension X',
+    //       },
+    //       yaxis: {
+    //         title: 'State Dimension Y',
+    //         scaleratio: .5,
+    //         // autorange: 'reversed', // 讓 Y 軸上下顛倒
+    //       },
+    //       margin: { t: 30, b: 40, l: 50, r: 20 }  // 調整 margin 讓圖表撐滿 div
+    //     };
+    //
+    //     Plotly.newPlot('p1-diff-value', [trace], layout);
+    //
+    //     /************************************************
+    //      * 6. 每隔 2 秒隨機更新 Qtable => 更新圖表
+    //      ************************************************/
+    //     setInterval(() => {
+    //       // 重新生成資料，更新 Plotly
+    //       let newTrace = generatePlotlyData2D();
+    //       Plotly.react('p1-diff-value', [newTrace], layout);
+    //     }, 1000);
 
 /***************************************************
  * [10] QTable Export / Import
