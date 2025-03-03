@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>🕹️ Reinforce Lab 🧪</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='75'>🤖</text></svg>">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+
+  <!-- Blockly -->
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+
+
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+  <!-- 左側：子遊戲區 (可全屏/半屏切換) -->
+  <div id="leftPanel">
+    <!-- 上方控制列 (如：載入網址、暫停、全屏等) -->
+    <div id="controls">
+      <button id="toggleFullscreen">🕹️全屏</button>
+      <input id="gameUrlInput" type="text" value="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D_emoji"
+             placeholder="輸入遊戲網址" />
+      <button id="loadGame">♻️載入</button>
+      <button id="togglePause">⏸️暫停</button>
+      <button id="toggleAccel">🚀加速</button>
+    </div>
+
+    <!-- 下方 iframe：用於嵌入子遊戲 -->
+    <iframe id="game-iframe" src="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D_emoji"></iframe>
+  </div>
+
+  <!-- 右側：父平台 (多 Agent、多 Tabs) -->
+  <div id="rightPanel">
+
+    <!-- Tabs 按鈕列 -->
+    <div class="sub-tab-buttons">
+      <button class="sub-tab-link active" data-subtab="tutorial">💡指南</button>
+      <!-- Agent1 -->
+      <span class="agent-label">Agent 1:</span>
+      <button id='me' class="sub-tab-link" data-subtab="p1-config">🛠️設定</button>
+      <button class="sub-tab-link" data-subtab="p1-qtable">📊分析</button>
+      <button class="sub-tab-link" data-subtab="p1-replay">📽️錄放</button>
+      <!-- <button class="sub-tab-link" data-subtab="p1-blocks">🧩程式</button> -->
+
+
+      <!-- Agent2 -->
+      <span class="agent-label">Agent 2:</span>
+      <button class="sub-tab-link" data-subtab="p2-config">🛠️設定</button>
+      <button class="sub-tab-link" data-subtab="p2-qtable">📊分析</button>
+      <button class="sub-tab-link" data-subtab="p2-replay">📽️錄放</button>
+      <!-- <button class="sub-tab-link" data-subtab="p2-blocks">🧩程式</button> -->
+
+    </div>
+
+    <!-- Tabs 對應的內容區 (共6塊) -->
+    <div id="tutorial" class="sub-tab-content active" >
+      AI Reinforce Lab: Explore. Train. Compete.
+      <p>選擇下列遊戲快速載入：</p>
+      <div>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/MAB">🎰Multi-Armed Bandit</button>
+        <button id='game-maze' class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze1D">📏Maze1D</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D_emoji">🗺️Maze2D</button>
+        <br>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck">🦖Dinosaur Jump</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">🥁Taiko Beat</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">🎯Easy Shoot</button>
+        <br>
+        <button class="quick-load-button" data-url="https://cubiccode.vercel.app/spaceRL.html">✈️space fighter</button>
+      </div>
+    </div>
+
+
+
+
+
+
+    <!-- 1. p1-config -->
+    <div id="p1-config" class="sub-tab-content" >
+      <label for="algorithm-select">演算法:</label>
+      <select id="algorithm-select" onchange="handleSelection()">
+        <option value="Qtable">Q-Learn</option>
+        <option value="DQN">DQN</option>
+      </select>
+      <br><br>
+      <!-- <label>Q-Learning 更新公式：</label><br>
+      <img src="q_learning_formula.png" alt="Q-learning 更新公式">
+      <br><br> -->
+      <label for="learning-rate-slider">學習率 (α):</label>
+      <input id="learning-rate-slider" type="range" min="0" max="1" step="0.01" value="0.1"
+             oninput="updateValue('Alpha', this.value)">
+      <span class="value-display" id="alpha-value">0.1</span>
+      <br>
+
+      <label for="discount-factor-slider">折扣率 (γ):</label>
+      <input id="discount-factor-slider" type="range" min="0" max="1" step="0.01" value="0.95"
+             oninput="updateValue('Gamma', this.value)">
+      <span class="value-display" id="gamma-value">0.95</span>
+      <br>
+
+      <label for="exploration-rate-slider">探索率 (ε):</label>
+      <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.01" value="0.2"
+             oninput="updateValue('Epsilon', this.value)">
+      <span class="value-display" id="epsilon-value">0.2</span>
+      <br>
+      <!-- 環境超參數 -->
+      <label for="optimism-slider">樂觀值 (ψ):</label>
+      <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="0"
+             oninput="updateValue('Psi', this.value)">
+      <span class="value-display" id="psi-value">0</span>
+      <br><br>
+
+      <label for="delay-slider">延遲量(ms):</label>
+      <input id="delay-slider" type="range" min="0" max="100" step="10" value="50"
+             oninput="updateValue('delayTime', this.value)">
+      <span class="value-display" id="delaytime-value">50</span>
+      <!-- 第一區：Cumulative Reward Chart -->
+      <div class="grid-container">
+        <div id="p1-second-reward" class="chart"></div>  <!-- 左上 -->
+        <div id="p1-second-steps" class="chart"></div>   <!-- 右上 (gauge) -->
+        <div id="p1-episode-reward" class="chart"></div> <!-- 左下 -->
+        <div id="p1-episode-steps" class="chart"></div>  <!-- 右下 -->
+      </div>
+    </div>
+    <!-- 2. p1-blocks -->
+    <div id="p1-qtable" class="sub-tab-content">
+
+      <div class="grid-container">
+        <div style="width: 100%; " id="p1-ui1">
+          <button onclick="exportQtable()" style="margin: 5px ;">Export Q-table</button>
+          <input type="file" style="margin: 5px ;" id="importQtableInput" accept=".json,.txt"
+         onchange="importQtable(event)" />
+
+          <h4>顯示圖表</h4>
+          <input type="checkbox" id="actionSelection" checked>
+          <label for="actionPrefer">動作偏好</label><br>
+
+          <input type="checkbox" id="valueBounds" checked>
+          <label for="valueBounds">極值分布</label><br>
+
+          <input type="checkbox" id="pointLineAnalysis" checked>
+          <label for="pointLine">點線解析</label>
+        </div>
+        <div id="p1-ui2">
+          <label for="x-axis">X 軸維度:</label>
+          <select id="x-axis">
+            <option value="0">維度 0</option>
+            <option value="1">維度 1</option>
+            <option value="2">維度 2</option>
+          </select>
+
+          <label for="y-axis">Y 軸維度:</label>
+          <select id="y-axis">
+            <option value="0">維度 0</option>
+            <option value="1">維度 1</option>
+            <option value="2">維度 2</option>
+          </select>
+
+
+
+          <h4>切片位置  </h4>
+          <input type="checkbox" id="tracking">
+          <label for="tracking">跟隨當下</label></br></br>
+
+          <label for="dim0">維度 0:</label>
+          <input type="range" id="dim0" min="0" max="19" value="0">
+          <span id="dim0-value">0</span><br>
+
+          <label for="dim1">維度 1:</label>
+          <input type="range" id="dim1" min="0" max="19" value="0">
+          <span id="dim1-value">0</span><br>
+
+          <label for="dim2">維度 2:</label>
+          <input type="range" id="dim2" min="0" max="19" value="0">
+          <span id="dim2-value">0</span><br>
+
+
+        </div>
+        <div id="p1-diff-value" class="chart"></div>
+        <div id="p1-acti-color" class="chart"></div>
+        <div id="p1-maxi-value" class="chart"></div>
+        <div id="p1-mini-value" class="chart"></div>
+        <div id="p1-line-value" class="chart"></div>
+        <div id="p1-bars-value" class="chart"></div>
+      </div>
+    </div>
+
+    <div id="p1-blocks" class="sub-tab-content">
+        <div id="p1-blocklyDiv"></div>
+    </div>
+    <!-- 4. p1-logs -->
+    <div id="p1-logs" class="sub-tab-content">
+
+    </div>
+
+
+
+
+
+    <!-- 4. p2-blocks -->
+    <div id="p2-blocks" class="sub-tab-content" >
+      <div id="p2-blocklyDiv"></div>
+    </div>
+    <!-- 5. p2-config -->
+    <div id="p2-config" class="sub-tab-content" >
+      <div style="width:100%; height: 33%">
+        <canvas id="p2-rewards-chart"></canvas>
+
+      </div>
+
+      <div style="width:100%; height: 33%">
+        <canvas id="p2-qValues-chart"></canvas>
+      </div>
+    </div>
+    <!-- 6. p2-logs -->
+    <div id="p2-logs" class="sub-tab-content" >
+    </div>
+
+
+  </div>
+
+  <!-- (可選) jQuery UI Dialog 用於顯示 Q 值圖表的彈窗 (若要用彈窗) -->
+
+
+  <!-- ================================ -->
+  <!-- JS 區段：包括 全屏切換、多 Tabs 控制、Q-Learning程式邏輯、Blockly初始設定 等 -->
+  <!-- ================================ -->
+  <script>
+    /***************************************************
+     * [1] 全屏 / 半屏 切換功能
+     ***************************************************/
+    const leftPanel = document.getElementById("leftPanel");
+    const rightPanel = document.getElementById("rightPanel"); // 取得右側面板
+    const fullscreenButton = document.getElementById("toggleFullscreen");
+
+    fullscreenButton.addEventListener("click", () => {
+      if (leftPanel.classList.contains("fullscreen")) {
+        // 若目前全屏，則恢復
+        leftPanel.classList.remove("fullscreen");
+        rightPanel.style.display = "flex";
+        fullscreenButton.textContent = "🕹️全屏";
+      } else {
+        // 進入全屏
+        leftPanel.classList.add("fullscreen");
+        rightPanel.style.display = "none"; // 隱藏右側面板
+        fullscreenButton.textContent = "🧪半屏";
+      }
+    });
+
+    /***************************************************
+     * [2] 左側：載入/暫停/繼續 等控制
+     ***************************************************/
+    const loadGameBtn = document.getElementById("loadGame");
+    const gameUrlInput = document.getElementById("gameUrlInput");
+    const gameIframe = document.getElementById("game-iframe");
+    const togglePauseBtn = document.getElementById("togglePause");
+    const toggleAccelBtn = document.getElementById("toggleAccel");
+
+    loadGameBtn.addEventListener("click", () => {
+      const url = gameUrlInput.value.trim();
+      if (url) {
+        gameIframe.src = url;
+      }
+      isPaused = false;
+      togglePauseBtn.textContent = "⏸️暫停";
+      // gameIframe.addEventListener("load", () => {
+      //   // const iframe = document.getElementById("game-iframe");
+      //   gameIframe.contentWindow.postMessage({ type: "questInfo" }, "*");
+      // }, { once: true }); // 使用 { once: true } 確保事件僅執行一次
+    });
+
+    let isPaused = false;
+    togglePauseBtn.addEventListener("click", () => {
+      if (!isPaused) {
+        // 這裡可做暫停遊戲 or 停止訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
+        togglePauseBtn.textContent = "▶️繼續";
+
+      } else {
+        // 這裡可做恢復遊戲 or 繼續訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
+        gameIframe.contentWindow.postMessage({ type: "action",action:0}, "*");
+        console.log('keep go')
+        togglePauseBtn.textContent = "⏸️暫停";
+      }
+      isPaused = !isPaused;
+    });
+
+    let isAccel = false;
+    toggleAccelBtn.addEventListener("click", () => {
+      if (!isAccel) {
+        // 這裡可做暫停遊戲 or 停止訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
+        toggleAccelBtn.textContent = "🐢正常";
+        delayTime/=10
+      } else {
+        // 這裡可做恢復遊戲 or 繼續訓練的動作
+        gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
+        toggleAccelBtn.textContent = "🚀加速";
+        delayTime*=10
+      }
+      isAccel = !isAccel;
+    });
+
+    /***************************************************
+     * [3] 多 Agent 多 Tabs 切換
+     ***************************************************/
+    const subTabLinks = document.querySelectorAll(".sub-tab-link");
+    const subTabContents = document.querySelectorAll(".sub-tab-content");
+
+    subTabLinks.forEach(link => {
+      link.addEventListener("click", () => {
+        // 先移除全部 active
+        subTabLinks.forEach(l => l.classList.remove("active"));
+        subTabContents.forEach(c => c.classList.remove("active"));
+
+        // 啟用當前被點擊的
+        link.classList.add("active");
+        const target = link.getAttribute("data-subtab");
+        document.getElementById(target).classList.add("active");
+
+            // 檢查是否需要重新渲染 Blockly
+            if (target === "p1-blocks" && workspace1) {
+              Blockly.svgResize(workspace1);
+            }
+            if (target === "p2-blocks" && workspace2) {
+              Blockly.svgResize(workspace2);
+            }
+      });
+    });
+
+
+    // 快速載入遊戲按鈕
+    document.querySelectorAll('.quick-load-button').forEach(button => {
+      button.addEventListener('click', () => {
+        const url = button.getAttribute('data-url');
+        if (url) {
+          gameUrlInput.value= url
+          gameIframe.src = url; // 設定 iframe 的 src
+        }
+        isPaused = false;
+        togglePauseBtn.textContent = "⏸️暫停";
+      });
+    });
+
+
+
+    /***************************************************
+     * [4] Blockly 初始化
+     ***************************************************/
+    var workspace1 = Blockly.inject('p1-blocklyDiv', {
+      toolbox:
+        `<xml>
+          <block type="controls_repeat_ext"></block>
+          <block type="math_number"></block>
+          <block type="math_arithmetic"></block>
+          <block type="logic_compare"></block>
+          <block type="variables_get"></block>
+          <block type="variables_set"></block>
+          <block type="controls_if"></block>
+          <block type="text_print"></block>
+         </xml>`,
+      trashcan: true,
+      theme: Blockly.Themes.Zelos,
+      renderer: 'thrasos',
+    });
+
+    // 預載一些積木
+    const initialBlocks =
+      `<xml>
+        <block type="controls_repeat_ext" x="20" y="20">
+          <value name="TIMES">
+            <shadow type="math_number">
+              <field name="NUM">5</field>
+            </shadow>
+          </value>
+          <statement name="DO">
+            <block type="text_print">
+              <value name="TEXT">
+                <shadow type="text">
+                  <field name="TEXT">Q-Learning</field>
+                </shadow>
+              </value>
+            </block>
+          </statement>
+        </block>
+      </xml>`;
+    loadInitialBlocks(initialBlocks, workspace1);
+
+    function loadInitialBlocks(xmlText, workspace) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      Blockly.Xml.domToWorkspace(xmlDoc.documentElement, workspace);
+    }
+
+
+    var workspace2 = Blockly.inject('p2-blocklyDiv', {
+      toolbox:
+        `<xml>
+          <block type="controls_repeat_ext"></block>
+          <block type="math_number"></block>
+          <block type="math_arithmetic"></block>
+          <block type="logic_compare"></block>
+          <block type="variables_get"></block>
+         </xml>`,
+      trashcan: true,
+      theme: Blockly.Themes.Zelos,
+      renderer: 'thrasos',
+    });
+
+
+        // // 預載一些積木
+    const initialBlocks2 =
+      `<xml>
+        <block type="controls_repeat_ext" x="20" y="20">
+          <value name="TIMES">
+            <shadow type="math_number">
+              <field name="NUM">5</field>
+            </shadow>
+          </value>
+          <statement name="DO">
+            <block type="text_print">
+              <value name="TEXT">
+                <shadow type="text">
+                  <field name="TEXT">Q-Learning</field>
+                </shadow>
+              </value>
+            </block>
+          </statement>
+        </block>
+      </xml>`;
+    loadInitialBlocks(initialBlocks, workspace2);
+
+    /***************************************************
+     * [5] Q-Learning 相關設定 (範例)
+     ***************************************************/
+
+    let QTable = {};
+    let Alpha   = .1;  // 學習率
+    let Gamma   = 0.95; // 折扣因子
+    let Epsilon = .1;  // 探索率
+    let Psi     = 0;    // 樂觀值
+
+    let delayTime =50
+
+        // 更新 UI 和變數
+  function updateValue(parameter, value) {
+  value = parseFloat(value);
+
+  switch (parameter) {
+    case "Alpha":
+      Alpha = value;
+      break;
+    case "Gamma":
+      Gamma = value;
+      break;
+    case "Epsilon":
+      Epsilon = value;
+      break;
+    case "Psi":
+      Psi = value;
+      break;
+    case "delayTime":
+      delayTime = value;
+      break;
+    default:
+      console.warn(`未知參數: ${parameter}`);
+  }
+
+  // 更新對應的 HTML 顯示數值
+  let targetSpan = document.getElementById(parameter.toLowerCase() + "-value");
+  if (targetSpan) {
+    targetSpan.textContent = value;
+  }
+
+  console.log(`${parameter} 更新為 ${value}`);
+  console.log([Alpha,Gamma,Epsilon,Psi,delayTime])
+}
+
+
+    // Q 值更新
+    function qTableUpdate(prevS, prevA, r, nextS,nextA) {
+      // 初始化當前狀態和下一狀態的 Q 值空間
+      if (!QTable[prevS]) QTable[prevS] = Array(action_size).fill(0);
+      if (!QTable[nextS]) QTable[nextS] = Array(action_size).fill(0);
+
+
+      // 計算下一狀態的最大值和最小值
+      let maxQNext = 0; // 初始化为默认值
+      let minQNext = 0;
+      if (QTable[nextS] && QTable[nextS].length > 0) {
+        maxQNext = Math.max(...QTable[nextS]);
+        minQNext = Math.min(...QTable[nextS]);
+      }
+
+      let actualQNext = QTable[nextS][nextA] || 0; // 實際選擇的動作 Q 值
+
+
+      // 根據 λ 的值計算目標 Q 值
+      let targetQ = (1 - Math.abs(Psi)) * actualQNext +
+                    Math.max(0, Psi) * maxQNext +
+                    Math.max(0, -Psi) * minQNext;
+
+
+      if (isNaN(targetQ)) {
+        console.error("Invalid Q update detected.", { QTable,nextS ,actualQNext , maxQNext , minQNext});
+      }
+      // 計算 Q 值更新
+      let oldQ = QTable[prevS][prevA] || 0;
+      let newQ = oldQ + Alpha * (r + Gamma * targetQ - oldQ);
+
+
+      // 檢查數據有效性，防止 NaN
+
+      if (isNaN(oldQ)) {
+        console.error(QTable[prevS][prevA]);
+      }
+      if (isNaN(newQ)) {
+        console.error("Invalid Q update detected.", {oldQ , Alpha , r , Gamma , targetQ});
+      }
+
+      // 更新 Q 表
+      QTable[prevS][prevA] = newQ;
+    }
+
+    // ε-greedy 選擇動作
+    function eGreedyChooseAction(stateKey) {
+      if (Math.random() < Epsilon ||  !QTable[stateKey]) {
+        return Math.floor(Math.random() * action_size);
+      } else {
+        if (!QTable[stateKey]){
+          console.warn(`QTable[${stateKey}] 未初始化，將自動初始化。`);
+          QTable[stateKey] = Array(action_size).fill(0);
+        }
+        let qVals = QTable[stateKey];
+        let maxQ  = Math.max(...qVals);
+        let chosenAction = qVals.indexOf(maxQ);
+        if (chosenAction === -1) {
+          console.error("無法找到最大 Q 值的索引，qVals:", qVals, "maxQ:", maxQ);
+        }
+        return chosenAction;
+      }
+    }
+
+
+
+    /***************************************************
+     * [6] 父/子頁面 postMessage 通訊：
+     *     接收子頁面 (遊戲)傳回的 (reward, state)，並回傳動作
+     ***************************************************/
+    let stateRange = [];
+    let numBins = [];
+
+    // 計算當下狀態對應到Q表的鍵值
+    function getStateKey(stateValues) {
+      let indices = []; // 用於儲存每個維度的離散化索引
+      // console.log(stateValues)
+      stateValues.forEach((value,dim) => {
+        const bucketIdx = getBucketIndex(value,dim);
+        // 將索引加入陣列
+        indices.push(bucketIdx);
+      });
+      // 索引轉成字串標籤
+      return indices.join("_");
+    }
+
+    function getBucketIndex(value,dim){
+        // 設定預設範圍
+        let min = 0, max = 100;
+        // 取得該狀態有效範圍
+        if (stateRange[dim]) {
+          min = stateRange[dim].min;
+          max = stateRange[dim].max;
+        }
+        // 計算桶的大小
+        let binSize = (max - min) / numBins[dim];
+        // 限制值在範圍內
+        let clipped = Math.max(min, Math.min(max, value));
+        // 計算索引
+        let idx = Math.floor((clipped - min) / binSize);
+        // 確保索引在合法範圍內
+        idx = Math.min(Math.max(idx, 0), numBins[dim] - 1);
+
+        return idx;
+    }
+
+
+    let stateInfo
+    let actionInfo
+    let state_size
+    let action_size
+
+    // 每當遊戲頁面載入完成，就詢問遊戲資訊
+    gameIframe.addEventListener("load", () => {
+      gameIframe.contentWindow.postMessage({ type: "questInfo" }, "*");
+    });
+
+    window.addEventListener("message", (event) => {
+      const message = event.data;
+
+      if (message.type === "gameInfo") {
+        console.log(message)
+        stateInfo=message.players[0].stateInfo
+        actionInfo=message.players[0].actionInfo
+        writeLog(1,stateInfo)
+        writeLog(1,actionInfo)
+        state_size=stateInfo.length
+        action_size=actionInfo[0].level
+        console.log(stateInfo)
+        // 價值型算法專屬
+        QTable = {};     // 清空Q表
+        stateRange = []; // 清空狀態範圍
+        numBins = [];    // 清空每軸桶數
+        message.players[0].stateInfo.forEach((info) => {
+          stateRange.push({ min: info.min, max: info.max });
+          if(info.bin){
+            numBins.push(info.bin);
+          }else{
+            numBins.push(20); // 預設每個狀態分成 20 桶，可根據需求調整
+          }
+        });
+
+        // 發送第一個動作
+        gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
+      }
+
+    });
+
+    let currentState
+    let prevAction,prevStateKey
+    let nextAction,nextStateKey
+    let reward
+
+    // let secondReward = 0; // 用於畫獎勵圖表
+    // let secondSteps = 0
+    // let episodeCount = 1
+    // let episodeReward = 0
+    // let episodeSteps = 0
+
+    window.addEventListener("message", (event) => {
+      const message = event.data;
+      // 從子頁面拿到報酬與狀態
+      if (message.type === "reward_state") {
+        // 更新瞬間報酬
+        reward = message.reward;
+        // 加入每秒報酬累計
+        secondReward += message.reward;
+        secondSteps += 1
+        // 加入回合報酬累計
+        episodeReward += message.reward;
+        // 回合步數+1
+        episodeSteps += 1;
+
+        // console.log(reward,secondReward)
+        // 取得當下狀態對應到Q表的鍵值
+        currentState=message.state
+        nextStateKey = getStateKey(currentState);
+        // console.log(message.state,nextStateKey)
+        // 選擇下一次動作
+        nextAction = eGreedyChooseAction(nextStateKey);
+        // 更新Q表
+        if (reward !== null  &&
+        // prevAction必須是正整數
+        Number.isInteger(prevAction) && prevAction >= 0) {
+          qTableUpdate(prevStateKey, prevAction, reward, nextStateKey,nextAction);
+        }
+        // 繼承狀態與動作資訊
+        prevStateKey = nextStateKey;
+        prevAction   = nextAction;
+        // console.log(nextAction)
+
+        // console.log(episodeSteps,prevAction,currentState)
+        // 回傳動作給子頁面
+        if(isPaused){return}
+        setTimeout(() => {
+          gameIframe.contentWindow.postMessage({
+            type: "action",
+            action: prevAction
+          }, "*");
+        // 故意設置的延遲時間
+        }, delayTime);
+      }
+
+
+      if (message.type === "endEpisode"){
+        // console.log('Episode'+episodeCount)
+        // console.log('episodeReward='+episodeReward)
+        // console.log('episodeSteps='+episodeSteps)
+        updateEpisodeChart()
+        episodeCount += 1
+        episodeReward=0
+        episodeSteps=0
+
+      }
+    });
+
+
+    /***************************************************
+     * [7] ARS (Action, Reward, State) 日誌紀錄
+     ***************************************************/
+
+
+    let lastTime = null;
+
+    function updateARSLog(agentId,action, reward, state) {
+      const now = new Date();
+      let dt = lastTime ? now - lastTime : 0;
+      lastTime = now;
+      let sIndex = getStateKey(state);
+
+      // Create the log entry
+      const logEntry = `dt=${dt}ms, A=${action}, R=${reward}, state=${state}, sIndex=${sIndex}`;
+
+      // Write the log for the specified agent
+      writeLog(agentId, logEntry);
+    }
+
+    function writeLog(agentId, logEntry) {
+      // Get the log element for the specified agent
+      const logElement = document.getElementById(`p${agentId}-logs`);
+      if (!logElement) {
+        console.error(`Log element for agent ${agentId} not found.`);
+        return;
+      }
+
+      // Append the log entry
+      logElement.textContent += (logElement.textContent ? "\n" : "") + logEntry;
+
+      // Automatically scroll to the bottom
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+
+
+
+
+/***************************************************
+ * 通用圖表全局變數 (請確保這些變數在其他邏輯中也有適當更新)
+ ***************************************************/
+let secondReward = 0;    // 每秒累計 Reward，其他邏輯中需要累加此值
+let secondSteps  = 0;    // 每秒累計步數，其他邏輯中需要累加此值
+
+let rewardData   = [];
+let rewardLabels = [];
+let stepsData    = [];
+let stepsLabels  = [];
+
+let startTime = Date.now();
+
+// 每回合數據（episode）相關變數
+let episodeIndex      = [];  // 回合編號
+let episodeRewardData = [];  // 每回合累積 Reward
+let episodeStepsData  = [];  // 每回合累積步數
+
+// 假設這些變數在每回合結束時被更新：
+let episodeCount = 1;    // 當前回合編號
+let episodeReward = 0;   // 當前回合累積 Reward
+let episodeSteps  = 0;   // 當前回合累積步數
+
+/***************************************************
+ * [10] QTable Export / Import
+ ***************************************************/
+
+ function exportQtable() {
+  // 將 QTable 序列化為 JSON 字串
+  const dataStr = JSON.stringify(QTable, null, 2);
+  // 建立一個 Blob 物件，型態為 text/plain 或 application/json
+  const blob = new Blob([dataStr], { type: "application/json" });
+  // 建立臨時連結並點擊，觸發下載
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "Qtable.json"; // 檔名可自訂
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importQtable(evt) {
+  const file = evt.target.files[0];me
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const fileContent = e.target.result;
+      // 解析 JSON
+      const obj = JSON.parse(fileContent);
+
+      // 如果檔案裡只有 QTable 物件
+      QTable = obj;
+
+      console.log("QTable imported successfully:", QTable);
+      // alert("QTable 已成功載入，後續訓練可沿用此表格。");
+
+    } catch (error) {
+      console.error("Error parsing QTable file", error);
+      // alert("無法解析此 QTable 檔案");
+    }
+  };
+  reader.readAsText(file, "utf-8");
+}
+
+  </script>
+  <script src="./generalCharts.js"></script>
+  <script src="./qualityCharts.js"></script>
+</body>
+</html>
