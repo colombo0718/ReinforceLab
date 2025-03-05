@@ -660,7 +660,7 @@
         // 取得當下狀態對應到Q表的鍵值
         currentState=message.state
         nextStateKey = getStateKey(currentState);
-        // console.log(message.state,nextStateKey)
+        console.log(message.state,nextStateKey)
         // 選擇下一次動作
         nextAction = eGreedyChooseAction(nextStateKey);
         // 更新Q表

@@ -225,15 +225,17 @@ setInterval(() => {
 // Q表 1維切片摺線圖（每個action一條摺線）
 function generateQLineSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
   const data = [];
-
+  console.log(action_size)
   for (let action = 0; action < action_size; action++) {
     const xvals = [], yvals = [];
-
-    for (let i = 0; i < numBins[1]; i++) {
-      const stateKey = `${i}_${dim1FixedIndex}`;
+    // console.log(action)
+    // console.log(numBins[1])
+    for (let i = 0; i < numBins[0]; i++) {
+      const stateKey = `${i}`;
       const qArr = QTable[stateKey] || Array(action_size).fill(0);
       xvals.push(i);
       yvals.push(qArr[action]);
+      console.log(i)
     }
 
     data.push({
@@ -257,18 +259,22 @@ function generateQLineSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
 }
 
 // Q表 0維切片柱狀圖（每個action一根柱子）
+
 function generateQBarSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
   const xvals = [], traces = [];
-
+  console.log(action_size)
   for (let j = 0; j < numBins[0]; j++) {
     xvals.push(j);
   }
 
+  // for (let action = 0; action < action_size; action++) {
   for (let action = 0; action < action_size; action++) {
+
     const yvals = [];
 
     // for (let j = 0; j < numBins[0]; j++) {
-      const stateKey = `${dim0FixedIndex}_${dim1FixedIndex}`;
+      // const stateKey = `${dim0FixedIndex}_${dim1FixedIndex}`;
+      const stateKey = '0'
       const qArr = QTable[stateKey] || Array(action_size).fill(0);
       yvals.push(qArr[action]);
     // }
