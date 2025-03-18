@@ -229,11 +229,28 @@ function generateQLineSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
   for (let action = 0; action < action_size; action++) {
     const xvals = [], yvals = [];
 
-    for (let i = 0; i < numBins[1]; i++) {
-      const stateKey = `${i}_${dim1FixedIndex}`;
-      const qArr = QTable[stateKey] || Array(action_size).fill(0);
-      xvals.push(i);
-      yvals.push(qArr[action]);
+    // for (let i = 0; i < numBins[1]; i++) {
+    //   const stateKey = `${i}_${dim1FixedIndex}`;
+    //   const qArr = QTable[stateKey] || Array(action_size).fill(0);
+    //   xvals.push(i);
+    //   yvals.push(qArr[action]);
+    // }
+
+    // 沿第一維遍歷，其他維固定為 min
+    for (let i = 0; i < numBins[0]; i++) {
+      // 構建狀態數組
+      const state = [
+        stateInfo[0].min + (i * (stateInfo[0].max - stateInfo[0].min) / numBins[0]), // 第一維
+        // ...stateInfo.slice(1).map(info => (info.min+info.max)/2) // 其他維固定為 min
+        ...stateInfo.slice(1).map(info => info.min) // 其他維固定為 min
+      ];
+
+
+      // 使用 getQArray 獲取 Q 值
+      const qArray = evaluateQuality(state);
+      // console.log(state,qArray)
+      xvals.push(i); // x 軸是第一維的索引
+      yvals.push(qArray[action]); // y 軸是該動作的 Q 值
     }
 
     data.push({
@@ -263,13 +280,15 @@ function generateQBarSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
   for (let j = 0; j < numBins[0]; j++) {
     xvals.push(j);
   }
-
+  if(!nextState){return}
+  const qArr=evaluateQuality(nextState)
   for (let action = 0; action < action_size; action++) {
     const yvals = [];
 
     // for (let j = 0; j < numBins[0]; j++) {
-      const stateKey = `${dim0FixedIndex}_${dim1FixedIndex}`;
-      const qArr = QTable[stateKey] || Array(action_size).fill(0);
+      // const stateKey = `${dim0FixedIndex}_${dim1FixedIndex}`;
+      // const qArr = QTable[stateKey] || Array(action_size).fill(0);
+
       yvals.push(qArr[action]);
     // }
 

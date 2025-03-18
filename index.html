@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>🕹️ Reinforce Lab 🧪</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='75'>🤖</text></svg>">
+  <!-- 引入 TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
@@ -69,7 +71,8 @@
         <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">🥁Taiko Beat</button>
         <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">🎯Easy Shoot</button>
         <br>
-        <button class="quick-load-button" data-url="https://cubiccode.vercel.app/spaceRL.html">✈️space fighter</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/fighterPlane">✈️space fighter</button>
+        <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/magic">🧙 Magic Duel</button>
       </div>
     </div>
 
@@ -80,12 +83,21 @@
 
     <!-- 1. p1-config -->
     <div id="p1-config" class="sub-tab-content" >
-      <label for="algorithm-select">演算法:</label>
-      <select id="algorithm-select" onchange="handleSelection()">
-        <option value="Qtable">Q-Learn</option>
-        <option value="DQN">DQN</option>
-      </select>
-      <br><br>
+      <!-- 學習方法選擇 -->
+        <label>學習方法:</label><br>
+        <input type="radio" id="algorithm-qtable" name="algorithm" value="Qtable" checked onchange="handleSelection()">
+        <label for="algorithm-qtable">Q-Table</label>
+        <input type="radio" id="algorithm-dqn" name="algorithm" value="DQN" onchange="handleSelection()">
+        <label for="algorithm-dqn">DQN</label>
+        <br><br>
+
+        <!-- 探索策略選擇 -->
+        <label>抉擇策略:</label><br>
+        <input type="radio" id="strategy-egreedy" name="strategy" value="egreedy" checked onchange="handleStrategySelection()">
+        <label for="strategy-egreedy">ε-greedy</label>
+        <input type="radio" id="strategy-softmax" name="strategy" value="softmax" onchange="handleStrategySelection()">
+        <label for="strategy-softmax">Softmax</label>
+        <br><br>
       <!-- <label>Q-Learning 更新公式：</label><br>
       <img src="q_learning_formula.png" alt="Q-learning 更新公式">
       <br><br> -->
@@ -351,92 +363,90 @@
     /***************************************************
      * [4] Blockly 初始化
      ***************************************************/
-    var workspace1 = Blockly.inject('p1-blocklyDiv', {
-      toolbox:
-        `<xml>
-          <block type="controls_repeat_ext"></block>
-          <block type="math_number"></block>
-          <block type="math_arithmetic"></block>
-          <block type="logic_compare"></block>
-          <block type="variables_get"></block>
-          <block type="variables_set"></block>
-          <block type="controls_if"></block>
-          <block type="text_print"></block>
-         </xml>`,
-      trashcan: true,
-      theme: Blockly.Themes.Zelos,
-      renderer: 'thrasos',
-    });
+    // var workspace1 = Blockly.inject('p1-blocklyDiv', {
+    //   toolbox:
+    //     `<xml>
+    //       <block type="controls_repeat_ext"></block>
+    //       <block type="math_number"></block>
+    //       <block type="math_arithmetic"></block>
+    //       <block type="logic_compare"></block>
+    //       <block type="variables_get"></block>
+    //       <block type="variables_set"></block>
+    //       <block type="controls_if"></block>
+    //       <block type="text_print"></block>
+    //      </xml>`,
+    //   trashcan: true,
+    //   theme: Blockly.Themes.Zelos,
+    //   renderer: 'thrasos',
+    // });
+    //
+    // // 預載一些積木
+    // const initialBlocks =
+    //   `<xml>
+    //     <block type="controls_repeat_ext" x="20" y="20">
+    //       <value name="TIMES">
+    //         <shadow type="math_number">
+    //           <field name="NUM">5</field>
+    //         </shadow>
+    //       </value>
+    //       <statement name="DO">
+    //         <block type="text_print">
+    //           <value name="TEXT">
+    //             <shadow type="text">
+    //               <field name="TEXT">Q-Learning</field>
+    //             </shadow>
+    //           </value>
+    //         </block>
+    //       </statement>
+    //     </block>
+    //   </xml>`;
+    // loadInitialBlocks(initialBlocks, workspace1);
+    //
+    // function loadInitialBlocks(xmlText, workspace) {
+    //   const parser = new DOMParser();
+    //   const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+    //   Blockly.Xml.domToWorkspace(xmlDoc.documentElement, workspace);
+    // }
+    //
+    //
+    // var workspace2 = Blockly.inject('p2-blocklyDiv', {
+    //   toolbox:
+    //     `<xml>
+    //       <block type="controls_repeat_ext"></block>
+    //       <block type="math_number"></block>
+    //       <block type="math_arithmetic"></block>
+    //       <block type="logic_compare"></block>
+    //       <block type="variables_get"></block>
+    //      </xml>`,
+    //   trashcan: true,
+    //   theme: Blockly.Themes.Zelos,
+    //   renderer: 'thrasos',
+    // });
+    //
+    //
+    //     // // 預載一些積木
+    // const initialBlocks2 =
+    //   `<xml>
+    //     <block type="controls_repeat_ext" x="20" y="20">
+    //       <value name="TIMES">
+    //         <shadow type="math_number">
+    //           <field name="NUM">5</field>
+    //         </shadow>
+    //       </value>
+    //       <statement name="DO">
+    //         <block type="text_print">
+    //           <value name="TEXT">
+    //             <shadow type="text">
+    //               <field name="TEXT">Q-Learning</field>
+    //             </shadow>
+    //           </value>
+    //         </block>
+    //       </statement>
+    //     </block>
+    //   </xml>`;
+    // loadInitialBlocks(initialBlocks, workspace2);
 
-    // 預載一些積木
-    const initialBlocks =
-      `<xml>
-        <block type="controls_repeat_ext" x="20" y="20">
-          <value name="TIMES">
-            <shadow type="math_number">
-              <field name="NUM">5</field>
-            </shadow>
-          </value>
-          <statement name="DO">
-            <block type="text_print">
-              <value name="TEXT">
-                <shadow type="text">
-                  <field name="TEXT">Q-Learning</field>
-                </shadow>
-              </value>
-            </block>
-          </statement>
-        </block>
-      </xml>`;
-    loadInitialBlocks(initialBlocks, workspace1);
-
-    function loadInitialBlocks(xmlText, workspace) {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-      Blockly.Xml.domToWorkspace(xmlDoc.documentElement, workspace);
-    }
-
-
-    var workspace2 = Blockly.inject('p2-blocklyDiv', {
-      toolbox:
-        `<xml>
-          <block type="controls_repeat_ext"></block>
-          <block type="math_number"></block>
-          <block type="math_arithmetic"></block>
-          <block type="logic_compare"></block>
-          <block type="variables_get"></block>
-         </xml>`,
-      trashcan: true,
-      theme: Blockly.Themes.Zelos,
-      renderer: 'thrasos',
-    });
-
-
-        // // 預載一些積木
-    const initialBlocks2 =
-      `<xml>
-        <block type="controls_repeat_ext" x="20" y="20">
-          <value name="TIMES">
-            <shadow type="math_number">
-              <field name="NUM">5</field>
-            </shadow>
-          </value>
-          <statement name="DO">
-            <block type="text_print">
-              <value name="TEXT">
-                <shadow type="text">
-                  <field name="TEXT">Q-Learning</field>
-                </shadow>
-              </value>
-            </block>
-          </statement>
-        </block>
-      </xml>`;
-    loadInitialBlocks(initialBlocks, workspace2);
-
-    /***************************************************
-     * [5] Q-Learning 相關設定 (範例)
-     ***************************************************/
+// 價值函數通用 =============================
 
     let QTable = {};
     let Alpha   = .1;  // 學習率
@@ -480,23 +490,68 @@
   console.log([Alpha,Gamma,Epsilon,Psi,delayTime])
 }
 
+/***************************************************
+ * [5] Q-Learning 相關設定 (範例)
+ ***************************************************/
+
+let stateRange = [];
+let numBins = [];
+
+// 計算當下狀態對應到Q表的鍵值
+function getStateKey(stateValues) {
+  let indices = []; // 用於儲存每個維度的離散化索引
+  // console.log(stateValues)
+  // console.log(stateValues)
+  stateValues.forEach((value,dim) => {
+    const bucketIdx = getBucketIndex(value,dim);
+    // 將索引加入陣列
+    indices.push(bucketIdx);
+  });
+  // 索引轉成字串標籤
+  return indices.join("_");
+}
+
+// 針對state其中一個數值，取得分桶編號
+function getBucketIndex(value,dim){
+    // 設定預設範圍
+    let min = 0, max = 100;
+    // 取得該狀態有效範圍
+    if (stateRange[dim]) {
+      min = stateRange[dim].min;
+      max = stateRange[dim].max;
+    }
+    // 計算桶的大小
+    let binSize = (max - min) / numBins[dim];
+    // 限制值在範圍內
+    let clipped = Math.max(min, Math.min(max, value));
+    // 計算索引
+    let idx = Math.floor((clipped - min) / binSize);
+    // 確保索引在合法範圍內
+    idx = Math.min(Math.max(idx, 0), numBins[dim] - 1);
+
+    return idx;
+}
+
+    // 從 Q 表中取得當下狀態的動作價值陣列
+    function getQArrayFromTable(state) {
+      let stateKey=getStateKey(state)
+      if (!QTable[stateKey]) {
+        // console.warn(`QTable[${stateKey}] 未初始化，將自動初始化。`);
+        QTable[stateKey] = Array(action_size).fill(0);
+      }
+      return QTable[stateKey];
+    }
 
     // Q 值更新
-    function qTableUpdate(prevS, prevA, r, nextS,nextA) {
-      // 初始化當前狀態和下一狀態的 Q 值空間
-      if (!QTable[prevS]) QTable[prevS] = Array(action_size).fill(0);
-      if (!QTable[nextS]) QTable[nextS] = Array(action_size).fill(0);
+    function qTableUpdate(prevS, prevA, reward, nextS, nextA) {
+      // 獲取 Q 值陣列
+      const prevQArray = getQArrayFromTable(prevS);
+      const nextQArray = getQArrayFromTable(nextS);
 
-
-      // 計算下一狀態的最大值和最小值
-      let maxQNext = 0; // 初始化为默认值
-      let minQNext = 0;
-      if (QTable[nextS] && QTable[nextS].length > 0) {
-        maxQNext = Math.max(...QTable[nextS]);
-        minQNext = Math.min(...QTable[nextS]);
-      }
-
-      let actualQNext = QTable[nextS][nextA] || 0; // 實際選擇的動作 Q 值
+      // 計算下一狀態的統計值
+      const maxQNext = Math.max(...nextQArray);
+      const minQNext = Math.min(...nextQArray);
+      const actualQNext = nextQArray[nextA];
 
 
       // 根據 λ 的值計算目標 Q 值
@@ -507,87 +562,216 @@
 
       if (isNaN(targetQ)) {
         console.error("Invalid Q update detected.", { QTable,nextS ,actualQNext , maxQNext , minQNext});
+        return; // 提前返回，避免更新
       }
       // 計算 Q 值更新
-      let oldQ = QTable[prevS][prevA] || 0;
-      let newQ = oldQ + Alpha * (r + Gamma * targetQ - oldQ);
+      let oldQ = prevQArray[prevA] || 0;
+      let newQ = oldQ + Alpha * (reward + Gamma * targetQ - oldQ);
 
-
-      // 檢查數據有效性，防止 NaN
-
-      if (isNaN(oldQ)) {
-        console.error(QTable[prevS][prevA]);
-      }
       if (isNaN(newQ)) {
-        console.error("Invalid Q update detected.", {oldQ , Alpha , r , Gamma , targetQ});
+        console.error("Invalid newQ detected.", { oldQ, Alpha, reward, Gamma, targetQ });
+        return; // 提前返回
+      }
+      // 更新 Q 表
+      prevQArray[prevA] = newQ;
+    }
+    /***************************************************
+     * [5] dqn 相關設定 (範例)
+     ***************************************************/
+     let dqnModel = null; // DQN 神經網路模型
+     let targetModel = null; // 目標網路
+     const replayBuffer = []; // 經驗回放緩衝區
+     const bufferSize = 10000; // 緩衝區大小
+     const batchSize = 64; // 批量訓練大小
+     const syncTargetSteps = 100; // 目標網路同步頻率
+     let stepCounter = 0; // 步數計數器
+
+     function initializeDQNModel() {
+        dqnModel = tf.sequential();
+        dqnModel.add(tf.layers.dense({ units: 8, inputShape: [state_size], activation: 'relu' }));
+        dqnModel.add(tf.layers.dense({ units: 8, activation: 'relu' }));
+        dqnModel.add(tf.layers.dense({ units: action_size, activation: 'linear' }));
+        dqnModel.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+
+        targetModel = tf.sequential();
+        targetModel.add(tf.layers.dense({ units: 8, inputShape: [state_size], activation: 'relu' }));
+        targetModel.add(tf.layers.dense({ units: 8, activation: 'relu' }));
+        targetModel.add(tf.layers.dense({ units: action_size, activation: 'linear' }));
+        targetModel.setWeights(dqnModel.getWeights());
+     }
+
+    function normalizeState(stateValues) {
+      // console.log(stateValues)
+      return stateValues.map((value, dim) => {
+        // console.log(dim,stateInfo[dim])
+        const min=stateInfo[dim].min
+        const max=stateInfo[dim].max
+        // const { min, max } = stateRange[dim];
+        return (value - min) / (max - min); // 範圍 [0, 1]
+      });
+    }
+
+    function addToBuffer(prevS, prevA, r, nextS, nextA) {
+      if (replayBuffer.length >= bufferSize) replayBuffer.shift();
+      replayBuffer.push([prevS, prevA, r, nextS, nextA]);
+    }
+
+    async function trainDQN() {
+      if (replayBuffer.length < batchSize) return;
+      stepCounter++;
+      if (stepCounter % syncTargetSteps === 0) {
+        targetModel.setWeights(dqnModel.getWeights());
       }
 
-      // 更新 Q 表
-      QTable[prevS][prevA] = newQ;
+      const batch = replayBuffer.sort(() => 0.5 - Math.random()).slice(0, batchSize);
+      const prevS_array = batch.map(s => normalizeState(s[0]));
+      const nextS_array = batch.map(s => normalizeState(s[3]));
+      const reward_array = batch.map(s => s[2]);
+      const prevA_array = batch.map(s => s[1]);
+      const nextA_array = batch.map(s => s[4]);
+
+      const prevQ_Tensor = dqnModel.predict(tf.tensor2d(prevS_array));
+      const nextQ_Tensor = targetModel.predict(tf.tensor2d(nextS_array));
+      const prevQ_array = await prevQ_Tensor.array();
+      const nextQ_array = await nextQ_Tensor.array();
+
+      for (let i = 0; i < batchSize; i++) {
+          const prevS = prevS_array[i];
+          const prevA = prevA_array[i];
+          const reward = reward_array[i];
+          const nextS = nextS_array[i];
+          const nextA = nextA_array[i];
+          const nextQ = nextQ_array[i];
+          const actualQNext = nextQ[nextA];
+          const maxQNext = Math.max(...nextQ);
+          const minQNext = Math.min(...nextQ);
+          // const targetQ = (1 - Math.abs(Psi)) * actualQNext +
+          //                 Math.max(0, Psi) * maxQNext +
+          //                 Math.max(0, -Psi) * minQNext;
+          const targetQ = maxQNext
+          // const finalTarget = done ? reward : reward + Gamma * targetQ;
+          //
+          console.log(reward,targetQ)
+          if (isNaN(targetQ)) {
+            console.error("Invalid target detected in DQN training.", {prevS, prevA, reward, nextS, nextA,targetQ});
+            continue;
+          }
+
+          // 引入 Alpha 調整目標 Q 值
+          const oldQ = prevQ_array[i][prevA];
+          const updatedQ = oldQ + Alpha * (reward + Gamma * targetQ - oldQ); // 類似 Q-Table 的更新
+          prevQ_array[i][prevA] = updatedQ;
+      }
+
+      await dqnModel.fit(tf.tensor2d(prevS_array), tf.tensor2d(prevQ_array), { batchSize, epochs: 1 });
+      tf.dispose([prevQ_Tensor, nextQ_Tensor]);
     }
+
+    function getQArrayFromDQNet(state) {
+      const normalizedState = normalizeState(state);
+      const stateTensor = tf.tensor2d([normalizedState]);
+      const qValues = dqnModel.predict(stateTensor);
+      const qArray = qValues.dataSync();
+      tf.dispose([stateTensor, qValues]);
+      return Array.from(qArray);
+    }
+
+
+    // 動作選擇策略 -------------------------------
 
     // ε-greedy 選擇動作
-    function eGreedyChooseAction(stateKey) {
-      if (Math.random() < Epsilon ||  !QTable[stateKey]) {
-        return Math.floor(Math.random() * action_size);
-      } else {
-        if (!QTable[stateKey]){
-          console.warn(`QTable[${stateKey}] 未初始化，將自動初始化。`);
-          QTable[stateKey] = Array(action_size).fill(0);
-        }
-        let qVals = QTable[stateKey];
-        let maxQ  = Math.max(...qVals);
-        let chosenAction = qVals.indexOf(maxQ);
-        if (chosenAction === -1) {
-          console.error("無法找到最大 Q 值的索引，qVals:", qVals, "maxQ:", maxQ);
-        }
-        return chosenAction;
+    function eGreedyChooseAction(qArray) {
+      // 檢查 qArray 是否為零向量
+      if (qArray.every(val => val === 0)) {
+        return Math.floor(Math.random() * action_size); // 全 0 時隨機選擇
       }
+
+      // ε-greedy 策略
+      if (Math.random() < Epsilon) {
+        return Math.floor(Math.random() * action_size);
+      }
+
+      // 利用最大 Q 值
+      let maxQ  = Math.max(...qArray);
+      let chosenAction = qArray.indexOf(maxQ);
+      return chosenAction;
+    }
+
+    // Softmax 選擇動作
+    function softmaxChooseAction(qArray) {
+      const tau = epsilonToTau(Epsilon);
+      const expValues = qArray.map(q => Math.exp(q / tau));
+      const sumExp = expValues.reduce((sum, val) => sum + val, 0);
+      const probabilities = expValues.map(exp => exp / sumExp);
+
+      const rand = Math.random();
+      let cumulativeProb = 0;
+      for (let i = 0; i < probabilities.length; i++) {
+        cumulativeProb += probabilities[i];
+        if (rand <= cumulativeProb) {
+          return i;
+        }
+      }
+      return probabilities.length - 1;
+    }
+
+    // 轉換 Epsilon 到 Tau
+    function epsilonToTau(epsilon) {
+      if (epsilon === 0) return 0.01; // 最小值，避免除以 0
+      return 1 / (epsilon + 0.1) - 0.5; // 映射公式
     }
 
 
+    // 制定策略函數---------------------------------
+    function eGreedyStrategy(qArray) {
+      const strategy = new Array(action_size).fill(0); // 初始化策略機率陣列
 
+      // 檢查 qArray 是否為零向量
+      if (qArray.every(val => val === 0)) {
+        strategy.fill(1 / action_size); // 全 0 時均等機率
+        return strategy;
+      }
+
+      // ε-greedy 策略
+      const elseProb = Epsilon / (action_size-1); // 其他動作的探索機率
+      const bestProb = 1 - Epsilon; // 最佳動作的機率
+
+      // 找到最大 Q 值的動作
+      const maxQ = Math.max(...qArray);
+      const bestAction = qArray.indexOf(maxQ);
+
+      // 設置策略機率
+      strategy.fill(elseProb); // 默認其他動作的探索機率
+      strategy[bestAction] = bestProb; // 最大 Q 值的動作加權
+
+      return strategy;
+    }
+
+    function softmaxStrategy(qArray) {
+      const tau = epsilonToTau(Epsilon);
+      const expValues = qArray.map(q => Math.exp(q / tau));
+      const sumExp = expValues.reduce((sum, val) => sum + val, 0);
+      const strategy = expValues.map(exp => exp / sumExp); // 正規化為機率陣列
+
+      return strategy;
+    }
+
+    function selectAction(strategy) {
+      const rand = Math.random();
+      let cumulativeProb = 0;
+
+      for (let i = 0; i < strategy.length; i++) {
+        cumulativeProb += strategy[i];
+        if (rand <= cumulativeProb) {
+          return i; // 根據機率分佈隨機選擇動作
+        }
+      }
+      return strategy.length - 1; // 預防性返回最後一個動作
+    }
     /***************************************************
      * [6] 父/子頁面 postMessage 通訊：
      *     接收子頁面 (遊戲)傳回的 (reward, state)，並回傳動作
      ***************************************************/
-    let stateRange = [];
-    let numBins = [];
-
-    // 計算當下狀態對應到Q表的鍵值
-    function getStateKey(stateValues) {
-      let indices = []; // 用於儲存每個維度的離散化索引
-      // console.log(stateValues)
-      stateValues.forEach((value,dim) => {
-        const bucketIdx = getBucketIndex(value,dim);
-        // 將索引加入陣列
-        indices.push(bucketIdx);
-      });
-      // 索引轉成字串標籤
-      return indices.join("_");
-    }
-
-    function getBucketIndex(value,dim){
-        // 設定預設範圍
-        let min = 0, max = 100;
-        // 取得該狀態有效範圍
-        if (stateRange[dim]) {
-          min = stateRange[dim].min;
-          max = stateRange[dim].max;
-        }
-        // 計算桶的大小
-        let binSize = (max - min) / numBins[dim];
-        // 限制值在範圍內
-        let clipped = Math.max(min, Math.min(max, value));
-        // 計算索引
-        let idx = Math.floor((clipped - min) / binSize);
-        // 確保索引在合法範圍內
-        idx = Math.min(Math.max(idx, 0), numBins[dim] - 1);
-
-        return idx;
-    }
-
-
     let stateInfo
     let actionInfo
     let state_size
@@ -605,8 +789,8 @@
         console.log(message)
         stateInfo=message.players[0].stateInfo
         actionInfo=message.players[0].actionInfo
-        writeLog(1,stateInfo)
-        writeLog(1,actionInfo)
+        // writeLog(1,stateInfo)
+        // writeLog(1,actionInfo)
         state_size=stateInfo.length
         action_size=actionInfo[0].level
         console.log(stateInfo)
@@ -622,63 +806,82 @@
             numBins.push(20); // 預設每個狀態分成 20 桶，可根據需求調整
           }
         });
-
+        // 初始化DQN
+        initializeDQNModel();
         // 發送第一個動作
         gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
       }
 
     });
 
-    let currentState
-    let prevAction,prevStateKey
-    let nextAction,nextStateKey
+    // let nextState
+    let prevAction,prevState
+    let nextAction,nextState
     let reward
 
-    // let secondReward = 0; // 用於畫獎勵圖表
-    // let secondSteps = 0
-    // let episodeCount = 1
-    // let episodeReward = 0
-    // let episodeSteps = 0
 
+
+    function evaluateQuality(State){
+      let qArray1=getQArrayFromTable(State)
+      let qArray2=getQArrayFromDQNet(State)
+      return qArray1
+    }
+
+    function planningStrategy(qArray){
+      let strategy1=eGreedyStrategy(qArray)
+      let strategy2=softmaxStrategy(qArray)
+      return strategy1
+    }
+
+    function memorizeAndLearn(prevState, prevAction, reward, nextState,nextAction){
+      //qtable 學習
+      qTableUpdate(prevState, prevAction, reward, nextState,nextAction);
+      // dqn 學習
+      // addToBuffer(prevState, prevAction, reward, nextState, nextAction);
+      // trainDQN();
+    }
+
+
+    // 遊戲過程中的每一次循環，從接收到新的reward state開始
     window.addEventListener("message", (event) => {
       const message = event.data;
-      // 從子頁面拿到報酬與狀態
-      if (message.type === "reward_state") {
-        // 更新瞬間報酬
+      // 從遊戲子頁面拿到報酬與狀態
+      if (message.type === "reward_state"){
+        // 取得當下報酬
         reward = message.reward;
+        // 取得當下狀態
+        nextState=message.state
         // 加入每秒報酬累計
-        secondReward += message.reward;
+        secondReward += reward;
+        // 一秒內步數+1
         secondSteps += 1
         // 加入回合報酬累計
-        episodeReward += message.reward;
+        episodeReward += reward;
         // 回合步數+1
         episodeSteps += 1;
 
-        // console.log(reward,secondReward)
-        // 取得當下狀態對應到Q表的鍵值
-        currentState=message.state
-        nextStateKey = getStateKey(currentState);
-        // console.log(message.state,nextStateKey)
-        // 選擇下一次動作
-        nextAction = eGreedyChooseAction(nextStateKey);
-        // 更新Q表
-        if (reward !== null  &&
-        // prevAction必須是正整數
-        Number.isInteger(prevAction) && prevAction >= 0) {
-          qTableUpdate(prevStateKey, prevAction, reward, nextStateKey,nextAction);
+
+        // 評估價值
+        let qArray=evaluateQuality(nextState)
+        // 擬定策略
+        let strategy=planningStrategy(qArray)
+        // 選擇動作
+        nextAction = selectAction(strategy)
+        // 消化學習
+        // memorizeAndLearn(prevState, prevAction, reward, nextState,nextAction)
+        if(prevAction){
+          memorizeAndLearn(prevState, prevAction, reward, nextState,nextAction)
         }
         // 繼承狀態與動作資訊
-        prevStateKey = nextStateKey;
+        prevState = nextState
         prevAction   = nextAction;
-        // console.log(nextAction)
 
-        // console.log(episodeSteps,prevAction,currentState)
         // 回傳動作給子頁面
         if(isPaused){return}
         setTimeout(() => {
           gameIframe.contentWindow.postMessage({
             type: "action",
-            action: prevAction
+            action: nextAction
           }, "*");
         // 故意設置的延遲時間
         }, delayTime);
@@ -686,14 +889,10 @@
 
 
       if (message.type === "endEpisode"){
-        // console.log('Episode'+episodeCount)
-        // console.log('episodeReward='+episodeReward)
-        // console.log('episodeSteps='+episodeSteps)
         updateEpisodeChart()
         episodeCount += 1
         episodeReward=0
         episodeSteps=0
-
       }
     });
 
