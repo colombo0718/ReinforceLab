@@ -83,6 +83,7 @@ function updateSecondChart() {
   // 更新 Reward 資料
   rewardLabels.push(currentTime);
   rewardData.push(secondReward);
+  // console.log(rewardData)
   if (rewardData.length > 60) {
     rewardLabels.shift();
     rewardData.shift();
@@ -193,7 +194,8 @@ initEpisodeChart();
 
 // 每秒更新一次 Reward 與 Steps 的數據圖表
 setInterval(() => {
-  updateSecondChart();
+  if(plotGeneralCharts){updateSecondChart();}
+  // updateSecondChart();
 }, 1000);
 
 

@@ -1,26 +1,53 @@
 /***************************************************
  * [9] QTable Chart
- ***************************************************/// 假設全域變數：
-// numBins = [xBins, yBins]
-// QTable 為物件，鍵為 `${i}_${j}`，值為 Q 值陣列
-// gapMax 為你設定的最大 gap 值
-gapMax =10
+ ***************************************************/
+
+
+
+
+
+
+
+
+// 定義全局變數 gapMax
+let focusState
+let cutX=0,cutY=1
+
+const gapMax = 10;
 
 
 // 動作選擇熱力圖：下層動作色塊 + 上層白色遮罩
 function generateActionHeatmap() {
+  const numBinsX = numBins[0]; // X 軸 bins 數量
+  const numBinsY = numBins[1]; // Y 軸 bins 數量
   const z = [], text = [];
+  const xvals = [], yvals = [];
 
-  for (let j = 0; j < numBins[1]; j++) {
+  // 生成 X 軸和 Y 軸的真實值
+  for (let i = 0; i < numBinsX; i++) {
+    const stateX = stateInfo[0].min + (i * (stateInfo[0].max - stateInfo[0].min) / numBinsX);
+    xvals.push(stateX);
+  }
+  for (let j = 0; j < numBinsY; j++) {
+    const stateY = stateInfo[1].min + (j * (stateInfo[1].max - stateInfo[1].min) / numBinsY);
+    yvals.push(stateY);
+  }
+
+  // 生成狀態網格並計算最佳動作
+  for (let j = 0; j < numBinsY; j++) {
     const row = [];
     const textRow = [];
-    for (let i = 0; i < numBins[0]; i++) {
-      const stateKey = `${i}_${j}`;
-      const qArr = QTable[stateKey] || [0, 0];
-      const bestAction = qArr.indexOf(Math.max(...qArr));
+    for (let i = 0; i < numBinsX; i++) {
+      // 複製 focusState 作為基準狀態
+      const state = [...focusState];
+      // 使用真實值設置 state
+      state[0] = xvals[i]; // 第一維
+      state[1] = yvals[j]; // 第二維
+
+      const qArr = evaluateQuality(state); // 獲取 Q 值數組
+      const bestAction = qArr.indexOf(Math.max(...qArr)); // 找到最佳動作
       row.push(bestAction);
-      textRow.push(`State ${stateKey}<br>Best action: ${bestAction}`);
-      // text.push(`State ${stateKey}<br>Best action: ${bestAction}`);
+      textRow.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Best action: ${bestAction}`);
     }
     z.push(row);
     text.push(textRow);
@@ -28,27 +55,28 @@ function generateActionHeatmap() {
 
   const colorscale = generateDiscreteColorscale(action_size);
 
+  // 下層動作熱力圖
   const lowerTrace = {
-    x: [...Array(numBins[0]).keys()],
-    y: [...Array(numBins[1]).keys()],
+    x: xvals, // 使用真實的 X 軸值
+    y: yvals, // 使用真實的 Y 軸值
     z: z,
     type: 'heatmap',
     colorscale: colorscale,
-    // showscale: false,
     hoverinfo: 'text',
     text: text
   };
 
+  // 上層白色遮罩
   const overlayMatrix = generateWhiteOverlayMatrix();
 
   const upperTrace = {
-    x: [...Array(numBins[0]).keys()],
-    y: [...Array(numBins[1]).keys()],
+    x: xvals, // 使用真實的 X 軸值
+    y: yvals, // 使用真實的 Y 軸值
     z: overlayMatrix,
     type: 'heatmap',
     colorscale: [
-      [0, 'rgba(255,255,255,0)'],
-      [1, 'rgba(255,255,255,1)']
+      [0, 'rgba(255,255,255,0)'], // 透明
+      [1, 'rgba(255,255,255,1)']  // 白色
     ],
     zmin: 0,
     zmax: 1,
@@ -77,7 +105,7 @@ function generateDiscreteColorscale(actionSize) {
   return colorscale;
 }
 
-// HSV轉RGB
+// HSV 轉 RGB
 function hsvToRgb(h, s, v) {
   const c = v * s;
   const x = c * (1 - Math.abs((h / 60) % 2 - 1));
@@ -97,17 +125,26 @@ function hsvToRgb(h, s, v) {
   return `rgb(${r},${g},${b})`;
 }
 
-// 生成白色遮罩
+// 生成白色遮罩矩陣
 function generateWhiteOverlayMatrix() {
   const overlay = [];
-  for (let j = 0; j < numBins[1]; j++) {
+  const numBinsX = numBins[0];
+  const numBinsY = numBins[1];
+  // focusState = stateInfo.map(info => info.min); // 初始化 focusState，所有維度設為 min
+
+  for (let j = 0; j < numBinsY; j++) {
     const row = [];
-    for (let i = 0; i < numBins[0]; i++) {
-      const stateKey = `${i}_${j}`;
-      const qArr = QTable[stateKey] || [0, 0];
-      const sorted = qArr.slice().sort((a, b) => b - a);
-      const gap = sorted[0] - (sorted[1] ?? sorted[0]);
-      const opacity = 1 - Math.min(gap / gapMax, 1);
+    for (let i = 0; i < numBinsX; i++) {
+      // 複製 focusState 作為基準狀態
+      const state = [...focusState];
+      // 修改第 0 維和第 1 維的值（切片）
+      state[0] = stateInfo[0].min + (i * (stateInfo[0].max - stateInfo[0].min) / numBinsX); // 第一維
+      state[1] = stateInfo[1].min + (j * (stateInfo[1].max - stateInfo[1].min) / numBinsY); // 第二維
+
+      const qArr = evaluateQuality(state); // 獲取 Q 值數組
+      const sorted = qArr.slice().sort((a, b) => b - a); // 降序排序
+      const gap = sorted[0] - (sorted[1] ?? sorted[0]); // 最大 Q 值與次大 Q 值的差距
+      const opacity = 1 - Math.min(gap / gapMax, 1); // 計算遮罩透明度
       row.push(opacity);
     }
     overlay.push(row);
@@ -117,24 +154,34 @@ function generateWhiteOverlayMatrix() {
 
 
 
-// 最大 Q 值熱力圖：藍→白→紅
+
+
+
+
+
+// 最大 Q 值熱力圖：青→白→橘
 function generateMaxQHeatmap() {
+  const numBinsX = numBins[cutX]; // X 軸 bins 數量
+  const numBinsY = numBins[cutY]; // Y 軸 bins 數量
   const xvals = [], yvals = [], zvals = [], texts = [];
+  // focusState = stateInfo.map(info => info.min); // 初始化 focusState，所有維度設為 min
 
-  // state key 再分離成 index array
-  // if(currentState){
-  //   console.log(getStateKey(currentState).split('_'))
-  // }
-  for (let i = 0; i < numBins[0]; i++) {
-    for (let j = 0; j < numBins[1]; j++) {
-      const stateKey = `${i}_${j}`;
-      const qArr = QTable[stateKey] || [0];
-      const maxQ = Math.max(...qArr);
+  // 生成狀態網格並計算最大 Q 值
+  for (let i = 0; i < numBinsX; i++) {
+    for (let j = 0; j < numBinsY; j++) {
+      // 複製 focusState 作為基準狀態
+      const state = [...focusState];
+      // 修改第 0 維和第 1 維的值（切片）
+      state[cutX] = stateInfo[cutX].min + (i * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX); // 第一維
+      state[cutY] = stateInfo[cutY].min + (j * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY); // 第二維
 
-      xvals.push(i);
-      yvals.push(j);
+      const qArr = evaluateQuality(state); // 獲取 Q 值數組
+      const maxQ = Math.max(...qArr); // 找到最大 Q 值
+
+      xvals.push(state[cutX]);
+      yvals.push(state[cutY]);
       zvals.push(maxQ);
-      texts.push(`(i=${i}, j=${j})<br>Max Q: ${maxQ.toFixed(2)}`);
+      texts.push(`(i=${i}, j=${j})<br>State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Max Q: ${maxQ.toFixed(2)}`);
     }
   }
 
@@ -149,13 +196,12 @@ function generateMaxQHeatmap() {
       [1, 'orange']
     ],
     zmid: 0,
-    // showscale: false,
     text: texts,
     hoverinfo: 'text'
   };
 
   const layout = {
-    title: '最大 Q 值熱力圖（藍→白→紅）',
+    title: '最大 Q 值熱力圖（青→白→橘）',
     xaxis: { title: 'State Dimension X' },
     yaxis: { title: 'State Dimension Y' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
@@ -164,20 +210,29 @@ function generateMaxQHeatmap() {
   Plotly.newPlot('p1-maxi-value', [trace], layout);
 }
 
-// 最大 Q 值熱力圖：藍→白→紅
+// 最小 Q 值熱力圖：藍→白→紅
 function generateMinQHeatmap() {
+  const numBinsX = numBins[0]; // X 軸 bins 數量
+  const numBinsY = numBins[1]; // Y 軸 bins 數量
   const xvals = [], yvals = [], zvals = [], texts = [];
+  // focusState = stateInfo.map(info => info.min); // 初始化 focusState，所有維度設為 min
 
-  for (let i = 0; i < numBins[0]; i++) {
-    for (let j = 0; j < numBins[1]; j++) {
-      const stateKey = `${i}_${j}`;
-      const qArr = QTable[stateKey] || [0];
-      const maxQ = Math.min(...qArr);
+  // 生成狀態網格並計算最小 Q 值
+  for (let i = 0; i < numBinsX; i++) {
+    for (let j = 0; j < numBinsY; j++) {
+      // 複製 focusState 作為基準狀態
+      const state = [...focusState];
+      // 修改第 0 維和第 1 維的值（切片）
+      state[0] = stateInfo[0].min + (i * (stateInfo[0].max - stateInfo[0].min) / numBinsX); // 第一維
+      state[1] = stateInfo[1].min + (j * (stateInfo[1].max - stateInfo[1].min) / numBinsY); // 第二維
 
-      xvals.push(i);
-      yvals.push(j);
-      zvals.push(maxQ);
-      texts.push(`(i=${i}, j=${j})<br>Max Q: ${maxQ.toFixed(2)}`);
+      const qArr = evaluateQuality(state); // 獲取 Q 值數組
+      const minQ = Math.min(...qArr); // 找到最小 Q 值
+
+      xvals.push(state[0]);
+      yvals.push(state[1]);
+      zvals.push(minQ);
+      texts.push(`(i=${i}, j=${j})<br>State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Min Q: ${minQ.toFixed(2)}`);
     }
   }
 
@@ -192,7 +247,6 @@ function generateMinQHeatmap() {
       [1, 'red']
     ],
     zmid: 0,
-    // showscale: false,
     text: texts,
     hoverinfo: 'text'
   };
@@ -207,49 +261,56 @@ function generateMinQHeatmap() {
   Plotly.newPlot('p1-mini-value', [trace], layout);
 }
 
-
-// 初始繪圖
-generateActionHeatmap();
-generateMaxQHeatmap();
-generateMinQHeatmap();
+// // 初始繪圖
+// generateActionHeatmap();
+// generateMaxQHeatmap();
+// generateMinQHeatmap();
 
 
 // 每秒更新
 setInterval(() => {
-  generateActionHeatmap();
-  generateMaxQHeatmap();
-  generateMinQHeatmap();
+  if(!stateInfo){
+    // 遊戲還沒載入完成
+    return;
+  }
+  focusState = stateInfo.map(info => info.min)
+  focusState=[...nextState]
+  if (stateInfo.length < 2) {
+    // 狀態維度小於 2，無法繪製二維熱力圖
+    return;
+  }
+  if(plotQualityCharts){
+    generateActionHeatmap();
+    generateMaxQHeatmap();
+    generateMinQHeatmap();
+  }
+
 
 }, 1000);
 
 // Q表 1維切片摺線圖（每個action一條摺線）
-function generateQLineSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
+function generateQLineSlice(dim0FixedIndex = 0, dim1FixedIndex = 0) {
   const data = [];
+  const numBinsX = numBins[0]; // 第 0 維的 bins 數量
 
+  // 獲取離散顏色標度
+  const colorscale = generateDiscreteColorscale(action_size);
+  const actionColors = colorscale.map(entry => entry[1]); // 提取顏色部分
+
+  // 為每個動作生成摺線
   for (let action = 0; action < action_size; action++) {
     const xvals = [], yvals = [];
 
-    // for (let i = 0; i < numBins[1]; i++) {
-    //   const stateKey = `${i}_${dim1FixedIndex}`;
-    //   const qArr = QTable[stateKey] || Array(action_size).fill(0);
-    //   xvals.push(i);
-    //   yvals.push(qArr[action]);
-    // }
+    // 沿第 0 維遍歷，其他維固定為 focusState 中的值
+    for (let i = 0; i < numBinsX; i++) {
+      // 複製 focusState 作為基準狀態
+      const state = [...focusState];
+      // 修改第 0 維的值
+      state[0] = stateInfo[0].min + (i * (stateInfo[0].max - stateInfo[0].min) / numBinsX);
 
-    // 沿第一維遍歷，其他維固定為 min
-    for (let i = 0; i < numBins[0]; i++) {
-      // 構建狀態數組
-      const state = [
-        stateInfo[0].min + (i * (stateInfo[0].max - stateInfo[0].min) / numBins[0]), // 第一維
-        // ...stateInfo.slice(1).map(info => (info.min+info.max)/2) // 其他維固定為 min
-        ...stateInfo.slice(1).map(info => info.min) // 其他維固定為 min
-      ];
-
-
-      // 使用 getQArray 獲取 Q 值
+      // 使用 evaluateQuality 獲取 Q 值
       const qArray = evaluateQuality(state);
-      // console.log(state,qArray)
-      xvals.push(i); // x 軸是第一維的索引
+      xvals.push(i); // x 軸是第 0 維的索引
       yvals.push(qArray[action]); // y 軸是該動作的 Q 值
     }
 
@@ -259,13 +320,17 @@ function generateQLineSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
       mode: 'lines+markers',
       type: 'scatter',
       name: `Action ${action}`,
-      line: { shape: 'linear' }
+      line: {
+        shape: 'linear',
+        color: actionColors[action] // 使用 generateDiscreteColorscale 的顏色
+      },
+      marker: { color: actionColors[action] } // 標記點也使用相同顏色
     });
   }
 
   const layout = {
-    title: `Q 值 1維切片摺線圖 (Dim0 = ${dim0FixedIndex})`,
-    xaxis: { title: 'State Dimension Y' },
+    // title: `Q 值 1維切片摺線圖 (Dim 1 = ${focusState[1]?.toFixed(2) || 'N/A'})`,
+    xaxis: { title: 'State Dimension 0' },
     yaxis: { title: 'Q Value' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   };
@@ -274,35 +339,38 @@ function generateQLineSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
 }
 
 // Q表 0維切片柱狀圖（每個action一根柱子）
-function generateQBarSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
-  const xvals = [], traces = [];
+function generateQBarSlice(dim0FixedIndex = 0, dim1FixedIndex = 0) {
+  const traces = [];
 
-  for (let j = 0; j < numBins[0]; j++) {
-    xvals.push(j);
+  // 使用 evaluateQuality 獲取 Q 值
+  const qArr = evaluateQuality(focusState);
+  // console.log(focusState)
+  if (!qArr) {
+    console.log("無法獲取 Q 值，切片無效。");
+    return;
   }
-  if(!nextState){return}
-  const qArr=evaluateQuality(nextState)
+
+  // 獲取離散顏色標度
+  const colorscale = generateDiscreteColorscale(action_size);
+  const actionColors = colorscale.map(entry => entry[1]); // 提取顏色部分
+
+  // 為每個動作生成柱子
   for (let action = 0; action < action_size; action++) {
-    const yvals = [];
-
-    // for (let j = 0; j < numBins[0]; j++) {
-      // const stateKey = `${dim0FixedIndex}_${dim1FixedIndex}`;
-      // const qArr = QTable[stateKey] || Array(action_size).fill(0);
-
-      yvals.push(qArr[action]);
-    // }
+    const xvals = [action]; // x 軸是動作索引
+    const yvals = [qArr[action]]; // y 軸是該動作的 Q 值
 
     traces.push({
       x: xvals,
       y: yvals,
       type: 'bar',
-      name: `Action ${action}`
+      name: `Action ${action}`,
+      marker: { color: actionColors[action] } // 使用 generateDiscreteColorscale 的顏色
     });
   }
 
   const layout = {
-    title: `Q 值 0維切片柱狀圖 (Dim1 = ${dim1FixedIndex})`,
-    xaxis: { title: 'State Dimension X' },
+    // title: `Q 值 0維切片柱狀圖 (Dim 0 = ${focusState[0].toFixed(2)}, Dim 1 = ${focusState[1]?.toFixed(2) || 'N/A'})`,
+    xaxis: { title: 'Action' },
     yaxis: { title: 'Q Value' },
     barmode: 'group',
     margin: { t: 30, b: 40, l: 50, r: 20 }
@@ -310,16 +378,23 @@ function generateQBarSlice(dim0FixedIndex = 0,dim1FixedIndex = 0) {
 
   Plotly.newPlot('p1-bars-value', traces, layout);
 }
-
 // 初始繪圖
 const fixedDim0Index = 0; // 可調整
 const fixedDim1Index = 0; // 可調整
 
-generateQLineSlice(fixedDim0Index);
-generateQBarSlice(fixedDim1Index);
 
 // 每秒更新
 setInterval(() => {
-  generateQLineSlice(fixedDim0Index);
-  generateQBarSlice(fixedDim1Index);
+  if(plotQualityCharts){
+    if(!stateInfo){
+      // 遊戲還沒載入完成
+      return;
+    }
+    generateQBarSlice(fixedDim1Index);
+    if (stateInfo.length < 1) {
+      // 狀態維度小於 2，無法繪製二維熱力圖
+      return;
+    }
+    generateQLineSlice(fixedDim0Index);
+  }
 }, 1000);

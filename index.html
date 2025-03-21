@@ -102,19 +102,19 @@
       <img src="q_learning_formula.png" alt="Q-learning 更新公式">
       <br><br> -->
       <label for="learning-rate-slider">學習率 (α):</label>
-      <input id="learning-rate-slider" type="range" min="0" max="1" step="0.01" value="0.1"
+      <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0.1"
              oninput="updateValue('Alpha', this.value)">
       <span class="value-display" id="alpha-value">0.1</span>
       <br>
 
-      <label for="discount-factor-slider">折扣率 (γ):</label>
-      <input id="discount-factor-slider" type="range" min="0" max="1" step="0.01" value="0.95"
+      <label for="discount-factor-slider">回朔率 (γ):</label>
+      <input id="discount-factor-slider" type="range" min="0" max="0.95" step="0.05" value="0.95"
              oninput="updateValue('Gamma', this.value)">
       <span class="value-display" id="gamma-value">0.95</span>
       <br>
 
       <label for="exploration-rate-slider">探索率 (ε):</label>
-      <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.01" value="0.2"
+      <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.05" value="0.2"
              oninput="updateValue('Epsilon', this.value)">
       <span class="value-display" id="epsilon-value">0.2</span>
       <br>
@@ -360,6 +360,11 @@
 
 
 
+    // 決定是否畫圖表 ***********************************
+
+    let plotGeneralCharts=true
+    let plotQualityCharts=true
+
     /***************************************************
      * [4] Blockly 初始化
      ***************************************************/
@@ -566,161 +571,21 @@ function getBucketIndex(value,dim){
       }
       // 計算 Q 值更新
       let oldQ = prevQArray[prevA] || 0;
-      let newQ = oldQ + Alpha * (reward + Gamma * targetQ - oldQ);
+      let deltaQ = Alpha * (reward + Gamma * targetQ - oldQ);
+      // if(Math.abs(deltaQ)<0.001){return;}
+      // console.log(deltaQ)
+
+      let newQ = oldQ + deltaQ
 
       if (isNaN(newQ)) {
         console.error("Invalid newQ detected.", { oldQ, Alpha, reward, Gamma, targetQ });
         return; // 提前返回
       }
       // 更新 Q 表
+      // if(prevA==0){console.log(prevA,newQ)}
+      // console.log(prevA,newQ)
       prevQArray[prevA] = newQ;
     }
-    /***************************************************
-     * [5] dqn 相關設定 (範例)
-     ***************************************************/
-     let dqnModel = null; // DQN 神經網路模型
-     let targetModel = null; // 目標網路
-     const replayBuffer = []; // 經驗回放緩衝區
-     const bufferSize = 10000; // 緩衝區大小
-     const batchSize = 64; // 批量訓練大小
-     const syncTargetSteps = 100; // 目標網路同步頻率
-     let stepCounter = 0; // 步數計數器
-
-     function initializeDQNModel() {
-        dqnModel = tf.sequential();
-        dqnModel.add(tf.layers.dense({ units: 8, inputShape: [state_size], activation: 'relu' }));
-        dqnModel.add(tf.layers.dense({ units: 8, activation: 'relu' }));
-        dqnModel.add(tf.layers.dense({ units: action_size, activation: 'linear' }));
-        dqnModel.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
-
-        targetModel = tf.sequential();
-        targetModel.add(tf.layers.dense({ units: 8, inputShape: [state_size], activation: 'relu' }));
-        targetModel.add(tf.layers.dense({ units: 8, activation: 'relu' }));
-        targetModel.add(tf.layers.dense({ units: action_size, activation: 'linear' }));
-        targetModel.setWeights(dqnModel.getWeights());
-     }
-
-    function normalizeState(stateValues) {
-      // console.log(stateValues)
-      return stateValues.map((value, dim) => {
-        // console.log(dim,stateInfo[dim])
-        const min=stateInfo[dim].min
-        const max=stateInfo[dim].max
-        // const { min, max } = stateRange[dim];
-        return (value - min) / (max - min); // 範圍 [0, 1]
-      });
-    }
-
-    function addToBuffer(prevS, prevA, r, nextS, nextA) {
-      if (replayBuffer.length >= bufferSize) replayBuffer.shift();
-      replayBuffer.push([prevS, prevA, r, nextS, nextA]);
-    }
-
-    async function trainDQN() {
-      if (replayBuffer.length < batchSize) return;
-      stepCounter++;
-      if (stepCounter % syncTargetSteps === 0) {
-        targetModel.setWeights(dqnModel.getWeights());
-      }
-
-      const batch = replayBuffer.sort(() => 0.5 - Math.random()).slice(0, batchSize);
-      const prevS_array = batch.map(s => normalizeState(s[0]));
-      const nextS_array = batch.map(s => normalizeState(s[3]));
-      const reward_array = batch.map(s => s[2]);
-      const prevA_array = batch.map(s => s[1]);
-      const nextA_array = batch.map(s => s[4]);
-
-      const prevQ_Tensor = dqnModel.predict(tf.tensor2d(prevS_array));
-      const nextQ_Tensor = targetModel.predict(tf.tensor2d(nextS_array));
-      const prevQ_array = await prevQ_Tensor.array();
-      const nextQ_array = await nextQ_Tensor.array();
-
-      for (let i = 0; i < batchSize; i++) {
-          const prevS = prevS_array[i];
-          const prevA = prevA_array[i];
-          const reward = reward_array[i];
-          const nextS = nextS_array[i];
-          const nextA = nextA_array[i];
-          const nextQ = nextQ_array[i];
-          const actualQNext = nextQ[nextA];
-          const maxQNext = Math.max(...nextQ);
-          const minQNext = Math.min(...nextQ);
-          // const targetQ = (1 - Math.abs(Psi)) * actualQNext +
-          //                 Math.max(0, Psi) * maxQNext +
-          //                 Math.max(0, -Psi) * minQNext;
-          const targetQ = maxQNext
-          // const finalTarget = done ? reward : reward + Gamma * targetQ;
-          //
-          console.log(reward,targetQ)
-          if (isNaN(targetQ)) {
-            console.error("Invalid target detected in DQN training.", {prevS, prevA, reward, nextS, nextA,targetQ});
-            continue;
-          }
-
-          // 引入 Alpha 調整目標 Q 值
-          const oldQ = prevQ_array[i][prevA];
-          const updatedQ = oldQ + Alpha * (reward + Gamma * targetQ - oldQ); // 類似 Q-Table 的更新
-          prevQ_array[i][prevA] = updatedQ;
-      }
-
-      await dqnModel.fit(tf.tensor2d(prevS_array), tf.tensor2d(prevQ_array), { batchSize, epochs: 1 });
-      tf.dispose([prevQ_Tensor, nextQ_Tensor]);
-    }
-
-    function getQArrayFromDQNet(state) {
-      const normalizedState = normalizeState(state);
-      const stateTensor = tf.tensor2d([normalizedState]);
-      const qValues = dqnModel.predict(stateTensor);
-      const qArray = qValues.dataSync();
-      tf.dispose([stateTensor, qValues]);
-      return Array.from(qArray);
-    }
-
-
-    // 動作選擇策略 -------------------------------
-
-    // ε-greedy 選擇動作
-    function eGreedyChooseAction(qArray) {
-      // 檢查 qArray 是否為零向量
-      if (qArray.every(val => val === 0)) {
-        return Math.floor(Math.random() * action_size); // 全 0 時隨機選擇
-      }
-
-      // ε-greedy 策略
-      if (Math.random() < Epsilon) {
-        return Math.floor(Math.random() * action_size);
-      }
-
-      // 利用最大 Q 值
-      let maxQ  = Math.max(...qArray);
-      let chosenAction = qArray.indexOf(maxQ);
-      return chosenAction;
-    }
-
-    // Softmax 選擇動作
-    function softmaxChooseAction(qArray) {
-      const tau = epsilonToTau(Epsilon);
-      const expValues = qArray.map(q => Math.exp(q / tau));
-      const sumExp = expValues.reduce((sum, val) => sum + val, 0);
-      const probabilities = expValues.map(exp => exp / sumExp);
-
-      const rand = Math.random();
-      let cumulativeProb = 0;
-      for (let i = 0; i < probabilities.length; i++) {
-        cumulativeProb += probabilities[i];
-        if (rand <= cumulativeProb) {
-          return i;
-        }
-      }
-      return probabilities.length - 1;
-    }
-
-    // 轉換 Epsilon 到 Tau
-    function epsilonToTau(epsilon) {
-      if (epsilon === 0) return 0.01; // 最小值，避免除以 0
-      return 1 / (epsilon + 0.1) - 0.5; // 映射公式
-    }
-
 
     // 制定策略函數---------------------------------
     function eGreedyStrategy(qArray) {
@@ -747,6 +612,12 @@ function getBucketIndex(value,dim){
       return strategy;
     }
 
+    // 轉換 Epsilon 到 Tau
+    function epsilonToTau(epsilon) {
+      if (epsilon === 0) return 0.01; // 最小值，避免除以 0
+      return 1 / (epsilon + 0.1) - 0.5; // 映射公式
+    }
+
     function softmaxStrategy(qArray) {
       const tau = epsilonToTau(Epsilon);
       const expValues = qArray.map(q => Math.exp(q / tau));
@@ -766,7 +637,7 @@ function getBucketIndex(value,dim){
           return i; // 根據機率分佈隨機選擇動作
         }
       }
-      return strategy.length - 1; // 預防性返回最後一個動作
+      return 0; // 預防性返回最後一個動作
     }
     /***************************************************
      * [6] 父/子頁面 postMessage 通訊：
@@ -823,7 +694,7 @@ function getBucketIndex(value,dim){
 
     function evaluateQuality(State){
       let qArray1=getQArrayFromTable(State)
-      let qArray2=getQArrayFromDQNet(State)
+      // let qArray2=getQArrayFromDQNet(State)
       return qArray1
     }
 
@@ -833,15 +704,36 @@ function getBucketIndex(value,dim){
       return strategy1
     }
 
-    function memorizeAndLearn(prevState, prevAction, reward, nextState,nextAction){
-      //qtable 學習
-      qTableUpdate(prevState, prevAction, reward, nextState,nextAction);
-      // dqn 學習
-      // addToBuffer(prevState, prevAction, reward, nextState, nextAction);
-      // trainDQN();
+    function learnOneStep(prevState, prevAction, reward, nextState,nextAction){
+      if(Number.isInteger(prevAction)){
+        //qtable 學習
+        qTableUpdate(prevState, prevAction, reward, nextState,nextAction);
+        // dqn 學習
+        // addToBuffer(prevState, prevAction, reward, nextState, nextAction);
+        // trainDQN();
+      }
     }
 
+    const traceLength = 5; // 固定軌跡長度，例如 20 步
+    let trace = []; // 軌跡陣列，用來儲存經驗
 
+    function recordStep(prevState, prevAction, reward, nextState, nextAction) {
+      const step = [prevState, prevAction, reward, nextState, nextAction];
+      trace.unshift(step); // 從頭塞入新經驗
+      if (trace.length > traceLength) trace.pop(); // 如果超過長度，移除最舊經驗
+    }
+
+    // 逐個回溯學習
+    function learnFromTrace() {
+      // console.log(trace,trace.length)
+      for (let i = 0; i < trace.length; i++) {
+        // console.log(i)
+        const [prevState, prevAction, reward, nextState, nextAction] = trace[i];
+        learnOneStep(prevState, prevAction, reward, nextState, nextAction);
+      }
+    }
+
+    let frameNumber=0
     // 遊戲過程中的每一次循環，從接收到新的reward state開始
     window.addEventListener("message", (event) => {
       const message = event.data;
@@ -849,32 +741,44 @@ function getBucketIndex(value,dim){
       if (message.type === "reward_state"){
         // 取得當下報酬
         reward = message.reward;
+        // console.log(reward)
+        // console.log(reward)
         // 取得當下狀態
         nextState=message.state
         // 加入每秒報酬累計
         secondReward += reward;
+        // console.log(reward,secondReward)
         // 一秒內步數+1
         secondSteps += 1
         // 加入回合報酬累計
         episodeReward += reward;
+        console.log(reward,episodeReward)
         // 回合步數+1
         episodeSteps += 1;
 
-
+        // console.log(nextState)
         // 評估價值
         let qArray=evaluateQuality(nextState)
+        // console.log(qArray)
         // 擬定策略
         let strategy=planningStrategy(qArray)
         // 選擇動作
         nextAction = selectAction(strategy)
+        // console.log(nextAction)
         // 消化學習
-        // memorizeAndLearn(prevState, prevAction, reward, nextState,nextAction)
-        if(prevAction){
-          memorizeAndLearn(prevState, prevAction, reward, nextState,nextAction)
+        // learnOneStep(prevState, prevAction, reward, nextState,nextAction)
+        recordStep(prevState, prevAction, reward, nextState, nextAction)
+        if(reward!==0){//獲得實際獎勵
+          learnFromTrace()
+        }else{
+          learnOneStep(prevState, prevAction, reward, nextState,nextAction)
         }
+
         // 繼承狀態與動作資訊
         prevState = nextState
         prevAction   = nextAction;
+        // console.log(frameNumber)
+        frameNumber=0
 
         // 回傳動作給子頁面
         if(isPaused){return}
@@ -887,12 +791,22 @@ function getBucketIndex(value,dim){
         }, delayTime);
       }
 
+      if (message.type === "frame"){
+        frameNumber+=1
+      }
 
       if (message.type === "endEpisode"){
-        updateEpisodeChart()
+        if(plotGeneralCharts){
+          updateEpisodeChart()
+        }
         episodeCount += 1
         episodeReward=0
         episodeSteps=0
+        // trace = []
+        // if(plotGeneralCharts){
+        //   updateEpisodeChart()
+        // }
+        // updateEpisodeChart()
       }
     });
 
@@ -1004,5 +918,6 @@ function importQtable(evt) {
   </script>
   <script src="./generalCharts.js"></script>
   <script src="./qualityCharts.js"></script>
+  <script src="./reinforceEngine.js"></script>
 </body>
 </html>
