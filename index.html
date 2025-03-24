@@ -742,7 +742,8 @@ function getBucketIndex(value,dim){
 
     // DQN Web Worker 相關-------------------------------
     // 初始化 Web Worker
-    const dqnWorker = new Worker('https://colombo0718.neocities.org/graphicalGYM/worker/dqnWebWorker.js');
+    const dqnWorker = new Worker('dqnWebWorker.js');
+    // const dqnWorker = new Worker('https://colombo0718.neocities.org/graphicalGYM/worker/dqnWebWorker.js');
 
     // 同步 QTable 數據到 Worker
     let lastSyncedQTable = {};
