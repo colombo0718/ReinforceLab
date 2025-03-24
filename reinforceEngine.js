@@ -97,3 +97,54 @@ function getQArrayFromDQNet(state) {
   tf.dispose([stateTensor, qValues]);
   return Array.from(qArray);
 }
+
+
+// 從 Q-table 的 key 反運算回真實 state
+function getStateFromKey(key) {
+  // 將 key 分解成桶索引陣列，例如 "0_1_2_3_4" -> [0, 1, 2, 3, 4]
+  const indices = key.split("_").map(Number);
+
+  // 計算每個維度的真實值
+  const stateValues = indices.map((bucketIdx, dim) => {
+    // 預設範圍
+    let min = 0, max = 100;
+    if (stateRange[dim]) {
+      min = stateRange[dim].min;
+      max = stateRange[dim].max;
+    }
+    // 計算桶大小
+    const binSize = (max - min) / numBins[dim];
+    // 計算該桶的中間值作為近似真實值
+    const value = min + bucketIdx * binSize + binSize / 2;
+    return value;
+  });
+
+  return stateValues;
+}
+
+
+async function DQNfitToQTable() {
+  const batchSize = 32;
+  const states = [];
+  const targets = [];
+
+  const qTableEntries = Object.entries(QTable);
+  if (qTableEntries.length === 0) return;
+
+  const tableLength = qTableEntries.length;
+  const batch = qTableEntries.sort(() => 0.5 - Math.random()).slice(0, tableLength);
+
+  for (let [key, qValue] of batch) {
+
+    const state = getStateFromKey(key);
+    states.push(state);
+    targets.push(qValue);
+  }
+
+  const xs = tf.tensor2d(states);
+  const ys = tf.tensor2d(targets);
+  await dqnModel.fit(xs, ys, { epochs: 1, batchSize:tableLength});
+
+  xs.dispose();
+  ys.dispose();
+}

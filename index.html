@@ -307,12 +307,12 @@
         // 這裡可做暫停遊戲 or 停止訓練的動作
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
         toggleAccelBtn.textContent = "🐢正常";
-        delayTime/=10
+        delayTime=basicDelayTime/5
       } else {
         // 這裡可做恢復遊戲 or 繼續訓練的動作
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
         toggleAccelBtn.textContent = "🚀加速";
-        delayTime*=10
+        delayTime=basicDelayTime
       }
       isAccel = !isAccel;
     });
@@ -459,7 +459,7 @@
     let Epsilon = .1;  // 探索率
     let Psi     = 0;    // 樂觀值
 
-    let delayTime =50
+    let basicDelayTime =50 ,delayTime =50
 
         // 更新 UI 和變數
   function updateValue(parameter, value) {
@@ -479,7 +479,7 @@
       Psi = value;
       break;
     case "delayTime":
-      delayTime = value;
+      basicDelayTime = value;
       break;
     default:
       console.warn(`未知參數: ${parameter}`);
@@ -492,7 +492,7 @@
   }
 
   console.log(`${parameter} 更新為 ${value}`);
-  console.log([Alpha,Gamma,Epsilon,Psi,delayTime])
+  console.log([Alpha,Gamma,Epsilon,Psi,basicDelayTime])
 }
 
 /***************************************************
@@ -639,6 +639,9 @@ function getBucketIndex(value,dim){
       }
       return 0; // 預防性返回最後一個動作
     }
+
+
+
     /***************************************************
      * [6] 父/子頁面 postMessage 通訊：
      *     接收子頁面 (遊戲)傳回的 (reward, state)，並回傳動作
@@ -696,6 +699,10 @@ function getBucketIndex(value,dim){
       let qArray1=getQArrayFromTable(State)
       // let qArray2=getQArrayFromDQNet(State)
       return qArray1
+      return new Promise((resolve) => {
+        pendingPredictResolve = resolve;
+        dqnWorker.postMessage({ type: 'predict', data: nextState });
+      });
     }
 
     function planningStrategy(qArray){
@@ -733,12 +740,63 @@ function getBucketIndex(value,dim){
       }
     }
 
+    // DQN Web Worker 相關-------------------------------
+    // 初始化 Web Worker
+    const dqnWorker = new Worker('https://colombo0718.neocities.org/graphicalGYM/worker/dqnWebWorker.js');
+
+    // 同步 QTable 數據到 Worker
+    let lastSyncedQTable = {};
+    function syncQTableToWorker() {
+      const updates = {};
+      for (let [key, value] of Object.entries(QTable)) {
+        if (lastSyncedQTable[key] !== value) {
+          updates[key] = value;
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        dqnWorker.postMessage({ type: 'updateQTable', data: updates });
+        lastSyncedQTable = { ...QTable };
+      }
+    }
+
+    // 從 Worker 獲取 DQN 預測的 Q 值
+    let pendingPredictResolve = null;
+    dqnWorker.onmessage = (event) => {
+      if (event.data.type === 'predictResult') {
+        if (pendingPredictResolve) {
+          pendingPredictResolve(event.data.qValues);
+          pendingPredictResolve = null;
+        }
+      } else if (event.data.type === 'fitDone') {
+        console.log("DQN 擬合完成");
+      }
+    };
+    dqnWorker.onerror = (error) => {
+      console.error("Web Worker 錯誤:", error);
+    };
+
+
     let frameNumber=0
     // 遊戲過程中的每一次循環，從接收到新的reward state開始
-    window.addEventListener("message", (event) => {
+    window.addEventListener("message", async(event) => {
       const message = event.data;
       // 從遊戲子頁面拿到報酬與狀態
       if (message.type === "reward_state"){
+
+
+      // if (message.type === "frame"){
+      //   frameNumber+=1
+      //   if(frameNumber<=5){return;}
+        // console.log(delayTime,frameNumber)
+        if(frameNumber<basicDelayTime/10){delayTime+=1}
+        else if(frameNumber>basicDelayTime/10){delayTime-=1}
+
+        // 定期同步 QTable 到 Worker
+        if (episodeSteps % 10 === 0) {
+          syncQTableToWorker();
+        }
+
+
         // 取得當下報酬
         reward = message.reward;
         // console.log(reward)
@@ -752,13 +810,14 @@ function getBucketIndex(value,dim){
         secondSteps += 1
         // 加入回合報酬累計
         episodeReward += reward;
-        console.log(reward,episodeReward)
+        // console.log(reward,episodeReward)
         // 回合步數+1
         episodeSteps += 1;
 
         // console.log(nextState)
+        // await DQNfitToQTable();
         // 評估價值
-        let qArray=evaluateQuality(nextState)
+        let qArray = await evaluateQuality(nextState)
         // console.log(qArray)
         // 擬定策略
         let strategy=planningStrategy(qArray)
@@ -777,7 +836,7 @@ function getBucketIndex(value,dim){
         // 繼承狀態與動作資訊
         prevState = nextState
         prevAction   = nextAction;
-        // console.log(frameNumber)
+
         frameNumber=0
 
         // 回傳動作給子頁面
