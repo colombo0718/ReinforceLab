@@ -1,3 +1,9 @@
+function log(message) {
+  self.postMessage({ type: 'log', message });
+}
+
+log("Worker 已啟動");
+
 importScripts('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js');
 
 const dqnModel = tf.sequential();
@@ -7,12 +13,22 @@ dqnModel.add(tf.layers.dense({ units: 4 }));
 dqnModel.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
 
 let QTable = {};
+let stateRange = [];
+let numBins = [];
 
 self.onmessage = async (event) => {
   const { type, data } = event.data;
 
   if (type === 'updateQTable') {
+    // log(data)
     QTable = { ...QTable, ...data };
+    log(QTable)
+  } else if (type === 'updateStateInfo') {
+    log(data)
+    // 接收 stateRange 和 numBins
+    stateRange = data.stateRange;
+    numBins = data.numBins;
+    // self.postMessage({ type: 'log', message: 'StateInfo 已更新' });
   } else if (type === 'fit') {
     await DQNfitToQTable();
     self.postMessage({ type: 'fitDone' });
@@ -81,15 +97,6 @@ function getStateFromKey(key) {
   return stateValues;
 }
 
-const stateRange = [
-  { min: -200, max: 200 },
-  { min: -300, max: 300 },
-  { min: -200, max: 200 },
-  { min: -200, max: 200 },
-  { min: -300, max: 300 }
-];
-const numBins = [10, 10, 10, 10, 10];
-
-setInterval(() => {
-  DQNfitToQTable();
-}, 5000);
+// setInterval(() => {
+//   DQNfitToQTable();
+// }, 5000);

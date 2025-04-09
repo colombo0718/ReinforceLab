@@ -1,150 +1,144 @@
 /***************************************************
- * [1] dqn 相關設定 (範例)
+ * [5] Q-Learning 相關設定 (範例)
  ***************************************************/
- let dqnModel = null; // DQN 神經網路模型
- let targetModel = null; // 目標網路
- const replayBuffer = []; // 經驗回放緩衝區
- const bufferSize = 10000; // 緩衝區大小
- const batchSize = 64; // 批量訓練大小
- const syncTargetSteps = 100; // 目標網路同步頻率
- let stepCounter = 0; // 步數計數器
 
- function initializeDQNModel() {
-    dqnModel = tf.sequential();
-    dqnModel.add(tf.layers.dense({ units: 8, inputShape: [state_size], activation: 'relu' }));
-    dqnModel.add(tf.layers.dense({ units: 8, activation: 'relu' }));
-    dqnModel.add(tf.layers.dense({ units: action_size, activation: 'linear' }));
-    dqnModel.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+let stateRange = [];
+let numBins = [];
 
-    targetModel = tf.sequential();
-    targetModel.add(tf.layers.dense({ units: 8, inputShape: [state_size], activation: 'relu' }));
-    targetModel.add(tf.layers.dense({ units: 8, activation: 'relu' }));
-    targetModel.add(tf.layers.dense({ units: action_size, activation: 'linear' }));
-    targetModel.setWeights(dqnModel.getWeights());
- }
-
-function normalizeState(stateValues) {
+// 計算當下狀態對應到Q表的鍵值
+function getStateKey(stateValues) {
+  let indices = []; // 用於儲存每個維度的離散化索引
   // console.log(stateValues)
-  return stateValues.map((value, dim) => {
-    // console.log(dim,stateInfo[dim])
-    const min=stateInfo[dim].min
-    const max=stateInfo[dim].max
-    // const { min, max } = stateRange[dim];
-    return (value - min) / (max - min); // 範圍 [0, 1]
+  // console.log(stateValues)
+  stateValues.forEach((value,dim) => {
+    const bucketIdx = getBucketIndex(value,dim);
+    // 將索引加入陣列
+    indices.push(bucketIdx);
   });
+  // 索引轉成字串標籤
+  return indices.join("_");
 }
 
-function addToBuffer(prevS, prevA, r, nextS, nextA) {
-  if (replayBuffer.length >= bufferSize) replayBuffer.shift();
-  replayBuffer.push([prevS, prevA, r, nextS, nextA]);
-}
-
-async function trainDQN() {
-  if (replayBuffer.length < batchSize) return;
-  stepCounter++;
-  if (stepCounter % syncTargetSteps === 0) {
-    targetModel.setWeights(dqnModel.getWeights());
-  }
-
-  const batch = replayBuffer.sort(() => 0.5 - Math.random()).slice(0, batchSize);
-  const prevS_array = batch.map(s => normalizeState(s[0]));
-  const nextS_array = batch.map(s => normalizeState(s[3]));
-  const reward_array = batch.map(s => s[2]);
-  const prevA_array = batch.map(s => s[1]);
-  const nextA_array = batch.map(s => s[4]);
-
-  const prevQ_Tensor = dqnModel.predict(tf.tensor2d(prevS_array));
-  const nextQ_Tensor = targetModel.predict(tf.tensor2d(nextS_array));
-  const prevQ_array = await prevQ_Tensor.array();
-  const nextQ_array = await nextQ_Tensor.array();
-
-  for (let i = 0; i < batchSize; i++) {
-      const prevS = prevS_array[i];
-      const prevA = prevA_array[i];
-      const reward = reward_array[i];
-      const nextS = nextS_array[i];
-      const nextA = nextA_array[i];
-      const nextQ = nextQ_array[i];
-      const actualQNext = nextQ[nextA];
-      const maxQNext = Math.max(...nextQ);
-      const minQNext = Math.min(...nextQ);
-      // const targetQ = (1 - Math.abs(Psi)) * actualQNext +
-      //                 Math.max(0, Psi) * maxQNext +
-      //                 Math.max(0, -Psi) * minQNext;
-      const targetQ = maxQNext
-      // const finalTarget = done ? reward : reward + Gamma * targetQ;
-
-      if (isNaN(targetQ)) {
-        console.error("Invalid target detected in DQN training.", {prevS, prevA, reward, nextS, nextA,targetQ});
-        continue;
-      }
-
-      // 引入 Alpha 調整目標 Q 值
-      const oldQ = prevQ_array[i][prevA];
-      const updatedQ = oldQ + Alpha * (reward + Gamma * targetQ - oldQ); // 類似 Q-Table 的更新
-      prevQ_array[i][prevA] = updatedQ;
-  }
-
-  await dqnModel.fit(tf.tensor2d(prevS_array), tf.tensor2d(prevQ_array), { batchSize, epochs: 1 });
-  tf.dispose([prevQ_Tensor, nextQ_Tensor]);
-}
-
-function getQArrayFromDQNet(state) {
-  const normalizedState = normalizeState(state);
-  const stateTensor = tf.tensor2d([normalizedState]);
-  const qValues = dqnModel.predict(stateTensor);
-  const qArray = qValues.dataSync();
-  tf.dispose([stateTensor, qValues]);
-  return Array.from(qArray);
-}
-
-
-// 從 Q-table 的 key 反運算回真實 state
-function getStateFromKey(key) {
-  // 將 key 分解成桶索引陣列，例如 "0_1_2_3_4" -> [0, 1, 2, 3, 4]
-  const indices = key.split("_").map(Number);
-
-  // 計算每個維度的真實值
-  const stateValues = indices.map((bucketIdx, dim) => {
-    // 預設範圍
+// 針對state其中一個數值，取得分桶編號
+function getBucketIndex(value,dim){
+    // 設定預設範圍
     let min = 0, max = 100;
+    // 取得該狀態有效範圍
     if (stateRange[dim]) {
       min = stateRange[dim].min;
       max = stateRange[dim].max;
     }
-    // 計算桶大小
-    const binSize = (max - min) / numBins[dim];
-    // 計算該桶的中間值作為近似真實值
-    const value = min + bucketIdx * binSize + binSize / 2;
-    return value;
-  });
+    // 計算桶的大小
+    let binSize = (max - min) / numBins[dim];
+    // 限制值在範圍內
+    let clipped = Math.max(min, Math.min(max, value));
+    // 計算索引
+    let idx = Math.floor((clipped - min) / binSize);
+    // 確保索引在合法範圍內
+    idx = Math.min(Math.max(idx, 0), numBins[dim] - 1);
 
-  return stateValues;
+    return idx;
 }
 
+    // 從 Q 表中取得當下狀態的動作價值陣列
+    function getQArrayFromTable(state) {
+      let stateKey=getStateKey(state)
+      if (!QTable[stateKey]) {
+        // console.warn(`QTable[${stateKey}] 未初始化，將自動初始化。`);
+        QTable[stateKey] = Array(action_size).fill(0);
+      }
+      return QTable[stateKey];
+    }
 
-async function DQNfitToQTable() {
-  const batchSize = 32;
-  const states = [];
-  const targets = [];
+    // Q 值更新
+    function qTableUpdate(prevS, prevA, reward, nextS, nextA) {
+      // 獲取 Q 值陣列
+      const prevQArray = getQArrayFromTable(prevS);
+      const nextQArray = getQArrayFromTable(nextS);
 
-  const qTableEntries = Object.entries(QTable);
-  if (qTableEntries.length === 0) return;
+      // 計算下一狀態的統計值
+      const maxQNext = Math.max(...nextQArray);
+      const minQNext = Math.min(...nextQArray);
+      const actualQNext = nextQArray[nextA];
 
-  const tableLength = qTableEntries.length;
-  const batch = qTableEntries.sort(() => 0.5 - Math.random()).slice(0, tableLength);
 
-  for (let [key, qValue] of batch) {
+      // 根據 λ 的值計算目標 Q 值
+      let targetQ = (1 - Math.abs(Psi)) * actualQNext +
+                    Math.max(0, Psi) * maxQNext +
+                    Math.max(0, -Psi) * minQNext;
 
-    const state = getStateFromKey(key);
-    states.push(state);
-    targets.push(qValue);
-  }
 
-  const xs = tf.tensor2d(states);
-  const ys = tf.tensor2d(targets);
-  await dqnModel.fit(xs, ys, { epochs: 1, batchSize:tableLength});
+      if (isNaN(targetQ)) {
+        console.error("Invalid Q update detected.", { QTable,nextS ,actualQNext , maxQNext , minQNext});
+        return; // 提前返回，避免更新
+      }
+      // 計算 Q 值更新
+      let oldQ = prevQArray[prevA] || 0;
+      let deltaQ = Alpha * (reward + Gamma * targetQ - oldQ);
+      // if(Math.abs(deltaQ)<0.001){return;}
+      // console.log(deltaQ)
 
-  xs.dispose();
-  ys.dispose();
-}
+      let newQ = oldQ + deltaQ
+
+      if (isNaN(newQ)) {
+        console.error("Invalid newQ detected.", { oldQ, Alpha, reward, Gamma, targetQ });
+        return; // 提前返回
+      }
+      // 更新 Q 表
+      // if(prevA==0){console.log(prevA,newQ)}
+      // console.log(prevA,newQ)
+      prevQArray[prevA] = newQ;
+    }
+
+    // 制定策略函數---------------------------------
+    function eGreedyStrategy(qArray) {
+      const strategy = new Array(action_size).fill(0); // 初始化策略機率陣列
+
+      // 檢查 qArray 是否為零向量
+      if (qArray.every(val => val === 0)) {
+        strategy.fill(1 / action_size); // 全 0 時均等機率
+        return strategy;
+      }
+
+      // ε-greedy 策略
+      const elseProb = Epsilon / (action_size-1); // 其他動作的探索機率
+      const bestProb = 1 - Epsilon; // 最佳動作的機率
+
+      // 找到最大 Q 值的動作
+      const maxQ = Math.max(...qArray);
+      const bestAction = qArray.indexOf(maxQ);
+
+      // 設置策略機率
+      strategy.fill(elseProb); // 默認其他動作的探索機率
+      strategy[bestAction] = bestProb; // 最大 Q 值的動作加權
+
+      return strategy;
+    }
+
+    // 轉換 Epsilon 到 Tau
+    function epsilonToTau(epsilon) {
+      if (epsilon === 0) return 0.01; // 最小值，避免除以 0
+      return 1 / (epsilon + 0.1) - 0.5; // 映射公式
+    }
+
+    function softmaxStrategy(qArray) {
+      const tau = epsilonToTau(Epsilon);
+      const expValues = qArray.map(q => Math.exp(q / tau));
+      const sumExp = expValues.reduce((sum, val) => sum + val, 0);
+      const strategy = expValues.map(exp => exp / sumExp); // 正規化為機率陣列
+
+      return strategy;
+    }
+
+    function selectAction(strategy) {
+      const rand = Math.random();
+      let cumulativeProb = 0;
+
+      for (let i = 0; i < strategy.length; i++) {
+        cumulativeProb += strategy[i];
+        if (rand <= cumulativeProb) {
+          return i; // 根據機率分佈隨機選擇動作
+        }
+      }
+      return 0; // 預防性返回最後一個動作
+    }

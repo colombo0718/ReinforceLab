@@ -12,6 +12,11 @@ options = Options()
 options.add_argument('--start-maximized')  # 最大化窗口
 options.add_experimental_option("excludeSwitches", ["enable-automation"])  # 移除自動測試訊息
 options.add_experimental_option('useAutomationExtension', False)  # 禁用自動化擴展
+# 添加參數以解除安全限制
+options.add_argument("--disable-web-security")  # 禁用同源策略
+options.add_argument("--allow-file-access-from-files")  # 允許 file:// 協議訪問本地檔案
+options.add_argument("--allow-running-insecure-content")  # 允許不安全內容
+options.add_argument("--disable-site-isolation-trials")  # 禁用站點隔離（有助於跨域）
 
 
 driver = webdriver.Chrome(service=service, options=options)
