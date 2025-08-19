@@ -102,9 +102,9 @@
       <img src="q_learning_formula.png" alt="Q-learning 更新公式">
       <br><br> -->
       <label for="learning-rate-slider">學習率 (α):</label>
-      <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0.1"
+      <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0.5"
              oninput="updateValue('Alpha', this.value)">
-      <span class="value-display" id="alpha-value">0.1</span>
+      <span class="value-display" id="alpha-value">0.5</span>
       <br>
 
       <label for="discount-factor-slider">回朔率 (γ):</label>
@@ -454,7 +454,7 @@
 // 價值函數通用 =============================
 
     let QTable = {};
-    let Alpha   = .1;  // 學習率
+    let Alpha   = .5;  // 學習率
     let Gamma   = 0.95; // 折扣因子
     let Epsilon = .1;  // 探索率
     let Psi     = 0;    // 樂觀值
@@ -601,7 +601,7 @@
     // 初始化 Web Worker
     const dqnWorker = new Worker('dqnWebWorker.js');
 
-        // 主執行緒
+    // 主執行緒
     // dqnWorker.onmessage = (event) => {
     //   if (event.data.type === 'log') {
     //     console.log("[Worker Log]:", event.data.message);
@@ -633,6 +633,7 @@
 
     // 從 Worker 獲取 DQN 預測的 Q 值
     let pendingPredictResolve = null;
+    // 
     dqnWorker.onmessage = (event) => {
       if (event.data.type === 'log') {
         console.log("[Worker Log]:", event.data.message);
@@ -658,54 +659,42 @@
       if (message.type === "reward_state"){
 
 
-      // if (message.type === "frame"){
-      //   frameNumber+=1
-      //   if(frameNumber<=5){return;}
-        // console.log(delayTime,frameNumber)
-        if(frameNumber<basicDelayTime/10){delayTime+=1}
-        else if(frameNumber>basicDelayTime/10){delayTime-=1}
+        // 動態調整刻意延遲
+        // if(frameNumber<basicDelayTime/10){delayTime+=1}
+        // else if(frameNumber>basicDelayTime/10){delayTime-=1}
 
         // 定期同步 QTable 到 Worker
         if (episodeSteps % 10 === 0) {
-          // console.log('syncQTable')
           // await syncQTableToWorker();
         }
 
 
         // 取得當下報酬
         reward = message.reward;
-        // console.log(reward)
-        // console.log(reward)
         // 取得當下狀態
         nextState=message.state
         // 加入每秒報酬累計
         secondReward += reward;
-        // console.log(reward,secondReward)
         // 一秒內步數+1
         secondSteps += 1
         // 加入回合報酬累計
         episodeReward += reward;
-        // console.log(reward,episodeReward)
-        // 回合步數+1
-        episodeSteps += 1;
+        
+        episodeSteps += 1;// 回合步數+1
 
-        // console.log(nextState)
         // await DQNfitToQTable();
-        // 評估價值
+        // 1.評估價值
         let qArray = evaluateQuality(nextState)
-        // console.log(qArray)
-        // 擬定策略
+        // 2.擬定策略
         let strategy=planningStrategy(qArray)
-        // 選擇動作
+        // 3.選擇動作
         nextAction = selectAction(strategy)
-        // console.log(nextAction)
-        // 消化學習
-        // learnOneStep(prevState, prevAction, reward, nextState,nextAction)
+        // 4.消化學習
         recordStep(prevState, prevAction, reward, nextState, nextAction)
-        if(reward!==0){//獲得實際獎勵
-          learnFromTrace()
+        if(reward!==0){ //獲得實際獎勵
+          learnFromTrace() 
         }else{
-          learnOneStep(prevState, prevAction, reward, nextState,nextAction)
+          learnOneStep(prevState, prevAction, reward, nextState,nextAction) // 更新單步
         }
 
         // 繼承狀態與動作資訊
@@ -750,35 +739,35 @@
      ***************************************************/
 
 
-    let lastTime = null;
+    // let lastTime = null;
 
-    function updateARSLog(agentId,action, reward, state) {
-      const now = new Date();
-      let dt = lastTime ? now - lastTime : 0;
-      lastTime = now;
-      let sIndex = getStateKey(state);
+    // function updateARSLog(agentId,action, reward, state) {
+    //   const now = new Date();
+    //   let dt = lastTime ? now - lastTime : 0;
+    //   lastTime = now;
+    //   let sIndex = getStateKey(state);
 
-      // Create the log entry
-      const logEntry = `dt=${dt}ms, A=${action}, R=${reward}, state=${state}, sIndex=${sIndex}`;
+    //   // Create the log entry
+    //   const logEntry = `dt=${dt}ms, A=${action}, R=${reward}, state=${state}, sIndex=${sIndex}`;
 
-      // Write the log for the specified agent
-      writeLog(agentId, logEntry);
-    }
+    //   // Write the log for the specified agent
+    //   writeLog(agentId, logEntry);
+    // }
 
-    function writeLog(agentId, logEntry) {
-      // Get the log element for the specified agent
-      const logElement = document.getElementById(`p${agentId}-logs`);
-      if (!logElement) {
-        console.error(`Log element for agent ${agentId} not found.`);
-        return;
-      }
+    // function writeLog(agentId, logEntry) {
+    //   // Get the log element for the specified agent
+    //   const logElement = document.getElementById(`p${agentId}-logs`);
+    //   if (!logElement) {
+    //     console.error(`Log element for agent ${agentId} not found.`);
+    //     return;
+    //   }
 
-      // Append the log entry
-      logElement.textContent += (logElement.textContent ? "\n" : "") + logEntry;
+    //   // Append the log entry
+    //   logElement.textContent += (logElement.textContent ? "\n" : "") + logEntry;
 
-      // Automatically scroll to the bottom
-      logElement.scrollTop = logElement.scrollHeight;
-    }
+    //   // Automatically scroll to the bottom
+    //   logElement.scrollTop = logElement.scrollHeight;
+    // }
 
 
 

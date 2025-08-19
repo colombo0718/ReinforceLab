@@ -1,5 +1,6 @@
+// 向外傳遞訊息
 function log(message) {
-  self.postMessage({ type: 'log', message });
+  self.postMessage({ type:'log', message });
 }
 
 log("Worker 已啟動");
@@ -16,11 +17,12 @@ let QTable = {};
 let stateRange = [];
 let numBins = [];
 
+// 從主執行緒接收訊息
 self.onmessage = async (event) => {
   const { type, data } = event.data;
 
+  // 更新Q表內容
   if (type === 'updateQTable') {
-    // log(data)
     QTable = { ...QTable, ...data };
     log(QTable)
   } else if (type === 'updateStateInfo') {

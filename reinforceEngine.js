@@ -86,7 +86,11 @@ function getBucketIndex(value,dim){
       }
       // 更新 Q 表
       // if(prevA==0){console.log(prevA,newQ)}
-      // console.log(prevA,newQ)
+      if(deltaQ>0){
+        console.log(prevS,newQ,targetQ,Gamma,Alpha,targetQ*Gamma*Alpha)
+      }
+      
+      
       prevQArray[prevA] = newQ;
     }
 
