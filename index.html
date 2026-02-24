@@ -41,7 +41,7 @@
     <!-- Tabs 按鈕列 -->
     <div class="sub-tab-buttons">
       <button class="sub-tab-link active" data-subtab="tutorial">💡指南</button>
-      
+      <button class="sub-tab-link" data-subtab="privacy-policy">🛡️關於</button>
       <!-- Agent1 -->
       <span class="agent-label">Agent 1:</span>
       <button id='me' class="sub-tab-link" data-subtab="p1-config">🛠️設定</button>
@@ -62,6 +62,36 @@
     <!-- Tabs 對應的內容區 (共6塊) -->
     <div id="tutorial" class="sub-tab-content active" >
       AI Reinforce Lab: Explore. Train. Compete.
+<section class="tutorial-chapter">
+  <h2>第一章：什麼是強化學習？— 從試錯中進化的 AI</h2>
+  
+  <p>
+    強化學習（Reinforcement Learning, RL）是機器學習的三大範式之一，其核心思想源於生物學中的「操作制約」。不同於監督式學習需要標記好的答案，強化學習讓 <strong>Agent（代理人）</strong> 在與 <strong>Environment（環境）</strong> 互動的過程中，透過 <strong>Reward（獎勵函數）</strong> 的回饋來自我修正策略。
+  </p>
+  
+  <p>
+    在本平台 <strong>Rein Room</strong> 的實驗中，AI 的目標是尋找一條路徑或動作序列，以最大化長期的累積報酬。這種「目標導向」學習方式特別適合處理動態、未知的環境，如走迷宮或動作遊戲。透過馬可夫決策過程（MDP）的建模，我們能觀察到 AI 如何平衡「探索未知」與「利用已知」，最終收斂出令人驚嘆的智慧行為。
+  </p>
+
+<a href="/docs/intro-rl.html" target="_blank" rel="noopener noreferrer">
+  閱讀完整文章內容：認識強化學習與馬可夫決策過程 →
+</a>
+</section>
+<section class="tutorial-chapter">
+  <h2>第一章：什麼是強化學習？— 從試錯中進化的 AI</h2>
+  
+  <p>
+    強化學習（Reinforcement Learning, RL）是機器學習的三大範式之一，其核心思想源於生物學中的「操作制約」。不同於監督式學習需要標記好的答案，強化學習讓 <strong>Agent（代理人）</strong> 在與 <strong>Environment（環境）</strong> 互動的過程中，透過 <strong>Reward（獎勵函數）</strong> 的回饋來自我修正策略。
+  </p>
+  
+  <p>
+    在本平台 <strong>Rein Room</strong> 的實驗中，AI 的目標是尋找一條路徑或動作序列，以最大化長期的累積報酬。這種「目標導向」學習方式特別適合處理動態、未知的環境，如走迷宮或動作遊戲。透過馬可夫決策過程（MDP）的建模，我們能觀察到 AI 如何平衡「探索未知」與「利用已知」，最終收斂出令人驚嘆的智慧行為。
+  </p>
+
+<a href="/docs/intro-rl.html" target="_blank" rel="noopener noreferrer">
+  閱讀完整文章內容：認識強化學習與馬可夫決策過程 →
+</a>
+</section>
       <p>選擇下列遊戲快速載入：</p>
       <div>
         <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/MAB">🎰Multi-Armed Bandit</button>
@@ -77,7 +107,51 @@
       </div>
     </div>
 
+<div id="privacy-policy" class="sub-tab-content">
+  <div class="about-container">
+    
+    <section>
+      <h2>🚀 關於 Reinforce Lab</h2>
+      <p>
+        <b>Reinforce Lab</b> 是一個專為網頁環境設計的強化學習（Reinforcement Learning）教育與實驗平台。
+        我們致力於將複雜的 AI 演算法視覺化，讓學習者能透過直觀的圖表與即時互動，探索機器學習的奧秘。
+      </p>
+    </section>
 
+    <section class="policy-section">
+      <h2>🛡️ 隱私權政策 (Privacy Policy)</h2>
+      <p>本站重視您的隱私，針對 Google AdSense 之規範，特此說明：</p>
+      <ul>
+        <li>
+          <b>廣告與 Cookie：</b> 本站使用 Google AdSense 服務。Google 會使用 Cookie 根據您造訪本網站或其他網站的紀錄，向您投放個人化廣告。
+        </li>
+        <li>
+          <b>選擇退出：</b> 使用者可以前往 
+          <a href="https://www.google.com/settings/ads" target="_blank">Google 廣告設定</a> 頁面，隨時停用個人化廣告。
+        </li>
+        <li>
+          <b>本地運算：</b> 您的所有 AI 訓練數據（如 Q-Table 權重）均儲存於您的瀏覽器本地端，本站不會蒐集、上傳或儲存任何您的訓練數據。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>⚖️ 法律與產權聲明</h2>
+      <ul>
+        <li><b>原創核心：</b> 本平台之核心訓練引擎（如 <code>reinforceEngine.js</code>）及介面設計均為原創開發，受著作權保護。</li>
+        <li><b>第三方內容：</b> 平台內嵌入之測試遊戲（來自 <code>colombo0718.neocities.org</code>）僅供 AI 演算法展示與學術研究使用，版權歸原作者所有。</li>
+        <li><b>免責聲明：</b> 本平台所提供之數據分析僅供參考，不保證 AI 模型在所有環境下之表現。</li>
+      </ul>
+    </section>
+
+    <section class="contact-section">
+      <h2>📬 聯絡我們</h2>
+      <p>如果您有任何建議或合作需求，歡迎聯繫：</p>
+      <p>Email: <a href="mailto:your-email@example.com">your-email@example.com</a></p>
+    </section>
+
+  </div>
+</div>
 
 
 
