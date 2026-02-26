@@ -67,7 +67,7 @@ iframe {
 
 /* 左側下方動作按鈕區 */
 #actions {
-  background: #ffc;   /* 淡黃 */
+  background: #cfe;   /* 淡綠 */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -82,11 +82,9 @@ iframe {
   line-height: 1;
 }
 
-
-
 /* 按下效果 */
 #actions button:active {
-  background: #ff8;
+  background: #ff8;   /* 稍深一點綠 */
 }
 
 /************************************************************
