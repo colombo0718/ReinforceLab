@@ -64,6 +64,35 @@ iframe {
   border: none;
 }
 
+
+/* 左側下方動作按鈕區 */
+#actions {
+  background: #ffc;   /* 淡黃 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid #ddd;
+}
+
+/* 動作按鈕樣式 */
+#actions button {
+  margin-right: 6px;
+  padding: 4px 6px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* 滑鼠移上去 */
+#actions button:hover {
+  background: #ff8;
+}
+
+/* 按下效果 */
+#actions button:active {
+  background: #fd6;
+  box-shadow: 0 0 6px #fc6;
+}
+
 /************************************************************
  * 右側：父平台 (多Agent / 多 Tabs)
  ************************************************************/
