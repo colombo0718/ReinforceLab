@@ -82,15 +82,11 @@ iframe {
   line-height: 1;
 }
 
-/* 滑鼠移上去 */
-#actions button:hover {
-  background: #ff8;
-}
+
 
 /* 按下效果 */
 #actions button:active {
-  background: #fd6;
-  box-shadow: 0 0 6px #fc6;
+  background: #ff8;
 }
 
 /************************************************************
