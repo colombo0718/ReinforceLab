@@ -84,8 +84,19 @@ iframe {
 
 /* 按下效果 */
 #actions button:active {
-  background: #ff8;   /* 稍深一點綠 */
+  background: #ff8;  
 }
+
+/* action 按鈕閃一下 */
+#actions button.flash {
+  animation: actionFlash 0.1s;
+  background: #ff8;
+}
+
+/* @keyframes actionFlash {
+  0%   { background: #ff8; }
+  100% { background: inherit; }
+} */
 
 /************************************************************
  * 右側：父平台 (多Agent / 多 Tabs)

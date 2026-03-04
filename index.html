@@ -459,12 +459,13 @@
 
 
         </div>
+        <div id="p1-line-value" class="chart"></div>
+        <div id="p1-bars-value" class="chart"></div>
         <div id="p1-diff-value" class="chart"></div>
         <div id="p1-acti-color" class="chart"></div>
         <div id="p1-maxi-value" class="chart"></div>
         <div id="p1-mini-value" class="chart"></div>
-        <div id="p1-line-value" class="chart"></div>
-        <div id="p1-bars-value" class="chart"></div>
+
       </div>
     </div>
 
@@ -584,6 +585,17 @@
       }
       isAccel = !isAccel;
     });
+
+    // 動作按鈕亮起
+    function setActiveActionButton(actionIndex){
+      const btns = document.querySelectorAll("#actions button");
+
+      // 1) 全部退掉
+      for (const b of btns) b.classList.remove("flash");
+
+      // 2) 指定那顆亮起
+      if (btns[actionIndex]) btns[actionIndex].classList.add("flash");
+    }
 
     /***************************************************
      * [3] 多 Agent 多 Tabs 切換
@@ -788,7 +800,19 @@
         // writeLog(1,actionInfo)
         state_size=stateInfo.length
         action_size=actionInfo[0].level
-        // console.log(stateInfo)
+        console.log(actionInfo)
+        console.log(document.getElementById("actions"))
+
+        // 重新生成動作UI
+        const actionsDiv = document.getElementById("actions");
+        const names = actionInfo?.[0]?.name || [];
+        actionsDiv.innerHTML = "";
+        for (let i = 0; i < names.length; i++) {
+          const btn = document.createElement("button");
+          btn.textContent = names[i];
+          actionsDiv.appendChild(btn);
+        }
+
         // 價值型算法專屬
         QTable = {};     // 清空Q表
         stateRange = []; // 清空狀態範圍
@@ -978,6 +1002,8 @@
             type: "action",
             action: nextAction
           }, "*");
+          setActiveActionButton(nextAction);
+          // console.log(document.querySelectorAll("#actions button")[nextAction])
         // 故意設置的延遲時間
         }, delayTime);
       }
