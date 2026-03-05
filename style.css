@@ -213,4 +213,126 @@ button:hover {
 }
 
 
+/************************************************************
+ * 動作色環設計：conic-gradient + ::after 做成環 + ::before 做指針
+************************************************************/
+/* 動作色環容器 */
+#p1-acti-color{
+  position: relative;
+  width: 260px;      /* ✅ 比環大一點，留字的空間 */
+  height: 260px;
+  margin: 0 auto;    /* ✅ 在格子裡水平置中 */
+}
 
+/* 固定漸變色環：紅色在右邊 */
+#p1-acti-color .wheel{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 220px;      /* ✅ 環本體大小 */
+  height: 220px;
+  transform: translate(-50%,-50%) rotate(90deg); /* ✅ 這行同時解決紅色在右 */
+  border-radius: 50%;
+  background: conic-gradient(
+    #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00
+  );
+}
+
+#p1-acti-color .title{
+  position: absolute;
+  left: 0%;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 20px;
+  color: #333;
+}
+
+/* 中空（變成環） */
+#p1-acti-color .wheel::after{
+  content: "";
+  position: absolute;
+  inset: 18%;       /* 環的粗細：數字越大洞越大 */
+  background: #fff; /* 依你分析面板底色調整 */
+  border-radius: 50%;
+}
+
+/* a0 中心標籤 */
+#p1-acti-color .center{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
+
+  background: #000;
+  color: #fff;
+  border-radius: 50%;
+  padding: 10px 12px;
+
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.2;
+
+  z-index: 10;   /* ⭐ 保證在最上層 */
+
+  min-width: 40px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* 指針容器：用 rotate 控制角度 */
+#p1-acti-color .needle{
+  position: absolute;
+  inset: 0;
+  transform: rotate(0deg);
+  pointer-events: none;
+}
+
+/* 指針本體：從中心往外 */
+#p1-acti-color .needle::before{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44%;          /* 指針長度 */
+  height: 2px;
+  background: #111;
+  transform: translateY(-50%);
+  transform-origin: 0% 50%;
+  border-radius: 2px;
+  opacity: .85;
+}
+
+/* 指針末端小點（像指向色環） */
+#p1-acti-color .needle::after{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: #111;
+  border-radius: 50%;
+  transform: translate(-50%,-50%) translateX(92px); /* 需配合容器大小 */
+  opacity: .85;
+}
+
+/* 指針文字（a1 left 之類） */
+#p1-acti-color .needle span{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+
+  transform-origin: center;
+
+  background: rgba(0,0,0,.75);
+  color: #fff;
+
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+
+  white-space: nowrap;
+}

@@ -7,7 +7,7 @@
   <!-- 引入 TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
   <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
 
   <!-- Blockly -->
@@ -51,16 +51,16 @@
       <button class="sub-tab-link" data-subtab="privacy-policy">ℹ️關於</button>
       <!-- Agent1 -->
       <span class="agent-label">Agent 1:</span>
-      <button id='me' class="sub-tab-link" data-subtab="p1-config">🛠️設定</button>
-      <button class="sub-tab-link" data-subtab="p1-qtable">📊分析</button>
+      <button id='me' class="sub-tab-link" data-subtab="p1-config">📊儀錶</button>
+      <button class="sub-tab-link" data-subtab="p1-qtable">🔬分析</button>
       <!-- <button class="sub-tab-link" data-subtab="p1-replay">📽️錄放</button> -->
       <!-- <button class="sub-tab-link" data-subtab="p1-blocks">🧩程式</button> -->
 
 
       <!-- Agent2 -->
       <span class="agent-label">Agent 2:</span>
-      <button class="sub-tab-link" data-subtab="p2-config">🛠️設定</button>
-      <button class="sub-tab-link" data-subtab="p2-qtable">📊分析</button>
+      <button class="sub-tab-link" data-subtab="p2-config">📊儀錶</button>
+      <button class="sub-tab-link" data-subtab="p2-qtable">🔬分析</button>
       <!-- <button class="sub-tab-link" data-subtab="p2-replay">📽️錄放</button> -->
       <!-- <button class="sub-tab-link" data-subtab="p2-blocks">🧩程式</button> -->
 
@@ -459,10 +459,13 @@
 
 
         </div>
-        <div id="p1-line-value" class="chart"></div>
-        <div id="p1-bars-value" class="chart"></div>
-        <div id="p1-diff-value" class="chart"></div>
+        
         <div id="p1-acti-color" class="chart"></div>
+        <div id="p1-bars-value" class="chart"></div>
+        
+        <div id="p1-line-value" class="chart"></div>
+        <div id="p1-diff-value" class="chart"></div>
+        
         <div id="p1-maxi-value" class="chart"></div>
         <div id="p1-mini-value" class="chart"></div>
 
@@ -812,6 +815,7 @@
           btn.textContent = names[i];
           actionsDiv.appendChild(btn);
         }
+        renderActionColorWheel(actionInfo);
 
         // 價值型算法專屬
         QTable = {};     // 清空Q表

@@ -15,6 +15,48 @@ let cutX=0,cutY=1
 
 const gapMax = 10;
 
+function renderActionColorWheel(actionInfo){
+  const host = document.getElementById("p1-acti-color");
+  if(!host) return;
+
+  // 固定底圖（永遠不變）
+  host.innerHTML = `
+    <div class="title">動作色環</div>
+    <div class="wheel"></div>
+    <div class="center">a0<br>none</div>
+  `;
+
+  if(!actionInfo || !actionInfo.length) return;
+  const a0 = actionInfo[0];
+  if(a0.type !== "switch") return;
+
+  const level = a0.level;      // 含 a0
+  const names = a0.name || [];
+
+  // 更新中心文字（a0）
+  const center = host.querySelector(".center");
+  center.innerHTML = `a0<br>${names[0] ?? "none"}`;
+
+  // a1..a(level-1) 用指針表示
+  const n = Math.max(0, level - 1);
+  for(let i=0; i<n; i++){
+    const actionId = i + 1;
+
+    // 角度分配：a1 指向紅色（右邊 = 0deg）
+    // 其餘平均分配整圈
+    const deg = (i / n) * 360;
+
+    const label = `a${actionId} ${names[actionId] ?? ""}`.trim();
+
+    const needle = document.createElement("div");
+    needle.className = "needle";
+    needle.style.transform = `rotate(${deg}deg)`;
+    needle.innerHTML = `<span>${label}</span>`;
+    needle.innerHTML =  `<span style="transform: translateX(100px) translateY(-8px) rotate(${-deg}deg)">${label}</span>`;
+    host.appendChild(needle);
+  }
+}
+
 
 // 動作選擇熱力圖：下層動作色塊 + 上層白色遮罩
 function generateActionHeatmap() {

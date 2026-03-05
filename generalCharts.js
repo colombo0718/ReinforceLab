@@ -40,9 +40,9 @@ console.log(stepsLineColor)
 function initSecondChart() {
   // Reward Flow 圖表
   const rewardLayout = {
-    title: 'Reward Flow',
-    xaxis: { title: 'Time (s)' },
-    yaxis: { title: 'Reward per Second' },
+    title: '每秒獲得獎勵',
+    xaxis: { title: '時間(秒)' },
+    yaxis: { title: '獎勵' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   };
 
@@ -56,9 +56,9 @@ function initSecondChart() {
 
   // Steps Flow 圖表
   const stepsLayout = {
-    title: 'Steps Flow',
-    xaxis: { title: 'Time (s)' },
-    yaxis: { title: 'Steps per Second' },
+    title: '每秒輸出步數',
+    xaxis: { title: '時間 (秒)' },
+    yaxis: { title: '步數' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   };
 
@@ -125,14 +125,14 @@ function initEpisodeChart() {
     marker: { color: rewardMarkerColor }
   }], {
     title: {
-      text: "每回合累積 Reward",
+      text: "每回合獲得獎勵",
       font: { size: 18 },
       yanchor: "top",
       y: 0.95,
       pad: { b: 0 }
     },
     xaxis: { title: "回合數 (Episode)" },
-    yaxis: { title: "累積 Reward" },
+    yaxis: { title: "獎勵" },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   });
 
@@ -144,7 +144,7 @@ function initEpisodeChart() {
     marker: { color: stepsMarkerColor }
   }], {
     title: {
-      text: "每回合累積步數",
+      text: "每回合輸出步數",
       font: { size: 18 },
       yanchor: "top",
       y: 0.95,
