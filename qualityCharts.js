@@ -127,7 +127,7 @@ function generateActionHeatmap() {
   };
 
   const layout = {
-    title: '動作選擇熱力圖（含白色遮罩）',
+    title: '動作選擇熱力圖',
     xaxis: { title: 'State Dimension X' },
     yaxis: { title: 'State Dimension Y' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
@@ -243,7 +243,7 @@ function generateMaxQHeatmap() {
   };
 
   const layout = {
-    title: '最大 Q 值熱力圖（青→白→橘）',
+    title: '最大 Q 值熱力圖',
     xaxis: { title: 'State Dimension X' },
     yaxis: { title: 'State Dimension Y' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
@@ -294,7 +294,7 @@ function generateMinQHeatmap() {
   };
 
   const layout = {
-    title: '最小 Q 值熱力圖（藍→白→紅）',
+    title: '最小 Q 值熱力圖',
     xaxis: { title: 'State Dimension X' },
     yaxis: { title: 'State Dimension Y' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
@@ -371,9 +371,11 @@ function generateQLineSlice(dim0FixedIndex = 0, dim1FixedIndex = 0) {
   }
 
   const layout = {
-    // title: `Q 值 1維切片摺線圖 (Dim 1 = ${focusState[1]?.toFixed(2) || 'N/A'})`,
-    xaxis: { title: 'State Dimension 0' },
-    yaxis: { title: 'Q Value' },
+    title: `狀態價值摺線圖`,
+    // xaxis: { title: ` ${focusState[1]?.toFixed(2) || 'N/A'}` },
+    xaxis: { title: `一維切片` },
+    yaxis: { title: '評估價值' },
+    showlegend: false,   // ← 加這一行
     margin: { t: 30, b: 40, l: 50, r: 20 }
   };
 
@@ -411,10 +413,11 @@ function generateQBarSlice(dim0FixedIndex = 0, dim1FixedIndex = 0) {
   }
 
   const layout = {
-    // title: `Q 值 0維切片柱狀圖 (Dim 0 = ${focusState[0].toFixed(2)}, Dim 1 = ${focusState[1]?.toFixed(2) || 'N/A'})`,
-    xaxis: { title: 'Action' },
-    yaxis: { title: 'Q Value' },
+    title: `動作價值柱狀圖`,
+    xaxis: { title: '動作選擇' },
+    yaxis: { title: '評估價值' },
     barmode: 'group',
+    showlegend: false,   // ← 加這一行
     margin: { t: 30, b: 40, l: 50, r: 20 }
   };
 

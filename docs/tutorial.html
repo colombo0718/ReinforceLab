@@ -1,0 +1,153 @@
+<section class="tutorial-chapter">
+  <h2>第一章：什麼是強化學習？— 從試錯中進化的 AI</h2>
+  
+  <p>
+    強化學習（Reinforcement Learning, RL）是機器學習的三大範式之一，其核心思想源於生物學中的「操作制約」。不同於監督式學習需要標記好的答案，強化學習讓 <strong>Agent（代理人）</strong> 在與 <strong>Environment（環境）</strong> 互動的過程中，透過 <strong>Reward（獎勵函數）</strong> 的回饋來自我修正策略。
+  </p>
+  
+  <p>
+    在本平台 <strong>Rein Room</strong> 的實驗中，AI 的目標是尋找一條路徑或動作序列，以最大化長期的累積報酬。這種「目標導向」學習方式特別適合處理動態、未知的環境，如走迷宮或動作遊戲。透過馬可夫決策過程（MDP）的建模，我們能觀察到 AI 如何平衡「探索未知」與「利用已知」，最終收斂出令人驚嘆的智慧行為。
+  </p>
+
+<a href="/docs/intro-rl.html" target="_blank" rel="noopener noreferrer">
+  閱讀完整文章內容：認識強化學習與馬可夫決策過程 →
+</a>
+</section>
+
+<section class="tutorial-chapter">
+  <h2>第二章：Q-Learning 原理 — 從價值更新到策略收斂</h2>
+  
+  <p>
+    Q-Learning 是強化學習中最具代表性的無模型（Model-free）演算法之一。
+    它的核心思想在於建立一張 <strong>Q-Table（狀態-行動價值表）</strong>，
+    用來估計在某個狀態下採取某個動作所能獲得的長期報酬。
+    每當 Agent 執行動作並獲得回饋時，Q 值便會依據更新公式進行調整，
+    逐步逼近最優策略。
+  </p>
+  
+  <p>
+    在 Rein Room 平台中，使用者可以觀察 Q 值如何隨著訓練次數增加而變化，
+    並透過圖表檢視 Reward 收斂曲線。
+    Q-Learning 的更新公式包含學習率（Learning Rate）與折扣因子（Discount Factor），
+    這些參數直接影響學習速度與穩定性。
+    透過實驗不同設定，學習者可以理解演算法如何在理論與實務之間取得平衡。
+  </p>
+
+  <a href="/docs/qlearning.html">
+    閱讀完整文章內容：Q-Learning 更新公式與實作說明 →
+  </a>
+</section>
+
+<section class="tutorial-chapter">
+  <h2>第三章：探索與利用 — AI 為何需要嘗試未知？</h2>
+  
+  <p>
+    強化學習的一大核心問題是如何在「探索未知（Exploration）」與
+    「利用既有經驗（Exploitation）」之間取得平衡。
+    若 Agent 只選擇當前看似最佳的動作，可能陷入局部最佳解；
+    但若過度探索，則會導致學習效率低落。
+  </p>
+  
+  <p>
+    Rein Room 平台提供 ε-greedy 策略的參數設定，
+    讓使用者觀察當 ε 值不同時，Agent 的行為模式如何改變。
+    透過可視化的訓練過程，學習者能理解探索機制如何幫助 AI
+    發現更優策略，並最終收斂到穩定決策。
+  </p>
+
+  <a href="/docs/exploration.html">
+    閱讀完整文章內容：探索策略與 ε-greedy 機制 →
+  </a>
+</section>
+
+      <hr>
+      <div class="ad-slot-wrapper" style="min-height: 120px; text-align: center; padding: 20px 10px;">
+        <small style="color: #888; display: block; margin-bottom: 8px; font-size: 10px; letter-spacing: 1px;">ADVERTISEMENT</small>
+        <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+            data-ad-slot="XXXXXXXXXX"
+            data-ad-format="auto"
+            data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      </div>
+      <hr>
+
+<section class="tutorial-chapter">
+  <h2>第四章：GridWorld 任務解析 — 從迷宮中學習決策</h2>
+  
+  <p>
+    GridWorld 是強化學習中最經典的入門環境之一。
+    在此任務中，Agent 必須在有限格子內尋找最佳路徑，
+    同時避開懲罰區域並抵達終點。
+    每個格子代表一個狀態，每個移動方向代表一個行動，
+    非常適合理解狀態空間與行動空間的概念。
+  </p>
+  
+  <p>
+    在 Rein Room 中，GridWorld 任務可對照 Gymnasium 的 FrozenLake 環境。
+    學習者可直接比較兩種平台的訓練曲線與策略演化過程，
+    觀察 Q-Table 如何逐步形成最優路徑。
+  </p>
+
+  <a href="/docs/gridworld.html">
+    閱讀完整文章內容：GridWorld 與 FrozenLake 對照分析 →
+  </a>
+</section>
+
+<section class="tutorial-chapter">
+  <h2>第五章：CartPole 任務 — 平衡中的策略學習</h2>
+  
+  <p>
+    CartPole 是經典的動態控制問題，目標是讓桿子在移動小車上保持平衡。
+    此任務包含連續狀態變數，如角度與速度，
+    相較於離散格子世界更貼近真實物理系統。
+  </p>
+  
+  <p>
+    Rein Room 將此任務轉化為可視化實驗，
+    讓使用者觀察 Agent 如何透過反覆嘗試維持平衡。
+    透過調整折扣因子與學習率，
+    學習者能理解策略如何在時間維度上進行優化，
+    並分析收斂速度與穩定性。
+  </p>
+
+  <a href="/docs/cartpole.html">
+    閱讀完整文章內容：CartPole 控制策略與參數影響 →
+  </a>
+</section>
+
+<section class="tutorial-chapter">
+  <h2>第六章：Rein Room 操作指南 — 從建立 Agent 到分析數據</h2>
+  
+  <p>
+    Rein Room 不僅提供強化學習理論介紹，
+    更強調實驗設計與數據觀察能力的培養。
+    使用者可以建立多個 Agent、設定不同參數，
+    並比較其在相同環境下的學習效果。
+  </p>
+  
+  <p>
+    本章將說明如何初始化環境、設定學習參數、
+    啟動訓練、分析 Reward 曲線與匯出實驗資料。
+    透過完整的操作流程，
+    學習者能將理論轉化為可重現的實驗結果，
+    並為進一步研究或碩士論文分析奠定基礎。
+  </p>
+
+  <a href="/docs/platform-guide.html">
+    閱讀完整文章內容：Rein Room 平台完整使用教學 →
+  </a>
+</section>
+      <hr>
+      <div class="ad-slot-wrapper" style="min-height: 120px; text-align: center; padding: 20px 10px;">
+        <small style="color: #888; display: block; margin-bottom: 8px; font-size: 10px; letter-spacing: 1px;">ADVERTISEMENT</small>
+        <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+            data-ad-slot="XXXXXXXXXX"
+            data-ad-format="auto"
+            data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      </div>
+      <hr>

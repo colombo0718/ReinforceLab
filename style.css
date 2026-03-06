@@ -162,7 +162,7 @@ iframe {
 .grid-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;         /* 設定每個格子之間的間距 */
+  gap: 20px;         /* 設定每個格子之間的間距 */
 }
 .chart {
     width: 500px; 
@@ -335,4 +335,25 @@ button:hover {
   border-radius: 6px;
 
   white-space: nowrap;
+}
+
+
+/* q值圖表的按鈕 */
+
+.q-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 14px;
+  margin:5px;
+  font-size:14px;
+  border:1px solid #aaa;
+  background:#f2f2f2;
+  cursor:pointer;
+  height:32px;
+  box-sizing:border-box;
+}
+
+.q-btn:hover{
+  background:#e6e6e6;
 }
