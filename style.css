@@ -10,6 +10,18 @@ body {
   display: flex;
 }
 
+.sub-tab-buttons{
+  display:flex;
+  align-items:center;
+}
+
+.rr-version{
+  margin-left:auto;
+  font-size:13px;
+  color:#444;
+  font-weight:500;
+}
+
 /************************************************************
  * 左側：子遊戲 (iframe) 區域
  ************************************************************/

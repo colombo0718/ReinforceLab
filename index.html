@@ -6,12 +6,11 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='75'>🤖</text></svg>">
   <!-- 引入 TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <!-- Chart.js -->
-  <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+  <!-- 引入 plotly.js -->
   <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
 
   <!-- Blockly -->
-  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <!-- <script src="https://unpkg.com/blockly/blockly.min.js"></script> -->
 
 
   <link rel="stylesheet" href="style.css">
@@ -64,7 +63,7 @@
       <button class="sub-tab-link" data-subtab="p2-qtable">🔬分析</button>
       <!-- <button class="sub-tab-link" data-subtab="p2-replay">📽️錄放</button> -->
       <!-- <button class="sub-tab-link" data-subtab="p2-blocks">🧩程式</button> -->
-
+      <span class="rr-version">RR Platform v1.0.0</span>
     </div>
 
     <!-- Tabs 對應的內容區 (共6塊) -->
@@ -72,33 +71,10 @@
     </div>
     
     <div id="offical-games" class="sub-tab-content"> 
-
-          <p>選擇下列遊戲快速載入：</p>
-          <div>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/MAB">🎰Multi-Armed Bandit</button>
-            <button id='game-maze' class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze1D">📏Maze1D</button>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/Maze2D_emoji">🗺️Maze2D</button>
-            <br>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck">🦖Dinosaur Jump</button>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">🥁Taiko Beat</button>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">🎯Easy Shoot</button>
-            <br>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/fighterPlane">✈️space fighter</button>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/magic">🧙 Magic Duel</button>
-          </div>
     </div>
 
-
-
-<div id="privacy-policy" class="sub-tab-content">
-  <div class="about-container">
-    
-
-
-  </div>
-  
-  
-</div>
+    <div id="privacy-policy" class="sub-tab-content">
+    </div>
 
 
 
@@ -188,18 +164,6 @@
             <div>經驗覆蓋　<span id="stat-cover">20.4%</span></div>
           </div>
         </div>
-
-
-
-          <!-- <h4>顯示圖表</h4>
-          <input type="checkbox" id="actionSelection" checked>
-          <label for="actionPrefer">動作偏好</label><br>
-
-          <input type="checkbox" id="valueBounds" checked>
-          <label for="valueBounds">極值分布</label><br>
-
-          <input type="checkbox" id="pointLineAnalysis" checked>
-          <label for="pointLine">點線解析</label> -->
         
         <div id="p1-ui2">
           <h4>圖表控制</h4>
@@ -322,13 +286,31 @@
     const togglePauseBtn = document.getElementById("togglePause");
     const toggleAccelBtn = document.getElementById("toggleAccel");
 
-    loadGameBtn.addEventListener("click", () => {
-      const url = gameUrlInput.value.trim();
-      if (url) {
-        gameIframe.src = url;
-      }
+
+    let currentSessionId = 1;
+
+    function loadGame(url) {
+
+      currentSessionId += 1;
+      console.log(currentSessionId);
+      gameUrlInput.value = url;
+      gameIframe.src = url;
+
       isPaused = false;
       togglePauseBtn.textContent = "⏸️暫停";
+
+    }
+
+
+    loadGameBtn.addEventListener("click", () => {
+      const url = gameUrlInput.value.trim();
+
+      loadGame(url) 
+      // if (url) {
+      //   gameIframe.src = url;
+      // }
+      // isPaused = false;
+      // togglePauseBtn.textContent = "⏸️暫停";
       // gameIframe.addEventListener("load", () => {
       //   // const iframe = document.getElementById("game-iframe");
       //   gameIframe.contentWindow.postMessage({ type: "questInfo" }, "*");
@@ -407,17 +389,25 @@
     });
 
 
-    // 快速載入遊戲按鈕
-    document.querySelectorAll('.quick-load-button').forEach(button => {
-      button.addEventListener('click', () => {
-        const url = button.getAttribute('data-url');
-        if (url) {
-          gameUrlInput.value= url
-          gameIframe.src = url; // 設定 iframe 的 src
-        }
-        isPaused = false;
-        togglePauseBtn.textContent = "⏸️暫停";
-      });
+    
+
+
+    // 快速載入遊戲按鈕（支援動態HTML）
+    document.addEventListener('click', function(e) {
+
+      const button = e.target.closest('.quick-load-button');
+      if (!button) return;
+
+      const url = button.getAttribute('data-url');
+      loadGame(url) 
+      // if (url) {
+      //   gameUrlInput.value = url;
+      //   gameIframe.src = url;   // 設定 iframe 的 src
+      // }
+
+      // isPaused = false;
+      // togglePauseBtn.textContent = "⏸️暫停";
+
     });
 
 
@@ -438,94 +428,13 @@
     }
 
     loadDoc("tutorial","./docs/tutorial.html");
+    loadDoc("offical-games","./docs/gamelist.html");
     loadDoc("privacy-policy","./docs/about.html");
 
-    /***************************************************
-     * [4] Blockly 初始化
-     ***************************************************/
-    // var workspace1 = Blockly.inject('p1-blocklyDiv', {
-    //   toolbox:
-    //     `<xml>
-    //       <block type="controls_repeat_ext"></block>
-    //       <block type="math_number"></block>
-    //       <block type="math_arithmetic"></block>
-    //       <block type="logic_compare"></block>
-    //       <block type="variables_get"></block>
-    //       <block type="variables_set"></block>
-    //       <block type="controls_if"></block>
-    //       <block type="text_print"></block>
-    //      </xml>`,
-    //   trashcan: true,
-    //   theme: Blockly.Themes.Zelos,
-    //   renderer: 'thrasos',
-    // });
-    //
-    // // 預載一些積木
-    // const initialBlocks =
-    //   `<xml>
-    //     <block type="controls_repeat_ext" x="20" y="20">
-    //       <value name="TIMES">
-    //         <shadow type="math_number">
-    //           <field name="NUM">5</field>
-    //         </shadow>
-    //       </value>
-    //       <statement name="DO">
-    //         <block type="text_print">
-    //           <value name="TEXT">
-    //             <shadow type="text">
-    //               <field name="TEXT">Q-Learning</field>
-    //             </shadow>
-    //           </value>
-    //         </block>
-    //       </statement>
-    //     </block>
-    //   </xml>`;
-    // loadInitialBlocks(initialBlocks, workspace1);
-    //
-    // function loadInitialBlocks(xmlText, workspace) {
-    //   const parser = new DOMParser();
-    //   const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-    //   Blockly.Xml.domToWorkspace(xmlDoc.documentElement, workspace);
-    // }
-    //
-    //
-    // var workspace2 = Blockly.inject('p2-blocklyDiv', {
-    //   toolbox:
-    //     `<xml>
-    //       <block type="controls_repeat_ext"></block>
-    //       <block type="math_number"></block>
-    //       <block type="math_arithmetic"></block>
-    //       <block type="logic_compare"></block>
-    //       <block type="variables_get"></block>
-    //      </xml>`,
-    //   trashcan: true,
-    //   theme: Blockly.Themes.Zelos,
-    //   renderer: 'thrasos',
-    // });
-    //
-    //
-    //     // // 預載一些積木
-    // const initialBlocks2 =
-    //   `<xml>
-    //     <block type="controls_repeat_ext" x="20" y="20">
-    //       <value name="TIMES">
-    //         <shadow type="math_number">
-    //           <field name="NUM">5</field>
-    //         </shadow>
-    //       </value>
-    //       <statement name="DO">
-    //         <block type="text_print">
-    //           <value name="TEXT">
-    //             <shadow type="text">
-    //               <field name="TEXT">Q-Learning</field>
-    //             </shadow>
-    //           </value>
-    //         </block>
-    //       </statement>
-    //     </block>
-    //   </xml>`;
-    // loadInitialBlocks(initialBlocks, workspace2);
 
+/***************************************************
+ * [4] Q-Learning 相關程式邏輯（包含價值函數、策略、學習流程等）
+ ***************************************************/
 // 價值函數通用 =============================
 
     let QTable = {};
@@ -581,7 +490,7 @@
 //
 //     // 每當遊戲頁面載入完成，就詢問遊戲資訊
     gameIframe.addEventListener("load", () => {
-      gameIframe.contentWindow.postMessage({ type: "questInfo" }, "*");
+      gameIframe.contentWindow.postMessage({ type: "questInfo", sessionId: currentSessionId}, "*");
     });
 //
     window.addEventListener("message", (event) => {
@@ -595,7 +504,7 @@
         // writeLog(1,actionInfo)
         state_size=stateInfo.length
         action_size=actionInfo[0].level
-        console.log(actionInfo)
+        console.log(stateInfo, actionInfo)
         console.log(document.getElementById("actions"))
 
         // 重新生成動作UI
@@ -627,7 +536,7 @@
         // 初始化DQN
         // initializeDQNModel();
         // 發送第一個動作
-        gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
+        gameIframe.contentWindow.postMessage({ type: "action", action: 0}, "*");
       }
 
     });
@@ -756,7 +665,10 @@
           // await syncQTableToWorker();
         }
 
-
+        // 確保 R_S 訊息是來自當前的遊戲回合
+        console.log(message.sessionId,currentSessionId)
+        if (!message.sessionId) return;
+        if (message.sessionId !== currentSessionId) return;
         // 取得當下報酬
         reward = message.reward;
         // 取得當下狀態
@@ -784,7 +696,7 @@
         }else{
           learnOneStep(prevState, prevAction, reward, nextState,nextAction) // 更新單步
         }
-
+        updateQtableStats()
         // 繼承狀態與動作資訊
         prevState = nextState
         prevAction   = nextAction;
@@ -796,7 +708,8 @@
         setTimeout(() => {
           gameIframe.contentWindow.postMessage({
             type: "action",
-            action: nextAction
+            action: nextAction,
+            // sessionId: currentSessionId
           }, "*");
           setActiveActionButton(nextAction);
           // console.log(document.querySelectorAll("#actions button")[nextAction])
@@ -883,6 +796,7 @@ function importQtable(evt) {
 
       console.log("QTable imported successfully:", QTable);
       // alert("QTable 已成功載入，後續訓練可沿用此表格。");
+      updateQtableStats()
 
     } catch (error) {
       console.error("Error parsing QTable file", error);
@@ -890,6 +804,65 @@ function importQtable(evt) {
     }
   };
   reader.readAsText(file, "utf-8");
+  
+}
+
+
+function updateQtableStats(){
+
+  // ===== 1 狀態池化 =====
+  const stateBins = stateInfo.map(s => s.bin);
+
+  // 總state數
+  const totalStates = stateBins.reduce((a,b)=>a*b,1);
+
+
+  // ===== 2 動作空間 =====
+  const actionLevels = actionInfo.map(a => a.level);
+
+  // 每個state的動作組合
+  const actionsPerState = actionLevels.reduce((a,b)=>a*b,1);
+
+
+  // ===== 3 Q-table 總格數 =====
+  const totalCells = totalStates * actionsPerState;
+
+
+  // ===== 4 計算有效經驗 =====
+  let visitedCells = 0;
+
+  for(const stateKey in QTable){
+
+    const actionValues = QTable[stateKey];
+
+    for(const q of actionValues){
+
+      if(Math.abs(q) > 0){
+        visitedCells++;
+      }
+
+    }
+
+  }
+
+
+  // ===== 5 覆蓋率 =====
+  const coverage = (visitedCells / totalCells * 100).toFixed(1);
+
+
+  // ===== 6 更新UI =====
+  document.getElementById("stat-bins").textContent =
+    `[${stateBins.join("×")}]`;
+
+  document.getElementById("stat-actions").textContent =
+    `[${actionLevels.join(",")}]`;
+
+  document.getElementById("stat-total").textContent =
+    `${visitedCells} / ${totalCells}`;
+
+  document.getElementById("stat-cover").textContent =
+    `${coverage}%`;
+
 }
 
   </script>
