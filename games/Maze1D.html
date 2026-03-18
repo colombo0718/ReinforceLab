@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1D 迷宮遊戲 - 優化版</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <style>
+    body {
+      width: 500px; /* 控制區塊寬度 */
+      margin: auto; /* 讓區塊置中 */  
+    }
+  </style>
+</head>
+<body>
+
+<h2>🌟 1D 迷宮遊戲：躲避炸彈，奪取獎盃！</h2>
+
+<div id="game-container"></div>
+
+<div id="controls">
+  <label for="startPos">玩家起始位置：</label>
+  <input type="range" id="startPos" min="1" max="8" value="4" oninput="updateStartPos(this.value)" />
+  <span id="startPosValue">4</span>
+  <br/>
+
+  <label>小回饋模式：</label>
+  <input type="radio" name="feedback" value="none" checked onchange="updateFeedback(this.value)"> 無
+  <input type="radio" name="feedback" value="positive" onchange="updateFeedback(this.value)"> 順境
+  <input type="radio" name="feedback" value="negative" onchange="updateFeedback(this.value)"> 逆境
+  <input type="radio" name="feedback" value="pie" onchange="updateFeedback(this.value)"> 畫大餅
+</div>
+
+<div id="info">
+  <h2>遊戲說明</h2>
+  <p>
+    本遊戲為 1D 線性迷宮（500×50 畫布，每格 50×50 px）。<br>
+    玩家從第 5 格（index 4）出發，目標是移動至第 10 格（index 9）取得終點獎勵，同時避開第 1 格的炸彈 💣。
+  </p>
+
+  <h3>遊戲機制</h3>
+  <ul>
+    <li>玩家以 🧑 表示，每次可移動 1 格。</li>
+    <li>若玩家移動到炸彈 💣，遊戲立即結束並扣 10 分。</li>
+    <li>一般模式下，若玩家移動到獎盃 🏆，遊戲成功通關並加 10 分。</li>
+    <li>畫大餅模式下，終點會由獎盃 🏆 改為 pizza 🍕，且只加 2 分。</li>
+    <li>順境模式與逆境模式會在路途中加入小回饋：
+      <ul>
+        <li>🍬：小正回饋</li>
+        <li>🔥：小負回饋</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>操作方式</h3>
+  <ul>
+    <li>向左移動：A 或 ← 鍵</li>
+    <li>向右移動：D 或 → 鍵</li>
+  </ul>
+
+  <h3>State 描述</h3>
+  <ul>
+    <li>playerPos：玩家所在格子的索引（0 ~ 9）</li>
+  </ul>
+
+  <h3>Action 描述</h3>
+  <ul>
+    <li>0：none（不動作）</li>
+    <li>1：right（向右移動一格）</li>
+    <li>2：left（向左移動一格）</li>
+  </ul>
+</div>
+
+<script>
+const gridSize = 10;
+const cellSize = 50;
+const canvasWidth = gridSize * cellSize;
+const canvasHeight = 50;
+let gameMap = ["💣", "", "", "", "", "", "", "", "", "🏆"];
+let playerPos = 4;
+let rewardBuffer = 0;
+let currentState = [];
+let gameOver = false;
+let feedbackMode = 'none';
+
+function setup() {
+  let canvas = createCanvas(canvasWidth, canvasHeight);
+  canvas.parent('game-container');
+  textSize(cellSize - 10);
+  updateState();
+  updateGameMap(); // 初始化地圖
+}
+
+function draw() {
+  background(255);
+  drawMaze();
+}
+
+function drawMaze() {
+  for (let i = 0; i < gridSize; i++) {
+    let x = i * cellSize;
+    let y = 0;
+    fill(i === playerPos ? 'lightgreen' : 'white');
+    stroke(0);
+    rect(x, y, cellSize, cellSize, 0);
+    noStroke();
+    text(i === playerPos ? "🧑" : gameMap[i], x, 40);
+  }
+}
+
+function processAction(action) {
+  if (gameOver) return;
+  let prevPos = playerPos;
+  if (action === 2 && playerPos > 0) playerPos--;
+  else if (action === 1 && playerPos < gridSize - 1) playerPos++;
+
+  if (feedbackMode === 'positive') {
+    if (playerPos > prevPos && playerPos < 9) rewardBuffer += 1;
+    if (playerPos < prevPos && playerPos > 0) rewardBuffer -= 1;
+  } else if (feedbackMode === 'negative' || feedbackMode === 'pie') {
+    if (playerPos > prevPos && playerPos < 9) rewardBuffer -= 1;
+    if (playerPos < prevPos && playerPos > 0) rewardBuffer += 1;
+  }
+
+  updateGameMap(); // 玩家移動後更新地圖
+  updateState();
+  checkGameState();
+}
+
+function checkGameState() {
+  if (gameMap[playerPos] === "💣") {
+    rewardBuffer -= 10;
+    gameOver = true;
+    window.parent.postMessage({ type: "endEpisode" }, "*");
+    resetGame();
+  } else if (gameMap[playerPos] === "🏆") {
+    rewardBuffer += 10;
+    gameOver = true;
+    window.parent.postMessage({ type: "endEpisode" }, "*");
+    resetGame();
+  } else if (gameMap[playerPos] === "🍕") {
+    rewardBuffer += 2;
+    gameOver = true;
+    window.parent.postMessage({ type: "endEpisode" }, "*");
+    resetGame();
+  }
+}
+
+function resetGame() {
+  playerPos = parseInt(document.getElementById('startPos').value);
+  gameOver = false;
+  updateGameMap(); // 重置時更新地圖
+  updateState();
+}
+
+function updateGameMap() {
+  const goalEmoji = (feedbackMode === 'pie') ? "🍕" : "🏆";
+  gameMap = ["💣", "", "", "", "", "", "", "", "", goalEmoji];
+
+  if (feedbackMode === 'positive') {
+    for (let i = 1; i < playerPos; i++) gameMap[i] = "🔥";
+    for (let i = playerPos + 1; i < 9; i++) gameMap[i] = "🍬";
+  } else if (feedbackMode === 'negative' || feedbackMode === 'pie') {
+    for (let i = 1; i < playerPos; i++) gameMap[i] = "🍬";
+    for (let i = playerPos + 1; i < 9; i++) gameMap[i] = "🔥";
+  }
+}
+
+function updateState() {
+  currentState = [playerPos];
+}
+
+function sendRewardState() {
+  window.parent.postMessage({
+    type: "reward_state",
+    reward: rewardBuffer,
+    state: currentState,
+    sessionId: currentSessionId
+  }, "*");
+  rewardBuffer = 0;
+}
+
+function updateStartPos(value) {
+  document.getElementById('startPosValue').textContent = value;
+}
+
+function updateFeedback(mode) {
+  feedbackMode = mode;
+  updateGameMap(); // 切換模式時更新地圖
+}
+
+
+let currentSessionId = 0;
+window.addEventListener("message", (event) => {
+  let msg = event.data;
+  if (msg.type === "action") {
+    processAction(msg.action);
+    sendRewardState();
+    // currentSessionId = msg.sessionId;
+    // console.log(currentSessionId)
+  } else if (msg.type === "questInfo") {
+    currentSessionId = msg.sessionId;
+    window.parent.postMessage({
+      type: "gameInfo",
+      players: [{
+        stateInfo: [{ name: 'playerPos', min: 0, max: gridSize - 1, bin: gridSize }],
+        actionInfo: [{ type: "switch", level: 3, name: ['❌', '➡️', '⬅️'] }]
+      }]
+    }, "*");
+  }
+});
+
+function keyPressed() {
+  let action = 0;
+  if (key === 'a' || keyCode === LEFT_ARROW) action = 2;
+  else if (key === 'd' || keyCode === RIGHT_ARROW) action = 1;
+  processAction(action);
+}
+</script>
+</body>
+</html>

@@ -328,7 +328,7 @@
         // 這裡可做恢復遊戲 or 繼續訓練的動作
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
         gameIframe.contentWindow.postMessage({ type: "action",action:0}, "*");
-        console.log('keep go')
+        // console.log('keep go')
         togglePauseBtn.textContent = "⏸️暫停";
       }
       isPaused = !isPaused;
@@ -589,7 +589,7 @@
       // console.log(trace,trace.length)
       for (let i = 0; i < trace.length; i++) {
         // console.log(i)
-        const [prevState, prevAction, reward, nextState, nextAction] = trace[i];
+        const [prevState, prevAction, reward, nextState, nextAction] = trace[i];  
         learnOneStep(prevState, prevAction, reward, nextState, nextAction);
       }
     }
@@ -666,7 +666,7 @@
         }
 
         // 確保 R_S 訊息是來自當前的遊戲回合
-        console.log(message.sessionId,currentSessionId)
+        // console.log(message.sessionId,currentSessionId)
         if (!message.sessionId) return;
         if (message.sessionId !== currentSessionId) return;
         // 取得當下報酬
@@ -679,7 +679,7 @@
         secondSteps += 1
         // 加入回合報酬累計
         episodeReward += reward;
-        
+        console.log(reward,episodeReward)
         episodeSteps += 1;// 回合步數+1
 
         // await DQNfitToQTable();
@@ -722,6 +722,7 @@
       }
 
       if (message.type === "endEpisode"){
+        console.log('endEpisode')
         if(plotGeneralCharts){
           updateEpisodeChart()
         }
