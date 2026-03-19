@@ -1,0 +1,150 @@
+
+<canvas id="game" width="860" height="440" style="background:#87ceeb; border:2px solid #111; border-radius:8px; display:block; margin:0 auto;"></canvas>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const keys = {};
+const groundY = 380;
+const gravity = 0.8;
+const BARRIER_X = 430;
+
+const player = {
+  x: 120, y: 300, w: 48, h: 48,
+  vx: 0, vy: 0, speed: 4, jumpPower: -14,
+  onGround: false, facing: 1, emoji: "🥷"
+};
+
+const shurikens = [];
+
+function throwShuriken() {
+  if (shurikens.length > 0) return;
+  const size = player.w * 0.5;
+  shurikens.push({
+    x: player.x + player.w / 2,
+    y: player.y + player.h / 2,
+    w: size, h: size,
+    vx: 15 * player.facing,
+    angle: 0, spinSpeed: 1.0 * player.facing,
+    emoji: "⚔️"
+  });
+}
+
+function updatePlayer() {
+  player.vx = 0;
+  if (keys["ArrowLeft"] || keys["a"] || keys["A"]) { player.vx = -player.speed; player.facing = -1; }
+  if (keys["ArrowRight"] || keys["d"] || keys["D"]) { player.vx = player.speed; player.facing = 1; }
+
+  player.x += player.vx;
+
+  if (player.x + player.w > BARRIER_X) player.x = BARRIER_X - player.w;
+  if (player.x < 0) player.x = 0;
+
+  player.y += player.vy;
+  player.vy += gravity;
+
+  if (player.y + player.h >= groundY) {
+    player.y = groundY - player.h;
+    player.vy = 0;
+    player.onGround = true;
+  } else {
+    player.onGround = false;
+  }
+}
+
+function updateShurikens() {
+  for (let i = shurikens.length - 1; i >= 0; i--) {
+    const s = shurikens[i];
+    s.x += s.vx;
+    s.angle += s.spinSpeed;
+    if (s.x < -100 || s.x > canvas.width + 100) shurikens.splice(i, 1);
+  }
+}
+
+function drawGround() {
+  ctx.fillStyle = "#4c8b3b";
+  ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+  ctx.strokeStyle = "#2e5d25";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, groundY);
+  ctx.lineTo(canvas.width, groundY);
+  ctx.stroke();
+}
+
+function drawBarrier() {
+  const size = 48;
+  ctx.font = `${size}px serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("🚧", BARRIER_X, groundY);
+}
+
+function drawPlayer() {
+  ctx.save();
+  if (player.facing === -1) {
+    ctx.translate(player.x + player.w / 2, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-(player.x + player.w / 2), 0);
+  }
+  ctx.font = `${player.h}px serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(player.emoji, player.x, player.y);
+  ctx.restore();
+}
+
+function drawShurikens() {
+  for (const s of shurikens) {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.angle);
+    ctx.font = `${s.h}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(s.emoji, 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawHUD() {
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(8, 8, 290, 68);
+  ctx.fillStyle = "#fff";
+  ctx.font = "14px sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText("移動：← → 或 A D", 16, 16);
+  ctx.fillText("跳躍：空白鍵 / W / ↑", 16, 38);
+  ctx.fillText("丟手裡劍：J（場上限一個）", 16, 60);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGround();
+  drawBarrier();
+  drawPlayer();
+  drawShurikens();
+  drawHUD();
+}
+
+function gameLoop() {
+  updatePlayer();
+  updateShurikens();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener("keydown", (e) => {
+  keys[e.key] = true;
+  if ((e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W") && player.onGround) {
+    player.vy = player.jumpPower;
+  }
+  if (e.key === "j" || e.key === "J") throwShuriken();
+  if ([" ","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) e.preventDefault();
+});
+
+window.addEventListener("keyup", (e) => { keys[e.key] = false; });
+
+gameLoop();
+</script>
