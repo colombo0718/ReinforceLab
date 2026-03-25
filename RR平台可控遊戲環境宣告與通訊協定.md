@@ -22,8 +22,8 @@ RR 平台透過 `postMessage` 與嵌入的遊戲 iframe 雙向通訊。
 | type | 時機 | 用途 |
 |------|------|------|
 | `gameInfo` | 收到 `questInfo` 後立即回傳 | 宣告狀態空間與動作空間 |
-| `reward_state` | 每執行一步後 | 回傳當前狀態與獎勵 |
-| `endEpisode` | 回合結束時 | 通知 RR 統計數據並開啟下一回合 |
+| `reward_state` | 每執行一步後 | 回傳當前狀態、獎勵與是否終局（`done`） |
+| `endEpisode` | 回合結束時（選用） | 向 RR 發出回合結束通知（舊協定，新遊戲不需實作） |
 
 ### RR 平台 → 遊戲
 
@@ -119,24 +119,23 @@ RR 平台透過 `postMessage` 與嵌入的遊戲 iframe 雙向通訊。
   "type": "reward_state",
   "reward": 1.0,
   "state": [50, 150],
+  "done": false,
   "sessionId": 3
 }
 ```
 
 | 欄位 | 說明 |
 |------|------|
-| `reward` | 本步獲得的獎勵（正數、負數或 0） |
-| `state` | 當前狀態數值陣列，順序對應 `stateInfo` |
+| `reward` | 本步獲得的獎勵（正數、負數或 0）；若本步終局，死亡懲罰需已加入此值 |
+| `state` | 執行動作後的新狀態陣列，順序對應 `stateInfo` |
+| `done` | `false`：回合繼續；`true`：本步已使回合結束 |
 | `sessionId` | 從 `questInfo` 取得，原封不動帶回（用於 RR 識別當前回合） |
 
-### 4-2. `endEpisode`（遊戲 → RR，回合結束）
+> **終局步規則**：`done: true` 時，`reward` 必須已包含終局懲罰。RR 收到後會完成學習更新、結算統計，再送出下一個 `action` 啟動新回合。
 
-```json
-{ "type": "endEpisode" }
-```
+### 4-2. `endEpisode`（遊戲 → RR，選用）
 
-回合結束條件（例如：到達終點、碰到障礙、超過步數上限）發生時送出。
-RR 收到後會統計數據、重置計數，並自動送出下一步 `action` 啟動新回合。
+舊協定保留欄位，新遊戲不需實作。RR 訓練主流程以 `reward_state.done` 為準。
 
 ### 4-3. `action`（RR → 遊戲，每步）
 
@@ -199,19 +198,18 @@ window.addEventListener("message", (event) => {
     const reward = 0;       // 計算本步獎勵
     const state = [0];      // 取得當前狀態
 
-    // 回傳狀態與獎勵
+    // 判斷是否終局（加入終局懲罰）
+    const done = false; // TODO: 判斷終止條件
+    if (done) reward -= 10; // TODO: 加入終局懲罰
+
+    // 回傳狀態、獎勵與終局旗標
     window.parent.postMessage({
       type: "reward_state",
       reward: reward,
       state: state,
+      done: done,
       sessionId: currentSessionId
     }, "*");
-
-    // 若回合結束
-    const done = false; // TODO: 判斷終止條件
-    if (done) {
-      window.parent.postMessage({ type: "endEpisode" }, "*");
-    }
   }
 
   // 3. 暫停控制

@@ -194,8 +194,7 @@ function triggerEndEpisode() {
   if (gameOver) return;
   rewardBuffer -= 10;
   gameOver = true;
-
-  window.parent.postMessage({ type: 'endEpisode' }, '*');
+  // 下一個 action 到來時回傳 done=true 的 reward_state
 }
 
 // ── 重置 ──────────────────────────────────────────────
@@ -213,24 +212,16 @@ function resetGame() {
 }
 
 // ── RR 通訊協定 ──────────────────────────────────────
-function sendRewardState() {
+function sendRewardState(done = false) {
   updateState();
   window.parent.postMessage({
     type: 'reward_state',
     reward: Number(rewardBuffer.toFixed(4)),
     state: currentState,
+    done: done,
     sessionId: currentSessionId,
   }, '*');
   rewardBuffer = 0;
-}
-
-function processAction(action) {
-  if (gameOver) {
-    resetGame();
-    return;
-  }
-  isLeftPressed  = (action === 1);
-  isRightPressed = (action === 2);
 }
 
 window.addEventListener('message', (event) => {
@@ -255,7 +246,13 @@ window.addEventListener('message', (event) => {
     }, '*');
 
   } else if (msg.type === 'action') {
-    processAction(msg.action);
+    if (gameOver) {
+      sendRewardState(true);
+      resetGame();
+      return;
+    }
+    isLeftPressed  = (msg.action === 1);
+    isRightPressed = (msg.action === 2);
     sendRewardState();
 
   } else if (msg.type === 'pause') {

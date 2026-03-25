@@ -703,6 +703,16 @@
 
         frameNumber=0
 
+        // 若本回合結束（新協定：done 欄位）
+        if (message.done === true) {
+          if(plotGeneralCharts){
+            updateEpisodeChart()
+          }
+          episodeCount += 1
+          episodeReward = 0
+          episodeSteps = 0
+        }
+
         // 回傳動作給子頁面
         if(isPaused){return}
         setTimeout(() => {

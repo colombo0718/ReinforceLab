@@ -64,7 +64,7 @@
     <li>按空白鍵、滑鼠點擊畫面，或由 RR 傳入 flap 動作時，🚁 會向上推進。</li>
     <li>每通過一組牆壁可得 1 分。</li>
     <li>每個 frame 都會累積微量存活回饋。</li>
-    <li>撞牆或撞邊界後會結束回合並送出 <code>endEpisode</code>。</li>
+    <li>撞牆或撞邊界後會結束回合，並於下一步回傳 <code>done: true</code> 的終局訊號。</li>
   </ul>
 
   <h3>操作方式</h3>
@@ -326,11 +326,7 @@ function endEpisode() {
   boomFrames = 30;
   if (score > highScore) highScore = score;
   updateHUDText();
-
-  window.parent.postMessage({
-    type: 'endEpisode',
-    sessionId: currentSessionId
-  }, '*');
+  // 下一個 action 到來時回傳 done=true 的 reward_state
 }
 
 function processAction(action) {
@@ -361,12 +357,13 @@ function updateState() {
   ];
 }
 
-function sendRewardState() {
+function sendRewardState(done = false) {
   updateState();
   window.parent.postMessage({
     type: 'reward_state',
     reward: Number(rewardBuffer.toFixed(4)),
     state: currentState,
+    done: done,
     sessionId: currentSessionId
   }, '*');
   rewardBuffer = 0;
@@ -416,6 +413,11 @@ window.addEventListener('message', (event) => {
     }, '*');
   } else if (msg.type === 'action') {
     if (typeof msg.sessionId !== 'undefined' && msg.sessionId !== currentSessionId) return;
+    if (gameOver) {
+      sendRewardState(true);
+      resetGame(true);
+      return;
+    }
     processAction(msg.action);
     sendRewardState();
   }
