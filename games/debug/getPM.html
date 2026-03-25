@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SS getPM</title>
+  <style>
+    body{ margin:0; background:#000; }
+    /* 右側輸出區：黃字、靠右、不要跟 GG 的綠字混在一起 */
+    #pm{
+    position:fixed;
+    top:0; right:0;
+    width:45vw;
+    height:100vh;
+    padding: 8px 10px;                 /* 也跟 GG 對齊 */
+    box-sizing:border-box;
+
+    color:#ffff00;                     /* 你的正黃 */
+    font-family: "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.4;
+
+    overflow:hidden;
+    text-align:right;
+    pointer-events:none;
+    background:transparent;
+    }
+    .line{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  </style>
+</head>
+
+<body>
+  <div id="pm" aria-hidden="true"></div>
+
+  <script>
+    const pm = document.getElementById("pm");
+
+    function addLine(text){
+      const div = document.createElement("div");
+      div.className = "line";
+      div.textContent = text;
+      pm.appendChild(div);
+
+      // 保持最多 80 行，避免越來越長
+      const maxLines = 80;
+      while (pm.children.length > maxLines) pm.removeChild(pm.firstChild);
+      pm.scrollTop = pm.scrollHeight;
+    }
+
+    // 只收 gg_event，其它一律忽略（包含 metamask 那些）
+    window.addEventListener("message", (ev) => {
+      const d = ev.data;
+      if (!d || typeof d !== "object") return;
+      if (d.type !== "gg_event") return;
+
+      // 你 GG 送的是 {type, player, btnID, state}
+      // 這裡簡化顯示成：p0 id6 down
+      addLine(`p:${d.player} id:${d.btnID} s:${d.state}`);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RR Heli Flappy - 即時制範例</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <style>
+    body {
+      width: 500px;
+      margin: auto;
+      font-family: Arial, "Noto Sans TC", sans-serif;
+      color: #111827;
+    }
+
+    h2, h3 {
+      margin-bottom: 8px;
+    }
+
+    #game-container {
+      width: 500px;
+      height: 500px;
+      margin-bottom: 12px;
+    }
+
+    #controls {
+      margin-bottom: 16px;
+      line-height: 1.9;
+    }
+
+    #controls input[type="range"] {
+      width: 180px;
+      vertical-align: middle;
+    }
+
+    #info ul {
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🚁 飛行直升機</h2>
+
+<div id="game-container"></div>
+
+<div id="controls">
+  <strong>關卡模式：</strong>
+  <label style="margin-left:8px;"><input type="radio" name="mode" value="fixed" checked onchange="setMode(this.value)" /> 固定高度</label>
+  <label style="margin-left:12px;"><input type="radio" name="mode" value="small" onchange="setMode(this.value)" /> 小範圍隨機</label>
+  <label style="margin-left:12px;"><input type="radio" name="mode" value="large" onchange="setMode(this.value)" /> 大範圍隨機</label>
+</div>
+
+<div id="info">
+  <h2>遊戲說明</h2>
+  <p>
+    本遊戲為 2D 連續即時制飛行範例。玩家控制 🚁 在藍色場景中前進，避開由 🟥 構成的上下牆壁；
+    一旦撞牆或撞到上下邊界，就會顯示 💥 並結束回合。
+  </p>
+
+  <h3>遊戲機制</h3>
+  <ul>
+    <li>🚁 會持續受到重力影響而緩慢下降。</li>
+    <li>按空白鍵、滑鼠點擊畫面，或由 RR 傳入 flap 動作時，🚁 會向上推進。</li>
+    <li>每通過一組牆壁可得 1 分。</li>
+    <li>每個 frame 都會累積微量存活回饋。</li>
+    <li>撞牆或撞邊界後會結束回合並送出 <code>endEpisode</code>。</li>
+  </ul>
+
+  <h3>操作方式</h3>
+  <ul>
+    <li>空白鍵：向上推進</li>
+    <li>滑鼠點擊遊戲畫面：向上推進</li>
+    <li>若遊戲已結束，再按一次可重新開始</li>
+  </ul>
+
+  <h3>State 描述</h3>
+  <ul>
+    <li>heliY：直升機目前高度（向上為正，畫面中心 0，底部 -250，頂部 +250）</li>
+    <li>wallDistance：下一組牆壁和直升機的水平距離</li>
+    <li>gapCenterY：下一組牆壁開口中心高度（向上為正，畫面中心 0，底部 -250，頂部 +250）</li>
+  </ul>
+
+  <h3>關卡模式</h3>
+  <ul>
+    <li>固定高度：開口中心固定在 h = 250</li>
+    <li>小範圍隨機：開口中心在 h = 250 ± 100 間變動</li>
+    <li>大範圍隨機：開口中心在 h = 250 ± 200 間變動</li>
+  </ul>
+
+  <h3>Action 描述</h3>
+  <ul>
+    <li>0：none（不動作）</li>
+    <li>1：flap（向上推進）</li>
+  </ul>
+</div>
+
+<script>
+const canvasWidth = 500;
+const canvasHeight = 500;
+const heliX = 120;
+const heliSize = 34;
+const wallWidth = 44;
+const wallSpacing = 220;
+const gapHeight = 170;
+const survivalReward = 0.01;
+const fixedGapCenter = 250;
+let mode = 'fixed';
+let episodeCount = 0;
+let highScore = 0;
+const passReward = 1;
+const crashPenalty = -10;
+
+let flySpeed = 2.0;
+let wallSpeed = 1.8;
+
+let heliY = canvasHeight / 2;
+let heliDir = 1; // 1=down, -1=up
+let walls = [];
+let score = 0;
+let rewardBuffer = 0;
+let currentState = [];
+let gameStarted = false;
+let gameOver = false;
+let boomFrames = 0;
+let currentSessionId = 0;
+
+function setup() {
+  let canvas = createCanvas(canvasWidth, canvasHeight);
+  canvas.parent('game-container');
+  textAlign(CENTER, CENTER);
+  textSize(28);
+  episodeCount = 0;
+  highScore = 0;
+  resetGame(false);
+}
+
+function draw() {
+  drawScene();
+
+  if (!gameStarted || gameOver) return;
+
+  updatePhysics();
+  updateWalls();
+  checkCollisions();
+  updateState();
+}
+
+function drawScene() {
+  background('#60a5fa');
+
+  drawWalls();
+  drawHeli();
+  drawHUD();
+
+  if (!gameStarted) {
+    drawOverlay('點擊畫面或按空白鍵開始');
+  } else if (gameOver) {
+    drawOverlay(`遊戲結束
+分數：${score}
+再按一次重新開始`);
+  }
+}
+
+function drawWalls() {
+  textSize(28);
+  for (const wall of walls) {
+    for (let y = 14; y < wall.gapTop; y += 28) {
+      text('🟥', wall.x + wallWidth / 2, y);
+    }
+    for (let y = wall.gapBottom + 14; y < canvasHeight; y += 28) {
+      text('🟥', wall.x + wallWidth / 2, y);
+    }
+  }
+}
+
+function drawHeli() {
+  textSize(36);
+  if (boomFrames > 0) {
+    text('💥', heliX, heliY);
+    boomFrames--;
+    return;
+  }
+
+  push();
+  translate(heliX, heliY);
+  scale(-1, 1);
+  text('🚁', 0, 0);
+  pop();
+}
+
+function drawHUD() {
+  noStroke();
+  fill(255, 255, 255, 220);
+  rect(8, 8, 200, 78, 8);
+  fill(17, 24, 39);
+  textAlign(LEFT, CENTER);
+  textSize(16);
+  text(`分數: ${score}`, 18, 27);
+  text(`回合數: ${episodeCount}`, 18, 47);
+  text(`最高分: ${highScore}`, 18, 67);
+  textAlign(CENTER, CENTER);
+}
+
+function drawOverlay(message) {
+  fill(0, 0, 0, 120);
+  rect(60, 180, 380, 140, 12);
+  fill(255);
+  textSize(24);
+  const lines = message.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    text(lines[i], canvasWidth / 2, 215 + i * 36);
+  }
+}
+
+function updatePhysics() {
+  heliY += heliDir * flySpeed;
+  rewardBuffer += survivalReward;
+}
+
+function updateWalls() {
+  for (const wall of walls) {
+    wall.x -= wallSpeed;
+
+    if (!wall.passed && wall.x + wallWidth < heliX) {
+      wall.passed = true;
+      score += 1;
+      rewardBuffer += passReward;
+      updateHUDText();
+    }
+  }
+
+  if (walls.length && walls[0].x + wallWidth < -10) {
+    walls.shift();
+    const lastX = walls[walls.length - 1].x;
+    walls.push(createWall(lastX + wallSpacing));
+  }
+}
+
+function checkCollisions() {
+  const r = heliSize * 0.28;
+
+  if (heliY - r <= 0 || heliY + r >= canvasHeight) {
+    endEpisode();
+    return;
+  }
+
+  for (const wall of walls) {
+    const hitX = heliX + r > wall.x && heliX - r < wall.x + wallWidth;
+    const hitY = heliY - r < wall.gapTop || heliY + r > wall.gapBottom;
+    if (hitX && hitY) {
+      endEpisode();
+      return;
+    }
+  }
+}
+
+function createWall(x) {
+  let gapCenter;
+
+  if (mode === 'fixed') {
+    gapCenter = fixedGapCenter;
+  } else if (mode === 'small') {
+    gapCenter = random(fixedGapCenter - 100, fixedGapCenter + 100);
+  } else {
+    gapCenter = random(fixedGapCenter - 200, fixedGapCenter + 200);
+  }
+
+  const minCenter = gapHeight / 2 + 20;
+  const maxCenter = canvasHeight - gapHeight / 2 - 20;
+  gapCenter = constrain(gapCenter, minCenter, maxCenter);
+
+  const gapTop = gapCenter - gapHeight / 2;
+  return {
+    x,
+    gapTop,
+    gapBottom: gapTop + gapHeight,
+    passed: false,
+  };
+}
+
+function resetGame(startImmediately = false) {
+  episodeCount += 1;
+  heliY = canvasHeight / 2;
+  heliDir = 1;
+  walls = [
+    createWall(canvasWidth + 120),
+    createWall(canvasWidth + 120 + wallSpacing),
+    createWall(canvasWidth + 120 + wallSpacing * 2),
+  ];
+  score = 0;
+  // rewardBuffer = 0;
+  boomFrames = 0;
+  gameOver = false;
+  gameStarted = startImmediately;
+  updateState();
+  updateHUDText();
+}
+
+function startGameIfNeeded() {
+  if (!gameStarted && !gameOver) {
+    gameStarted = true;
+    updateHUDText();
+  }
+}
+
+function flap() {
+  if (gameOver) {
+    resetGame(true);
+    return;
+  }
+  startGameIfNeeded();
+  heliDir = -1;
+}
+
+function releaseFall() {
+  if (!gameStarted || gameOver) return;
+  heliDir = 1;
+}
+
+function endEpisode() {
+  if (gameOver) return;
+  rewardBuffer += crashPenalty;
+  gameOver = true;
+  gameStarted = false;
+  boomFrames = 30;
+  if (score > highScore) highScore = score;
+  updateHUDText();
+
+  window.parent.postMessage({
+    type: 'endEpisode',
+    sessionId: currentSessionId
+  }, '*');
+}
+
+function processAction(action) {
+  if (gameOver) {
+    resetGame(true);
+  }
+
+  if (action === 1) {
+    flap();
+  } else {
+    startGameIfNeeded();
+    heliDir = 1;
+  }
+}
+
+function updateState() {
+  const nextWall = walls.find(w => w.x + wallWidth >= heliX) || walls[0];
+  const gapCenterCanvasY = (nextWall.gapTop + nextWall.gapBottom) / 2;
+  const wallDistance = nextWall.x + wallWidth - heliX;
+
+  const heliYHuman = canvasHeight / 2 - heliY;
+  const gapCenterYHuman = canvasHeight / 2 - gapCenterCanvasY;
+
+  currentState = [
+    Number(wallDistance.toFixed(2)),
+    Number(heliYHuman.toFixed(2)),
+    Number(gapCenterYHuman.toFixed(2)),
+  ];
+}
+
+function sendRewardState() {
+  updateState();
+  window.parent.postMessage({
+    type: 'reward_state',
+    reward: Number(rewardBuffer.toFixed(4)),
+    state: currentState,
+    sessionId: currentSessionId
+  }, '*');
+  rewardBuffer = 0;
+}
+
+function updateHUDText() {
+  const statusText = gameOver ? '失敗' : (gameStarted ? '進行中' : '待開始');
+  const scoreNode = document.getElementById('scoreText');
+  const statusNode = document.getElementById('statusText');
+  if (scoreNode) scoreNode.textContent = score;
+  if (statusNode) statusNode.textContent = statusText;
+}
+
+function setMode(value) {
+  mode = value;
+  resetGame(false);
+}
+
+function updateFlap(value) {
+  flySpeed = Number(value) / 10;
+  document.getElementById('flapValue').textContent = flySpeed.toFixed(1);
+}
+
+function updateWallSpeed(value) {
+  wallSpeed = Number(value) / 10;
+  document.getElementById('wallSpeedValue').textContent = wallSpeed.toFixed(1);
+}
+
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg || typeof msg !== 'object') return;
+
+  if (msg.type === 'questInfo') {
+    currentSessionId = msg.sessionId || 0;
+    window.parent.postMessage({
+      type: 'gameInfo',
+      players: [{
+        stateInfo: [
+          { name: 'wallDistance', min: 0, max: canvasWidth + wallWidth, bin: 10 },
+          { name: 'heliY', min: -canvasHeight / 2, max: canvasHeight / 2, bin: 10 },
+          { name: 'gapCenterY', min: -canvasHeight / 2, max: canvasHeight / 2, bin: 10 }
+        ],
+        actionInfo: [
+          { type: 'switch', level: 2, name: ['⬇️', '⬆️'] }
+        ]
+      }]
+    }, '*');
+  } else if (msg.type === 'action') {
+    if (typeof msg.sessionId !== 'undefined' && msg.sessionId !== currentSessionId) return;
+    processAction(msg.action);
+    sendRewardState();
+  }
+});
+
+function keyPressed() {
+  if (key === ' ' || keyCode === 32) {
+    flap();
+    return false;
+  }
+}
+
+function keyReleased() {
+  if (key === ' ' || keyCode === 32) {
+    releaseFall();
+    return false;
+  }
+}
+
+function mousePressed() {
+  flap();
+}
+
+function mouseReleased() {
+  releaseFall();
+}
+
+// 直播保底機制：每 10 秒自動觸發一次互動，避免偶發卡住
+setInterval(() => {
+  try {
+    if (gameOver) return;
+    if (!document.hasFocus()) return;
+    startGameIfNeeded();
+    releaseFall();
+  } catch (err) {
+    console.warn('keepalive trigger failed:', err);
+  }
+}, 10000);
+</script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>多臂拉霸機遊戲 - 簡易版</title>
+  <style>
+    body {
+      margin: 20px auto;
+      width: fit-content;
+      font-family: sans-serif;
+    }
+
+    /*h2 {*/
+    /*  margin-bottom: 12px;*/
+    /*}*/
+
+    /*#game-container {*/
+    /*  border: 1px solid #ccc;*/
+    /*  padding: 16px;*/
+    /*  border-radius: 8px;*/
+    /*  background: #fafafa;*/
+    /*}*/
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 28px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px 12px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-size: 20px;
+      white-space: nowrap;
+    }
+
+    /*.col-id {*/
+    /*  width: 18%;*/
+    /*  font-size: 24px;*/
+    /*  font-weight: bold;*/
+    /*  white-space: nowrap;*/
+    /*}*/
+
+    /*.col-pool {*/
+    /*  width: 58%;*/
+    /*  text-align: left;*/
+    /*  font-size: 26px;*/
+    /*  letter-spacing: 2px;*/
+    /*  white-space: nowrap;*/
+    /*  overflow-x: auto;*/
+    /*}*/
+
+    /*.col-select {*/
+    /*  width: 12%;*/
+    /*  font-size: 30px;*/
+    /*  white-space: nowrap;*/
+    /*}*/
+
+    /*.col-reward {*/
+    /*  width: 12%;*/
+    /*  font-size: 30px;*/
+    /*  white-space: nowrap;*/
+    /*}*/
+
+    #info {
+      margin-top: 20px;
+      line-height: 1.7;
+    }
+
+    code {
+      background: #f3f3f3;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🎰 多臂拉霸機遊戲</h2>
+
+  <div id="game-container">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-id">編號</th>
+          <th class="col-pool">獎勵池</th>
+          <th class="col-select">選擇</th>
+          <th class="col-reward">獎勵</th>
+        </tr>
+      </thead>
+      <tbody id="machine-table-body"></tbody>
+    </table>
+  </div>
+
+  <div id="info">
+    <h3>遊戲說明</h3>
+    <p>
+      這是一個簡化版的多臂拉霸機環境，共有 5 台機器：A0 ~ A4。<br>
+      每次動作就是直接選擇其中一台機器，目前獎勵先固定為 0。
+    </p>
+
+    <h3>State 描述</h3>
+    <ul>
+      <li><code>selectedMachine</code>：目前選中的機台索引（0 ~ 4）</li>
+    </ul>
+
+    <h3>Action 描述</h3>
+    <ul>
+      <li><code>0</code>：A0</li>
+      <li><code>1</code>：A1</li>
+      <li><code>2</code>：A2</li>
+      <li><code>3</code>：A3</li>
+      <li><code>4</code>：A4</li>
+    </ul>
+
+    <h3>手動操作</h3>
+    <ul>
+      <li>鍵盤 0 ~ 4：選擇 A0 ~ A4</li>
+    </ul>
+  </div>
+
+  <script>
+    const machineCount = 5;
+    let selectedMachine = 0;
+    let rewardBuffer = 0;
+    let currentState = [];
+    let currentSessionId = 0;
+
+    const rewardPool = ["❌","❌","❌","🍬","🍬","🍬","🍬","🪙","🪙","💎"];
+    let displayedRewards = Array(machineCount).fill("❔");
+
+    function renderMachines() {
+      const tbody = document.getElementById("machine-table-body");
+      tbody.innerHTML = "";
+
+      for (let i = 0; i < machineCount; i++) {
+        const tr = document.createElement("tr");
+
+        const tdId = document.createElement("td");
+        tdId.className = "col-id";
+        tdId.textContent = `🎰 A${i}`;
+
+        const tdPool = document.createElement("td");
+        tdPool.className = "col-pool";
+        tdPool.textContent = rewardPool.join("");
+
+        const tdSelect = document.createElement("td");
+        tdSelect.className = "col-select";
+        tdSelect.textContent = (i === selectedMachine) ? "👈" : "🔘";
+
+        const tdReward = document.createElement("td");
+        tdReward.className = "col-reward";
+        tdReward.textContent = displayedRewards[i];
+
+        tr.appendChild(tdId);
+        tr.appendChild(tdPool);
+        tr.appendChild(tdSelect);
+        tr.appendChild(tdReward);
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    function updateState() {
+      currentState = [selectedMachine];
+    }
+
+    function processAction(action) {
+      if (action < 0 || action >= machineCount) return;
+
+      selectedMachine = action;
+      rewardBuffer += 0;
+
+      updateState();
+      renderMachines();
+    }
+
+    function sendRewardState() {
+      window.parent.postMessage({
+        type: "reward_state",
+        reward: rewardBuffer,
+        state: currentState,
+        sessionId: currentSessionId
+      }, "*");
+
+      rewardBuffer = 0;
+    }
+
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+
+      if (msg.type === "action") {
+        processAction(msg.action);
+        sendRewardState();
+
+      } else if (msg.type === "questInfo") {
+        currentSessionId = msg.sessionId;
+
+        updateState();
+        renderMachines();
+
+        window.parent.postMessage({
+          type: "gameInfo",
+          players: [{
+            stateInfo: [
+              { name: "selectedMachine", min: 0, max: machineCount - 1, bin: machineCount }
+            ],
+            actionInfo: [
+              { type: "switch", level: machineCount, name: ["A0", "A1", "A2", "A3", "A4"] }
+            ]
+          }]
+        }, "*");
+      }
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key >= "0" && event.key <= "4") {
+        processAction(parseInt(event.key, 10));
+      }
+    });
+
+    updateState();
+    renderMachines();
+  </script>
+
+</body>
+</html>

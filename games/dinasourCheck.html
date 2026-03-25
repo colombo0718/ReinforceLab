@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chrome 小恐龍遊戲改版</title>
+  <!-- p5.js 函式庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div>
+    <h2>遊戲說明</h2>
+    <p>這是一個模仿 Chrome 小恐龍的改版遊戲，玩家需要透過跳躍來避免撞到樹，並獲得高分。</p>
+    <p>遊戲可手動操作，也可通過程式控制，適合作為強化學習的訓練環境。</p>
+  
+    <h3>遊戲機制</h3>
+    <ul>
+      <li>當恐龍與樹相撞時，扣除分數，並暫停 500 毫秒。</li>
+      <li>每當樹越過畫面左側且未被撞到時，得 10 分。</li>
+      <li>遊戲目標是獲得更高分數，並避免與樹碰撞。</li>
+    </ul>
+  
+    <h3>手動遊玩</h3>
+    <ul>
+      <li>按下鍵盤 A：讓恐龍跳躍</li>
+    </ul>
+  
+    <h3>State 描述</h3>
+    <ul>
+      <li>treeX：樹的水平位置 (範圍 0 ~ 500)</li>
+      <li>dinoY：恐龍的垂直位置 (範圍 0 ~ 100)</li>
+    </ul>
+  
+    <h3>Action 描述</h3>
+    <ul>
+      <li>0：不動作</li>
+      <li>1：跳躍</li>
+    </ul>
+  </div>
+
+  <script>
+    /************************************************
+     *               全域遊戲變數宣告               *
+     ************************************************/
+    // -- 恐龍相關 --
+    let dinoX = 100;        // 恐龍 x 位置 (固定)
+    let dinoY = 160;        // 恐龍 y 位置
+    let dinoWidth = 20;     // 恐龍寬度
+    let dinoHeight = 40;    // 恐龍高度
+    let dinoVelocity = 0;   // 垂直速度
+    let dinoAcceleration = 0.6; // 重力加速度
+    let isJumping = false;  // 是否正在跳躍
+    let isHit = false;      // 恐龍是否被戳到
+    let invincible = false; // 是否處於無敵狀態
+
+    // -- 樹木相關 --
+    let treeX = 450;        // 樹的起始 x 位置
+    let treeY = 160;        // 樹的底部 y 位置
+    let treeSpeed = 4;      // 樹的移動速度
+
+    // -- 分數相關 --
+    let score = 0;          // 分數
+
+    // -- RL 溝通相關 --
+    let rewardBuffer = 0;   // 儲存回饋分數
+    let state = [];         // 儲存遊戲狀態
+    
+    // -- 暫停相關 --
+    let isPaused = false;   // 是否處於暫停狀態
+    
+    /************************************************
+     *                  p5.js 主程式               *
+     ************************************************/
+    function setup() {
+      let canvas = createCanvas(400, 200);
+      canvas.parent('game-container'); // 嵌入到遊戲容器中
+    }
+
+    function draw() {
+      background(240);
+      
+      // 1) 若已經撞到樹，先畫出「Game Over」狀態。
+      if (isHit) {
+        drawDino(true);  // 畫出紅色恐龍
+        drawTree();
+        drawScore();
+        showGameOverText();
+        return; // 撞到後就不再更新遊戲邏輯
+      }
+
+      // 2) 正常遊戲流程
+      updateDino();    // 更新恐龍狀態（跳躍、重力等等）
+      updateTree();    // 更新樹的位置
+      checkCollision(); // 碰撞檢測
+
+      // 3) 繪製畫面
+      drawDino(false);
+      drawTree();
+      drawScore();
+    }
+
+    /************************************************
+     *                 遊戲邏輯函式                *
+     ************************************************/
+    // 更新恐龍位置與跳躍邏輯
+    function updateDino() {
+      if (isJumping) {
+        dinoVelocity += dinoAcceleration; // 重力
+        dinoY += dinoVelocity;           // 更新 Y 位置
+
+        // 回到地面後，停止跳躍
+        if (dinoY >= 160) {
+          dinoY = 160;
+          isJumping = false;
+          dinoVelocity = 0;
+        }
+      }
+    }
+
+    // 更新樹的位置與分數
+    function updateTree() {
+      treeX -= treeSpeed;
+      // console.log(treeX)
+      if (treeX < 0) {
+        // 每次樹離開畫布左側沒撞到恐龍，就得 10 分
+        score += 10;
+        rewardBuffer += 10;
+        // 將樹重置到畫布右側的隨機位置
+        treeX = random(400, 600);
+      }
+    }
+
+    // 碰撞檢測：若恐龍與樹重疊且恐龍在地面，則視為撞到
+    function checkCollision() {
+      if (
+        !invincible &&                   // 沒有處於無敵狀態
+        treeX > dinoX - dinoWidth / 2 && // 樹在恐龍左右範圍內
+        treeX < dinoX + dinoWidth / 2 &&
+        dinoY >= (160 - dinoHeight)      // 恐龍的身體高度範圍
+      ) {
+        isHit = true;
+        invincible = true;
+        score = 0;           // 分數清零
+        rewardBuffer += -100; // 扣分
+        // 發送回合結束訊息
+        window.parent.postMessage({type: "endEpisode"}, "*");
+        // 無敵狀態與紅色顯示保持 500ms
+        setTimeout(() => {
+          isHit = false;
+          invincible = false;
+          treeX = random(400, 600);
+        }, 500);
+      }
+    }
+
+    // 處理跳躍動作
+    function performJump() {
+      if (!isJumping) {
+        isJumping = true;
+        dinoVelocity = -11; // 向上跳的初速度
+      }
+    }
+
+    /************************************************
+     *               繪製相關函式                   *
+     ************************************************/
+    // 繪製恐龍，isRed 用來決定恐龍是否以紅色顯示
+    function drawDino(isRed) {
+      stroke(0);
+      strokeWeight(1);
+      if (isRed) {
+        fill(255, 0, 0);   // 被戳到後變為紅色
+      } else {
+        fill(0, 0, 255);   // 正常狀態為藍色
+      }
+      rect(dinoX - dinoWidth / 2, dinoY - dinoHeight, dinoWidth, dinoHeight);
+    }
+
+    // 繪製樹
+    function drawTree() {
+      stroke(0);
+      strokeWeight(1);
+      fill(0, 255, 0);  // 綠色樹
+      triangle(treeX, treeY - 40, treeX - 10, treeY, treeX + 10, treeY);
+    }
+
+    // 繪製分數
+    function drawScore() {
+      textSize(24);
+      fill(0);
+      noStroke();
+      text(`Score: ${score}`, 10, 20);
+    }
+
+    // 顯示 Game Over 字樣
+    function showGameOverText() {
+      textSize(32);
+      fill(0);
+      noStroke();
+      text('Game Over!', width / 2 - 80, height / 2);
+    }
+    
+    // 顯示 Paused 字樣
+    function drawPausedText() {
+      textSize(32);
+      fill(0);
+      noStroke();
+      // textAlign(CENTER, CENTER);
+      text('Paused', width / 2, height / 2);
+    }
+
+    /************************************************
+     *              鍵盤操作與通訊處理             *
+     ************************************************/
+    function keyPressed() {
+      // 按下空白鍵切換暫停/繼續
+      if (key === ' ') {
+        togglePause();
+        return;
+      }
+      // 按下 'A' 鍵讓恐龍跳躍
+      if (key === 'A' || key === 'a') {
+        performJump();
+      }
+    }
+
+    // 切換暫停狀態的函式
+    function togglePause() {
+      if (isPaused) {
+        // 若目前為暫停狀態，則繼續遊戲
+        isPaused = false;
+        loop(); // 恢復 draw() 的執行
+      } else {
+        // 若目前為運行狀態，則暫停遊戲
+        isPaused = true;
+        noLoop(); // 停止 draw() 的連續呼叫
+        redraw(); // 呼叫一次 draw() 來顯示暫停畫面
+      }
+    }
+    // 父頁面傳遞的訊息處理
+    function handleMessage(event) {
+      const message = event.data;
+      if (message.type === "action") {
+        // console.log('get action')
+        const action = message.action; // 父頁面傳遞的動作
+        processAction(action);         // 執行動作
+        sendRewardState();            // 傳送獎勵和狀態
+        rewardBuffer = 0;             // 重置回饋
+      } else if (message.type === "questInfo") {
+        // 回傳基本遊戲資訊
+        const gameInfo = {
+          type: "gameInfo",
+          // playerNumber: 2,
+          // continuty: { time:false, state:false },
+          // stateInfo: [
+          //   { name: 'treeX', min: -100, max: 300 },
+          //   { name: 'dinoY', min: 0, max: 100 }
+          // ],
+          // actionInfo: [
+          //   { type: "switch", level: 2, name: ['none','jump'] }
+          // ]
+          players:[
+            {
+              stateInfo: [
+                { name: 'treeX', min: -100, max: 300 },
+                { name: 'dinoY', min: 0, max: 100 }
+              ],
+              actionInfo: [
+                { type: "switch", level: 2, name: ['none','jump'] }
+              ]
+            }          
+          ]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      } else if (message.type === "pause") {
+        togglePause()
+      }
+    }   
+
+    // 處理來自父頁面的動作
+    function processAction(action) {
+      if (action === 1) {
+        // 動作：跳躍
+        rewardBuffer += -1; // 小幅度正回饋
+        if (!isJumping) {
+          performJump();
+        } else {
+          // 若正在跳躍又繼續按跳躍，稍微扣分(希望 Agent 不要過度跳躍)
+          // rewardBuffer += -1;
+        }
+      }
+      else if (action === 0) {
+        // 動作：什麼也不做
+        rewardBuffer += 1; // 小幅度正回饋
+      }
+      // 更新狀態: dinoY (0~100), treeX (0~500)
+      // 這裡存的值是 160 - dinoY 與 treeX - 100 (原程式習慣)
+      state = [(treeX - 100).toFixed(2),(160 - dinoY).toFixed(2), ];
+    }
+    
+    // 傳送遊戲狀態和獎勵
+    function sendRewardState() {
+      window.parent.postMessage({ 
+        type: "reward_state", 
+        reward: rewardBuffer, 
+        state: state 
+      }, "*");
+    }
+
+    // 監聽父頁面傳來的動作
+    window.addEventListener("message", handleMessage);
+  </script>
+</body>
+</html>

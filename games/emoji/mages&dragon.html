@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐉</text></svg>">
+    <title>法師鬥惡龍 Mage vs Dragon</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+html, body {
+    height: 100%;
+}
+
+body {
+    height: 100dvh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    font-family: "Microsoft JhengHei", sans-serif;
+    background: #111;
+    color: #f5f5f5;
+}
+
+.app {
+    display: flex;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+        .panel {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            border-right: 1px solid rgba(255,255,255,0.15);
+            padding: 16px;
+            position: relative;
+            overflow: auto;
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .placeholder {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 96px;
+        }
+
+        .rules-panel {
+            overflow-y: auto;
+        }
+
+        .promo-image {
+            width: 100%;
+            display: block;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            height: 40%;
+        }
+
+        .game-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .game-subtitle {
+            font-size: 14px;
+            color: #d0d0d0;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .intro-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 14px;
+                height: 55%;
+    overflow: auto;
+        }
+
+        .intro-card h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #ffd36b;
+        }
+
+        .intro-card p,
+        .intro-card li {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #f0f0f0;
+        }
+
+        .intro-card ul {
+            padding-left: 20px;
+        }
+
+        .status-demo {
+            font-family: monospace;
+            white-space: pre-line;
+            background: rgba(0,0,0,0.25);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+            line-height: 1.7;
+        }
+
+.battle-table {
+    margin: 0 auto;
+    border-collapse: collapse;
+}
+
+.battle-table td {
+    text-align: center;
+    vertical-align: middle;
+    font-size: 24px;
+    padding: 4px 4px;
+}
+
+.battle-table td.dragon,
+.battle-table td.dragon-skill,
+.battle-table td.dragon-hp {
+    font-size: 48px;
+}
+
+
+        .battle-message-box {
+            margin-top: 12px;
+            padding: 8px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .msg {
+            margin-bottom: 8px;
+        }
+
+        .msg-avatar {
+            margin-right: 6px;
+        }
+
+        .system-msg .msg-avatar,
+        .dragon-msg .msg-avatar,
+        .ally-msg .msg-avatar {
+            display: inline-block;
+            width: 24px;
+            text-align: center;
+        }
+
+.game-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.battle-card,
+.message-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 16px;
+    line-height: 1.8;
+}
+
+.message-card > div {
+    margin-bottom: 8px;
+}
+
+.message-card > div:last-child {
+    margin-bottom: 0;
+}
+
+
+.desktop-panel-tab {
+    position: absolute;
+    left: 12px;
+    bottom: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.75);
+}
+
+.mobile-tabbar {
+    background: #1a1a1a;
+    border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.mobile-tabbar-inner {
+    display: flex;
+}
+
+.mobile-tabbar button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #ddd;
+    padding: 12px 8px;
+    font-size: 15px;
+}
+
+.mobile-tabbar button.active {
+    color: #fff;
+    font-weight: bold;
+    background: rgba(255,255,255,0.08);
+}
+
+@media (max-width: 768px) {
+    .app {
+        display: block;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .panel {
+        display: none;
+        height: 100%;
+        min-height: 0;
+        overflow: auto;
+        border-right: none;
+    }
+
+    .panel.active {
+        display: block;
+    }
+
+    .desktop-panel-tab {
+        display: none;
+    }
+}
+
+.panel {
+    flex: 1;
+    min-width: 0;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    padding: 16px;
+    position: relative;
+}
+    </style>
+</head>
+<body>
+    <div class="app">
+    <!-- 左：規則 -->
+    <div class="panel rules-panel" data-panel="rules">
+        <img class="promo-image" src="cover.jpg" alt="法師鬥惡龍宣傳圖">
+
+        <div class="intro-card">
+            <h3>🎯 遊戲介紹</h3>
+            <p>
+                [法師鬥惡龍] 是一款兩名法師合作對抗惡龍的回合制策略遊戲。<br>
+                每回合法師與惡龍三方先各自選擇動作，再同時施放技能並結算傷害與效果。<br>
+                擊敗惡龍即獲勝；若兩名法師都死亡則失敗。
+            </p>
+
+            <h3>🧙 法師行動</h3>
+            <ul>
+                <li>⭕ 無：不做任何事</li>
+                <li>⚡ 閃電：單人施放造成 1 點傷害；若兩名法師同回合同時施放總傷害提升為 4 點</li>
+                <li>🛡️ 護盾：單人護盾時，總傷害減半後由兩人平分；雙人護盾時，反彈全部傷害</li>
+                <li>💚 補血：幫隊友回 2 HP；若兩名法師同回合同時施放補血，兩名法師各回 3 HP</li>
+            </ul>
+            <p>所有法術都要先詠唱👄 1 回合，接著下一回合就一定會施放👉，不能取消。</p>
+
+            <h3>🐉 惡龍行動</h3>
+            <ul>
+                <li>⭕ 無：不做任何事</li>
+                <li>🔥 噴火：先連續吸氣👃 2 回合，之後可噴火造成 8 傷害</li>
+                <li>💥 爪擊：先抬手✋ 1 回合，之後可爪擊造成 4 傷害</li>
+            </ul>
+            <p>惡龍可以中途選擇無動作，自行打斷不放招，或選擇另一種準備動作。</p>
+
+
+        </div>
+</div>
+
+    <!-- 中：遊戲 -->
+<div class="panel game-panel" data-panel="battle">
+    <div class="battle-card">
+        <table class="battle-table">
+            <tr>
+                <td class="hp mageA" id="mageA-hp">❤️5</td>
+                <td class="mage mageA" id="mageA">🧙</td>
+                <td class="skill mageA" id="mageA-skill">👉⚡</td>
+                <td class="empty"></td>
+                <td class="skill dragon" id="dragon-skill" rowspan="2">🔥</td>
+                <td class="dragon" id="dragon" rowspan="2">🐉</td>
+                <td class="hp dragon" id="dragon-hp" rowspan="2">❤️20</td>
+            </tr>
+            <tr>
+                <td class="hp mageB" id="mageB-hp">❤️5</td>
+                <td class="mage mageB" id="mageB">🧙</td>
+                <td class="skill mageB" id="mageB-skill">👄❓</td>
+                <td class="empty"></td>
+                <td class="dragon empty-dragon-space"></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="message-card">
+        <div class="msg system-msg">
+            <span class="msg-avatar">📜:</span>
+            <span class="msg-text">
+                火光在戰場中央翻湧，惡龍張開雙翼逼近。你剛施放出一道閃電，隊友則仍在低聲詠唱，似乎還不打算立刻亮出底牌。
+            </span>
+        </div>
+
+        <div class="msg dragon-msg">
+            <span class="msg-avatar">🐲:</span>
+            <span class="msg-text">
+                愚蠢的法師……你們真以為靠這點小把戲，就能撼動我的火焰嗎？
+            </span>
+        </div>
+
+        <div class="msg ally-msg">
+            <span class="msg-avatar">🤖:</span>
+            <span class="msg-text">
+                我先保留法術種類，不讓牠看穿節奏。你這回合已經出手了，若下一拍牠改成噴火，我可以考慮轉成護盾。
+            </span>
+        </div>
+        <div class="msg player-msg">
+            <span class="msg-avatar">🙂:</span>
+            <span class="msg-text">
+                先穩一點，我不想被牠騙出雙盾。如果下一拍還是高壓節奏，我們就先保命，等安全回合再考慮雙閃電。
+            </span>
+        </div>
+        <div class="msg hint-msg">
+            <span class="msg-avatar">💡:</span>
+            <span class="msg-text">
+                請選擇你本回合要詠唱的法術。你可以施放閃電搶先壓血，也可以保留護盾或補血來應對惡龍下一步的攻勢。
+            </span>
+        </div>
+    </div>
+</div>
+
+
+
+    <!-- 右：紀錄 / AI -->
+    <div class="panel" data-panel="dashboard">
+        <div class="placeholder">🤖</div>
+    </div>
+    </div>
+    <!-- 手機底部 tab -->
+    <nav class="mobile-tabbar">
+        <div class="mobile-tabbar-inner">
+            <button class="tab-btn active" data-target="rules">📜規則</button>
+            <button class="tab-btn" data-target="battle">⚔️對戰</button>
+            <button class="tab-btn" data-target="dashboard">📊儀表</button>
+        </div>
+    </nav>
+
+    <script>
+const tabButtons = document.querySelectorAll(".tab-btn");
+const panels = document.querySelectorAll(".panel");
+
+function isMobileView() {
+    return window.innerWidth <= 768;
+}
+
+function switchPanel(target) {
+    if (isMobileView()) {
+        panels.forEach(panel => {
+            panel.classList.toggle("active", panel.dataset.panel === target);
+        });
+    } else {
+        panels.forEach(panel => panel.classList.add("active"));
+    }
+
+    tabButtons.forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.target === target);
+    });
+}
+
+tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+        if (isMobileView()) {
+            switchPanel(btn.dataset.target);
+        }
+    });
+});
+
+window.addEventListener("resize", () => {
+    if (isMobileView()) {
+        const activeBtn = document.querySelector(".tab-btn.active");
+        switchPanel(activeBtn ? activeBtn.dataset.target : "rules");
+    } else {
+        switchPanel("rules");
+    }
+});
+
+switchPanel("rules");
+</script>
+</body>
+</html>

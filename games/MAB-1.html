@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Armed Bandit Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        /*.container {*/
+        /*    flex-direction: column;*/
+        /*}*/
+        .machine {
+            display: flex;
+            align-items: center;
+            margin: 0px 0;
+            width: 100%;
+        }
+        /*canvas {*/
+        /*    width: 300px;*/
+        /*    height: 200px;*/
+        /*}*/
+        .pull-button {
+            margin-right: 20px;
+            padding: 10px 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+        }
+        .pull-button.active {
+            background-color: #ffd700;
+        }
+        .ev {
+            margin-left: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        /*.reward {*/
+        /*    margin: 20px;*/
+        /*    font-size: 18px;*/
+        /*    font-weight: bold;*/
+        /*}*/
+        .reset-button {
+            margin: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #f99;
+        }
+        /*.instructions {*/
+        /*    margin-top: 20px;*/
+        /*    padding: 10px;*/
+        /*    border: 1px solid #ccc;*/
+        /*}*/
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Multi-Armed Bandit Game</h1>
+
+        <!-- 機器的容器 -->
+        <div id="machines"></div>
+
+        <!-- 按鈕：重置所有機器 -->
+        <button class="reset-button" onclick="resetMachines()">Reset Bandits</button>
+
+        <!-- 遊戲說明區域 -->
+        <div>
+            <h2>遊戲說明</h2>
+            <p>這是一個簡單的多臂拉霸機模擬遊戲，玩家可以選擇不同的機器以觀察其回報特性。</p>
+            <p>此遊戲可手動操作或由程式控制，非常適合強化學習的訓練環境。</p>
+            
+            <h3>遊戲機制</h3>
+            <ul>
+                <li>玩家選擇一台機器，該機器根據預先設定的機率分布產生隨機回報。</li>
+                <li>回報值為 0 到 10 的整數，嚴格依照機率分布生成。</li>
+                <li>玩家可多次選擇相同機器，觀察其行為特性並制定策略。</li>
+            </ul>
+            
+            <h3>手動操作</h3>
+            <ul>
+                <li>按下「Action 0」到「Action 4」按鈕，選擇對應的機器。</li>
+                <li>選擇後，顯示該次操作的回報值及機器的期望值 (EV)。</li>
+            </ul>
+            
+            <h3>狀態描述 (State)</h3>
+            <ul>
+                <li>狀態長度為 0，表示此遊戲不提供任何狀態資訊。</li>
+            </ul>
+            
+            <h3>動作描述 (Action)</h3>
+            <ul>
+                <li>0：選擇第 0 號機器</li>
+                <li>1：選擇第 1 號機器</li>
+                <li>2：選擇第 2 號機器</li>
+                <li>3：選擇第 3 號機器</li>
+                <li>4：選擇第 4 號機器</li>
+            </ul>
+        </div>
+
+    </div>
+
+    <script>
+        // 設定遊戲中機器的數量
+        const numMachines = 5;
+        
+        // 初始化每台機器的機率分布
+        const machines = Array(numMachines).fill(null).map(() => generateProbabilities());
+
+        // 設定圖表顏色
+        const colors = [
+            'rgba(75, 192, 192, 0.6)',
+            'rgba(255, 99, 132, 0.6)',
+            'rgba(255, 205, 86, 0.6)',
+            'rgba(54, 162, 235, 0.6)',
+            'rgba(153, 102, 255, 0.6)'
+        ];
+
+        // 儲存每台機器的圖表實例
+        const charts = [];
+
+        // 生成機率分布，偏向於隨機選擇的一個值
+        // function generateProbabilities() {
+        //     const biasPoint = Math.floor(Math.random() * 11); // 隨機選擇偏向點
+        //     const probabilities = Array(11).fill(0).map((_, i) => {
+        //         const distance = Math.abs(i - biasPoint);
+        //         return Math.max(1 / (distance + 1), 0.1) + Math.random() * 0.1;
+        //     });
+
+        //     // 正規化機率分布，使總和為 1
+        //     const sum = probabilities.reduce((a, b) => a + b, 0);
+        //     return probabilities.map(p => p / sum);
+        // }
+        
+        
+        // 生成機率分布，使用高斯分布實現鮮明的特性
+        function generateProbabilities() {
+            const biasPoint = Math.floor(Math.random() * 11); // 隨機選擇偏向點
+            const sigma = 1.5; // 控制分布的集中程度
+            const probabilities = Array(11).fill(0).map((_, i) => {
+                const distance = Math.abs(i - biasPoint);
+                return Math.exp(- (distance ** 2) / (2 * sigma ** 2));
+            });
+            const sum = probabilities.reduce((a, b) => a + b, 0);
+            return probabilities.map(p => p / sum);
+        }
+
+        // 計算機器的期望值 (Expected Value, EV)
+        function calculateExpectedValue(probabilities) {
+            return probabilities.reduce((acc, p, i) => acc + p * i, 0).toFixed(2);
+        }
+
+        // 根據機率分布產生回報值
+        function sampleReward(probabilities) {
+            const rand = Math.random(); // 生成 [0, 1) 的隨機數
+            let cumulative = 0;
+            // console.log(probabilities)
+            for (let i = 0; i < probabilities.length; i++) {
+                cumulative += probabilities[i];
+                if (rand < cumulative) return i; // 當隨機數落入累積區間時，返回對應的回報值
+            }
+            return 10; // 預設回傳最大值（理論上不應觸發）
+        }
+        let reward=0
+
+        // 執行拉霸機操作
+        function pullMachine(index) {
+            reward = sampleReward(machines[index]); // 生成該機器的回報值
+
+            // 更新顯示期望值和回報值
+            const evDivs = document.querySelectorAll('.ev');
+            evDivs.forEach((evDiv, i) => {
+                if (i === index) {
+                    evDiv.textContent = `EV: ${calculateExpectedValue(machines[i])}, R: ${reward}`;
+                } else {
+                    evDiv.textContent = `EV: ${calculateExpectedValue(machines[i])}`;
+                }
+            });
+
+            // 更新按鈕樣式以突出當前選擇的機器
+            const buttons = document.querySelectorAll('.pull-button');
+            buttons.forEach((button, i) => {
+                if (i === index) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+        }
+
+        // 渲染機器的圖表
+        function renderChart(context, probabilities, machineIndex) {
+            if (charts[machineIndex]) {
+                charts[machineIndex].destroy(); // 如果已有圖表，先銷毀
+            }
+
+            charts[machineIndex] = new Chart(context, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({ length: 11 }, (_, i) => i.toString()),
+                    datasets: [{
+                        label: `Bandit ${machineIndex + 1}`,
+                        data: probabilities,
+                        backgroundColor: colors[machineIndex],
+                        borderColor: colors[machineIndex].replace('0.6', '1'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: false, // 禁用響應式設置
+                    maintainAspectRatio: false, // 禁用固定比例
+                    plugins: {
+                        legend: {
+                            display: false // 隱藏圖例
+                        }
+                    }
+                }
+            });
+        }
+
+        // 渲染所有機器，包括按鈕、圖表和期望值顯示
+        function renderMachines() {
+            const machinesDiv = document.getElementById('machines');
+            machinesDiv.innerHTML = ''; // 清空現有內容
+
+            for (let i = 0; i < numMachines; i++) {
+                const machineDiv = document.createElement('div');
+                machineDiv.className = 'machine';
+
+                // 創建操作按鈕
+                const button = document.createElement('button');
+                button.className = 'pull-button';
+                button.textContent = `A ${i+1}`;
+                button.onclick = () => pullMachine(i);
+                machineDiv.appendChild(button);
+
+                // 創建圖表畫布
+                const canvas = document.createElement('canvas');
+                canvas.id = `chart${i}`;
+                canvas.width = 200;
+                canvas.height = 100;
+                machineDiv.appendChild(canvas);
+
+                // 創建期望值顯示
+                const evDiv = document.createElement('div');
+                evDiv.className = 'ev';
+                evDiv.textContent = `EV: ${calculateExpectedValue(machines[i])}`;
+                machineDiv.appendChild(evDiv);
+
+                machinesDiv.appendChild(machineDiv);
+
+                const ctx = canvas.getContext('2d');
+                renderChart(ctx, machines[i], i);
+            }
+        }
+
+        // 重置所有機器，重新生成機率分布並渲染
+        function resetMachines() {
+            for (let i = 0; i < numMachines; i++) {
+                machines[i] = generateProbabilities(); // 為每台機器生成新的機率分布
+            }
+            renderMachines(); // 重新渲染
+        }
+
+        // 初次渲染機器
+        renderMachines();
+        
+        let pullCounter=0
+            // 接收父頁面的動作
+      function handleMessage(event) {
+        const message = event.data;
+        if (message.type === "action") {
+          const action = message.action; // 父頁面傳遞的動作（0 或 1）
+          // console.log('get action'+ message.action)
+          // processAction(action);
+          pullMachine( message.action)
+          sendRewardState();
+          
+          // 拉10次是一回合
+          pullCounter+=1
+          if(pullCounter==10){
+            pullCounter=0
+            window.parent.postMessage({type: "endEpisode"}, "*");
+          }
+          
+          // rewardBuffer = 0; // 重置 rewardBuffer
+        } else if (message.type === "questInfo") {
+          // 回傳基本遊戲資訊
+          const gameInfo = {
+            type: "gameInfo",
+            // playerNumber:2,
+            // continuty:{time:false,state:false},
+            // stateInfo: [{name:'bandit', min: 0, max: 10 }], // 每個 state 的範圍
+            // actionInfo:[{ "type": "switch", "level": 5}]
+            players:[
+              {
+                stateInfo: [{name:'bandit', min: 0, max: 10 }], // 每個 state 的範圍
+                actionInfo:[{ "type": "switch", "level": 5}]
+              }          
+            ]
+          };
+          window.parent.postMessage(gameInfo, "*");
+        }
+      }
+      // 傳送遊戲狀態和獎勵
+      function sendRewardState() {
+        window.parent.postMessage({ type: "reward_state", reward: reward, state: [0] }, "*");
+      }
+      
+      window.addEventListener("message", handleMessage); // 監聽父頁面傳來的動作
+    </script>
+</body>
+</html>

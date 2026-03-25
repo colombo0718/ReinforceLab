@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>簡單射擊遊戲 (setInterval 改寫版)</title>
+  <!-- p5.js 函式庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div>
+    <h2>簡單射擊遊戲示例 (setInterval 版)</h2>
+    <p>使用 <strong>noLoop() + setInterval()</strong> 的方式，自訂遊戲邏輯與繪製的更新頻率。</p>
+
+    <h3>遊戲規則</h3>
+    <ul>
+      <li>按下鍵盤 <strong>S</strong>：發射子彈 (若目前沒有子彈在空中)。</li>
+      <li>若子彈擊中靶子，+50 分，重新生成新靶子。</li>
+      <li>靶子落到底部未被擊中時，-10 分，並重新生成新靶子。</li>
+      <li>可考慮對「發射子彈」也給一點小扣分（例如 -1）以避免亂射。</li>
+      <li>空白鍵 <strong>Space</strong> 可暫停/繼續遊戲。</li>
+    </ul>
+  </div>
+
+  <script>
+    /************************************************
+     *               全域遊戲變數宣告               *
+     ************************************************/
+    // -- 畫布大小 --
+    let CANVAS_WIDTH = 400;
+    let CANVAS_HEIGHT = 600;
+
+    // -- 槍口位置 (固定) --
+    let gunX = 0;
+    let gunY = 400;
+
+    // -- 子彈相關 --
+    let bulletX = gunX;
+    let bulletY = gunY;
+    let bulletSpeed = 10;   // 子彈水平速度
+    let bulletActive = false;// 是否有子彈在空中
+    
+    // -- 靶子相關 --
+    let targetX;
+    let targetY = 0;
+    let targetSpeed = 5;
+    let targetRadius = 20;  // 判定碰撞的半徑
+
+    // -- 分數相關 --
+    let score = 0;          // 畫面上顯示用
+    let rewardBuffer = 0;   // 每次 action 後要回傳的獎勵暫存
+
+    // -- RL 溝通相關 --
+    let state = [];         // 保存當前狀態 [targetX, targetY, bulletX, bulletY]
+
+    // -- 暫停/結束 --
+    let isPaused = false;
+    let gameOver = false;   // 此示例暫無真正結束條件，可自行延伸
+
+
+    /************************************************
+     *               p5.js 基本初始化               *
+     ************************************************/
+    function setup() {
+      let canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+      canvas.parent('game-container'); 
+
+      // 停止 p5.js 自動以 60FPS 呼叫 draw()
+      noLoop();
+
+      // 初始化靶子
+      resetTarget();
+
+      // 使用 setInterval 來控制「遊戲更新邏輯 + 單次繪圖」的頻率
+      // 例如每 100 毫秒 => 10FPS（你可依需求調整）
+      setInterval(() => {
+        // 若遊戲沒暫停 & 沒結束，才進行邏輯更新
+        if (!isPaused && !gameOver) {
+          mainLogic();
+        }
+        // 重繪畫面 (p5.js 只會執行 draw() 一次)
+        redraw();
+      }, 2);
+    }
+
+    /************************************************
+     *            核心「遊戲邏輯」循環函式           *
+     ************************************************/
+    // 從原本的 draw() 裡面抽出「更新部分」，改到這裡
+    function mainLogic() {
+      // 1) 更新子彈位置
+      updateBullet();
+
+      // 2) 更新靶子位置
+      updateTarget();
+
+      // 3) 判定子彈是否擊中靶子
+      checkBulletHit();
+
+      // 4) 判定靶子是否落到底部沒打中
+      checkTargetMissed();
+
+      // 可在這裡檢查是否要結束遊戲 (未示範)
+    }
+
+
+    /************************************************
+     *                  p5.js draw()                *
+     ************************************************/
+    // 只負責「繪製」畫面，不再做邏輯更新
+    function draw() {
+      background(240);
+
+      if (gameOver) {
+        drawGameOver();
+        return;
+      }
+
+      // 繪製槍口
+      drawGun();
+
+      // 繪製子彈
+      drawBullet();
+
+      // 繪製靶子
+      drawTarget();
+
+      // 繪製分數
+      drawScore();
+    }
+
+    /************************************************
+     *                 遊戲邏輯函式                *
+     ************************************************/
+    function updateBullet() {
+      if (bulletActive) {
+        bulletX += bulletSpeed;
+        if (bulletX > CANVAS_WIDTH) {
+          // 子彈飛出畫面，重置子彈
+          resetBullet();
+          rewardBuffer -= 10;
+        }
+      }
+    }
+
+    function updateTarget() {
+      targetY += targetSpeed;
+    }
+
+    function checkBulletHit() {
+      if (!bulletActive) return;
+
+      let distX = bulletX - targetX;
+      let distY = bulletY - targetY;
+      let distance = sqrt(distX * distX + distY * distY);
+
+      // 判定是否擊中: 距離 < (靶子半徑 + 子彈半徑)
+      if (distance < targetRadius + 5) {
+        score += 50;
+        rewardBuffer += 50;
+        resetBullet();
+        resetTarget();
+      }
+    }
+
+    function checkTargetMissed() {
+      if (targetY > CANVAS_HEIGHT) {
+        score -= 10;
+        rewardBuffer -= 10;
+        resetTarget();
+      }
+    }
+
+    // 發射子彈
+    function shootBullet() {
+      if (!bulletActive) {
+        bulletActive = true;
+      }
+    }
+
+    /************************************************
+     *              重置/初始化相關函式             *
+     ************************************************/
+    function resetBullet() {
+      bulletActive = false;
+      bulletX = gunX;
+      bulletY = gunY;
+    }
+
+    function resetTarget() {
+      targetY = 0;
+      targetX = random(100, 300);
+    }
+
+    /************************************************
+     *               繪製相關函式                   *
+     ************************************************/
+    function drawGun() {
+      fill(100);
+      noStroke();
+      rect(gunX, gunY - 10, 20, 20);
+    }
+
+    function drawBullet() {
+      if (bulletActive) {
+        fill(255, 0, 0);
+        noStroke();
+        ellipse(bulletX, bulletY, 10, 10);
+      }
+    }
+
+    function drawTarget() {
+      fill(0, 200, 0);
+      noStroke();
+      ellipse(targetX, targetY, targetRadius * 2, targetRadius * 2);
+    }
+
+    function drawScore() {
+      textSize(24);
+      fill(0);
+      text(`Score: ${score}`, 10, 30);
+    }
+
+    function drawGameOver() {
+      textSize(40);
+      fill(0);
+      textAlign(CENTER, CENTER);
+      text('Game Over!', width / 2, height / 2);
+    }
+
+    /************************************************
+     *              鍵盤操作與通訊處理             *
+     ************************************************/
+    function keyPressed() {
+      // 按下空白鍵切換暫停/繼續
+      if (key === ' ') {
+        togglePause();
+        return;
+      }
+
+      // 按下 'S' 鍵發射子彈
+      if (key === 'S' || key === 's') {
+        shootBullet();
+      }
+    }
+
+    // 切換暫停狀態
+    function togglePause() {
+      isPaused = !isPaused;
+    }
+
+    // 以下保留原本與父頁面通訊的部分
+    window.addEventListener("message", handleMessage);
+
+    function handleMessage(event) {
+      const message = event.data;
+      if (message.type === "action") {
+        const action = message.action;
+        processAction(action);
+        sendRewardState();
+        rewardBuffer = 0;
+      } else if (message.type === "questInfo") {
+        const gameInfo = {
+          type: "gameInfo",
+          // playerNumber: 1,
+          // continuty: { time:false, state:false },
+          // stateInfo: [
+          //   { name: 'targetX', min: 100, max: 300 },
+          //   { name: 'targetY', min: 0, max: 600 },
+          //   { name: 'bulletX', min: 0, max: 400 },
+          // ],
+          // actionInfo: [
+          //   { type: "switch", level: 2, name: ['none','shoot'] }
+          // ]
+          players:[
+            {
+              stateInfo: [
+                { name: 'targetX', min: 100, max: 300 },
+                { name: 'targetY', min: 0, max: 600 },
+                { name: 'bulletX', min: 0, max: 400 },
+              ],
+              actionInfo: [
+                { type: "switch", level: 2, name: ['none','shoot'] }
+              ]
+            }          
+          ]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      } else if (message.type === "pause") {
+        togglePause();
+      }
+    }
+
+    function processAction(action) {
+      if (action === 0) {
+        // 不做任何動作 => 小的正回饋
+        rewardBuffer += 0.1;
+      } else if (action === 1) {
+        // rewardBuffer -= 1; // 射击動作給一點扣分
+        shootBullet();
+      }
+
+      // 更新當前 state
+      state = [
+        targetX.toFixed(2),
+        (600 - targetY).toFixed(2),
+        bulletX.toFixed(2)
+      ];
+    }
+
+    function sendRewardState() {
+      window.parent.postMessage({ 
+        type: "reward_state", 
+        reward: rewardBuffer, 
+        state: state 
+      }, "*");
+    }
+  </script>
+</body>
+</html>

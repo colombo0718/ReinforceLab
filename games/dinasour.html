@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chrome 小恐龍遊戲改版 (p5.js 版本)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
+
+</head>
+<body>
+  <div id="game-container"></div>
+  <div>
+    <h2>遊戲說明</h2>
+    <p>這是一個模仿 Chrome 小恐龍的改版遊戲，玩家需要透過跳躍來避免撞到樹，並獲得高分。</p>
+    <p>遊戲可手動操作，也可通過程式控制，適合作為強化學習的訓練環境。</p>
+  
+    <h3>遊戲機制</h3>
+    <ul>
+      <li>當恐龍與樹相撞時，扣除分數，並暫停 500 毫秒。</li>
+      <li>每當樹越過畫面左側且未被撞到時，得 10 分。</li>
+      <li>遊戲目標是獲得更高分數，並避免與樹碰撞。</li>
+    </ul>
+  
+    <h3>手動遊玩</h3>
+    <ul>
+      <li>按下鍵盤 A：讓恐龍跳躍</li>
+    </ul>
+  
+    <h3>State 描述</h3>
+    <ul>
+      <li>dinoY：恐龍的垂直位置 (範圍 0 ~ 100)</li>
+      <li>treeX：樹的水平位置 (範圍 0 ~ 500)</li>
+    </ul>
+  
+    <h3>Action 描述</h3>
+    <ul>
+      <li>0：不動作</li>
+      <li>1：跳躍</li>
+    </ul>
+  </div>
+
+  <script>
+    // 遊戲參數
+    let dinoX = 100;         // 恐龍的固定 x 位置
+    let dinoY = 160;         // 恐龍的起始 y 位置
+    let dinoWidth = 20;      // 恐龍寬度
+    let dinoHeight = 40;     // 恐龍高度
+    let dinoVelocity = 0;    // 垂直速度
+    let dinoAcceleration = 0.6; // 重力加速度
+    let isJumping = false;   // 是否正在跳躍
+    let isHit = false;       // 是否碰撞
+    let invincible = false;  // 碰撞後短暫無敵狀態
+
+    let treeX = 450;         // 樹的起始 x 位置
+    let treeY = 160;         // 樹的底部 y 位置
+    let treeSpeed = 4;       // 樹的移動速度
+
+    let score = 0;           // 分數
+
+    // 與 RL 平台通訊的變數
+    let rewardBuffer = 0;    // 儲存回饋分數
+    let state = [];          // 儲存遊戲狀態
+
+    // p5.js 建立 canvas 並嵌入到 game-container 中
+    function setup() {
+      let canvas = createCanvas(400, 200);
+      canvas.parent('game-container');
+    }
+
+    // 每一幀更新遊戲邏輯與畫面
+    function draw() {
+      background(240);
+
+      // 繪製恐龍：碰撞時呈現紅色，否則藍色
+      stroke(0);
+      strokeWeight(1);
+      if (isHit) {
+        fill(255, 0, 0);
+      } else {
+        fill(0, 0, 255);
+      }
+      // 以恐龍底部對齊地面
+      rect(dinoX - dinoWidth / 2, dinoY - dinoHeight, dinoWidth, dinoHeight);
+
+      // 繪製樹（綠色三角形，帶黑色外框）
+      stroke(0);
+      strokeWeight(1);
+      fill(0, 255, 0);
+      triangle(treeX, treeY - 40, treeX - 10, treeY, treeX + 10, treeY);
+
+      // 顯示分數
+      textSize(24);
+      fill(0);
+      noStroke();
+      text(`Score: ${score}`, 10, 20);
+
+      // 如果碰撞發生，顯示 Game Over 並暫停其他動作
+      if (isHit) {
+        textSize(32);
+        fill(0);
+        noStroke();
+        text('Game Over!', width / 2 - 80, height / 2);
+        return;
+      }
+
+      // 更新恐龍跳躍邏輯（加入重力效果）
+      if (isJumping) {
+        dinoVelocity += dinoAcceleration;
+        dinoY += dinoVelocity;
+        if (dinoY >= 150) {  // 當恐龍落到地面
+          dinoY = 160;
+          isJumping = false;
+          dinoVelocity = 0;
+        }
+      }
+
+      // 更新樹的位置：每幀向左移動
+      treeX -= treeSpeed;
+      if (treeX < -100) {
+        score += 10;
+        rewardBuffer += 10;
+        // 當樹離開畫布後，重置到右側隨機位置（400 ~ 600）
+        treeX = random(400, 600);
+      }
+
+      // 碰撞檢測（簡單判斷樹是否進入恐龍區域）
+      if (
+        treeX > dinoX - dinoWidth / 2 &&
+        treeX < dinoX + dinoWidth / 2 &&
+        dinoY >= 160 - dinoHeight
+      ) {
+        isHit = true;
+        invincible = true;
+        // 當碰撞時，扣除所有分數並給予負回饋
+        score = 0;
+        rewardBuffer += -100;
+        // 500 毫秒後恢復遊戲狀態
+        setTimeout(function(){
+          isHit = false;
+          invincible = false;
+          treeX = random(400, 600);
+        }, 500);
+      }
+    }
+
+    // p5.js 鍵盤事件，按下 A 鍵進行跳躍
+    function keyPressed() {
+      if ((key === 'a' || key === 'A') && !isJumping) {
+        isJumping = true;
+        dinoVelocity = -11;  // 給予向上的初速度
+      }
+    }
+
+    // --- 與 RL 平台通訊 ---
+    function handleMessage(event) {
+      const message = event.data;
+      if (message.type === "action") {
+        // 接收父頁面傳來的動作
+        processAction(message.action);
+        // 執行動作後傳送回饋與狀態
+        sendRewardState();
+        // 重置回饋
+        rewardBuffer = 0;
+      } else if (message.type === "questInfo") {
+        // 回傳基本遊戲資訊
+        const gameInfo = {
+          type: "gameInfo",
+          playerNumber: 2,
+          continuty: { time: false, state: false },
+          stateInfo: [
+            { name: 'dinoY', min: 0, max: 100 },
+            { name: 'treeX', min: 0, max: 500 }
+          ],
+          actionInfo: [
+            { type: "switch", level: 2, name: ['none', 'jump'] }
+          ]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+
+    // 處理 RL 平台傳來的動作
+    function processAction(action) {
+      if (action === 1 && !isJumping) { // 動作：跳躍
+        isJumping = true;
+        dinoVelocity = -11;
+      }
+      else if (action === 1 && isJumping) {
+        // 如果恐龍已在跳躍中，再次發出跳躍則給負回饋
+        rewardBuffer += -1;
+      }
+      else if (action === 0) {
+        // 動作：不做任何事，給予正回饋
+        rewardBuffer += 1;
+      }
+      // 更新狀態，這裡以 (160 - dinoY) 表示恐龍跳躍高度，
+      // (treeX - 100) 表示樹與恐龍的水平距離
+      state = [(160 - dinoY).toFixed(2), (treeX - 100).toFixed(2)];
+    }
+
+    // 傳送遊戲狀態和獎勵給 RL 平台
+    function sendRewardState() {
+      window.parent.postMessage({ type: "reward_state", reward: rewardBuffer, state: state }, "*");
+    }
+  </script>
+</body>
+</html>

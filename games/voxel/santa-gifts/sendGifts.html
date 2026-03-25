@@ -1,0 +1,442 @@
+<style>
+    @font-face {
+        font-family: 'Minecraft';
+        src: url(../Cubic_11_1.100_R.ttf);
+    }
+    body { margin: 0; }
+    #hud {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        color: yellow;
+        font-size: 24px;
+        font-family: 'Minecraft';
+    }    
+</style>
+<!-- <div id="canvas" style="width: 1600px;height: 900px;"></div> -->
+<div id="canvas"></div>
+<!-- <button id="startButton">開始</button>
+<input type="file" id="fileInput" accept=".vox" /> -->
+<!-- <h3>W:向上飛 / E:丟禮物 </h3> -->
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
+<div id="hud" >
+    聖誕老人準備送禮物啦~<br>
+    按下[空白鍵]開始遊戲
+</div>
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://threejs.org/build/three.module.js",
+            "three/addons/": "https://threejs.org/examples/jsm/"
+        }
+    }
+</script>
+<script type="module">
+    import * as THREE from 'three';
+    import { VOXLoader, VOXMesh } from 'three/addons/loaders/VOXLoader.js';
+
+    var fileInput = document.getElementById('fileInput');
+    var canvas = document.getElementById('canvas');
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+    var camera = new THREE.PerspectiveCamera(60,window.innerWidth/ window.innerHeight, 0.1, 1000);
+    var renderer = new THREE.WebGLRenderer({ antialias: true });
+
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+
+    // renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    canvas.appendChild(renderer.domElement);
+
+    // 設置相機
+    camera.position.y = 15/Math.sqrt(2);
+    camera.position.z = 45/Math.sqrt(2);
+    camera.rotation.x=-Math.PI/16
+
+    // 添加燈光
+    var ambientLight = new THREE.AmbientLight(0xffffff, 1); // 產生柔和的光
+    scene.add(ambientLight);
+
+    var directionalLight = new THREE.DirectionalLight(0xffffcc, 1); // 產生方向光
+    directionalLight.position.set(1, 30, -30);
+    directionalLight.castShadow = true; // 讓此光能產生陰影
+    scene.add(directionalLight);
+
+    // 設定光源可產生影子的範圍與精細度
+    directionalLight.shadow.camera.left = -50;
+    directionalLight.shadow.camera.right = 50;
+    directionalLight.shadow.camera.top = 50;
+    directionalLight.shadow.camera.bottom = -50;
+    directionalLight.shadow.camera.near = 1;
+    directionalLight.shadow.camera.far = 200;
+
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+
+    // // 添加網格
+    // var grids=[]   
+    // var gridSize = 100; // 網格大小
+    // var gridDivisions = 10; // 網格分段數
+    // var gridColor1 = 0x00ff00;
+    // var gridColor2 = 0x009900;
+    // for (var i = -200; i <= 100; i += 100) {
+    //     var grid = new THREE.GridHelper(gridSize, gridDivisions, gridColor1, gridColor2);
+    //     grid.position.set(0, 0, i);
+    //     scene.add(grid);
+    //     grids.push(grid);
+    // }
+
+    const voxelSettings = [
+        { name: "runDeer",      opacity: 1,  amount: 1   ,radius:10},
+        { name: "stopDeer",      opacity: 1,  amount: 1   ,radius:10},
+        { name: "gift1",        opacity: 1,  amount: 10  ,radius:2 },
+        { name: "house",        opacity: 1,  amount: 3   ,radius:5 },
+        { name: "snowGnd",      opacity: 1,  amount: 1   ,radius:5 },
+        { name: "building",     opacity: 1,  amount: 1    ,radius:5 },
+        { name: "ball",         opacity: 1,  amount: 50   ,radius:5 },
+        { name: "trees",        opacity: 1,  amount: 10   ,radius:5 },
+        { name: "helicopter",   opacity: 1,  amount: 1    ,radius:5 },
+        { name: "moon",         opacity: 1,  amount: 1    ,radius:5 },
+        { name: "Mistletoe",    opacity: 1,  amount: 1    ,radius:5 },
+        // 可以添加更多的voxel模型设置
+    ];
+    const voxelAnimas = {}; // 存储每个voxel模型的数组
+
+    // 加载voxel模型
+        function createModelArray(chunks,opacity,amount,raduis){
+            const models = [];
+            for (let i = 0; i < amount; i++) {
+                const voxelObject = new THREE.Object3D();
+                for (let j = 0; j < chunks.length; j++) {
+                    const chunk = chunks[j];
+                    const mesh = new VOXMesh(chunk);
+                    mesh.scale.setScalar(0.1);
+                    // mesh.material.transparent = true;
+                    // mesh.material.emissive.set(0x008888);
+                    // mesh.material.opacity = opacity;
+                    mesh.receiveShadow = true
+                    mesh.castShadow = true;
+                    voxelObject.add(mesh);
+                }
+                voxelObject.radius=raduis/10
+                scene.add(voxelObject);
+                models.push(voxelObject);
+            }
+            return models
+        }
+
+        const loader = new VOXLoader();
+        for (const voxelSet of voxelSettings) {
+            loader.load('https://cubiccode.vercel.app/Xmas/'+voxelSet.name+'.vox',
+            function (chunks){
+                const models=createModelArray(chunks,voxelSet.opacity,voxelSet.amount,voxelSet.radius)
+                voxelAnimas[voxelSet.name] = models;
+            })
+        }
+
+    // 上傳選定戰機
+    // fileInput.addEventListener('change', function (event) {
+    //     if (!event.target.files.length) {
+    //         console.log('No files were selected!');
+    //         return; // 直接返回，不執行後面的代碼
+    //     }
+    //     scene.remove(voxelAnimas['fighter'][0])
+    //     var file = event.target.files[0];
+    //     var reader = new FileReader();
+    //     console.log(voxelAnimas )
+    //     reader.onload = function (event) {
+    //         var contents = event.target.result;
+    //         const loader = new VOXLoader();
+    //         var chunks= loader.parse(contents)
+    //         const models=createModelArray(chunks,1,1,10)
+    //         voxelAnimas['gift1'] = models;
+    //     };
+    //     reader.readAsArrayBuffer(file);
+    //     clearInterval(intervalID);
+    //     gameProcess()
+    // });
+
+    // 繪製voxel動畫
+    var slowIndex=0
+    setInterval(function () {
+        slowIndex+=1
+        for (const voxelName in voxelAnimas) {
+            const voxelObjectsArray = voxelAnimas[voxelName];
+            for (let i = 0; i < voxelObjectsArray.length; i++) {
+                const voxelObject = voxelObjectsArray[i];
+                const currentIndex = slowIndex % voxelObject.children.length;
+                for (let j = 0; j < voxelObject.children.length; j++) {
+                    var voxelMesh=voxelObject.children[j]
+                    voxelMesh.visible = j === currentIndex;
+                }
+            }
+        }
+    }, 100);
+
+    // 渲染畫面
+    var fastIndex=0
+    setInterval(function() {
+        fastIndex+=1
+        renderer.render(scene, camera);
+    },30)
+
+    let keys = {};
+    document.addEventListener('keydown', function(event) {
+        // 將 event.key 轉換成小寫，並儲存到 keys 物件中
+        const key = event.key.toLowerCase();
+        keys[key] = true; // 設置按鍵為 true 表示按下該按鍵
+    });
+
+    document.addEventListener('keyup', function(event) {
+        // 將 event.key 轉換成小寫，並儲存到 keys 物件中
+        const key = event.key.toLowerCase();
+        keys[key] = false; // 設置按鍵為 false 表示釋放該按鍵
+    });
+
+    // 遊戲主流程
+    var intervalID
+    function gameProcess(){
+        var Vx=0.2,Ay=-.01
+        var Santa=new THREE.Object3D();
+        var score=0
+        let runDeer=voxelAnimas["runDeer"][0]
+        let stopDeer=voxelAnimas["stopDeer"][0]
+        let ground=voxelAnimas["snowGnd"][0]
+        let houses=voxelAnimas["house"]
+        let gifts=voxelAnimas["gift1"]
+        let building=voxelAnimas["building"][0]
+        let helicopter=voxelAnimas["helicopter"][0]
+        let moon=voxelAnimas["moon"][0]
+        let snow=voxelAnimas["ball"]
+        let trees= voxelAnimas["trees"]
+        let mistletoe= voxelAnimas["Mistletoe"][0]
+        var giftNum=10,giftCD=0,distence=0
+
+        // 创建音乐
+        var BGM = new Audio('BGM.mp3');
+        BGM.loop = true;
+        BGM.volume =.1; // 设置音量（0-1）
+
+        var shoot = new Audio('shoot.mp3');
+        var hit = new Audio('hit.mp3');
+        var get = new Audio('get.mp3');
+        var laugh = new Audio('laugh.mp3');
+        
+
+        function setup(){
+            Vx=0.2
+
+            Santa.add(runDeer)
+            Santa.add(stopDeer)
+            runDeer.visible=true
+            stopDeer.visible=false
+            Santa.Vy=.3
+            distence=0
+            score=0
+
+            Santa.position.set(-20,10,0)
+            building.position.set(10,0,0)
+            scene.add(Santa)
+            // fighter.position.set(0,10,10)
+            ground.position.set(0,0,0)
+            mistletoe.position.set(100,10,0)
+            ground.scale.set(40,1,10)
+
+            // house.position.set(0,0,0)
+            // trees.position.set(0,0,0)
+            helicopter.position.set(-20,20,0)
+            moon.position.set(0,25,-40)
+            moon.scale.set(3,3,3)
+    
+            houses.forEach(function(item, index, array) {
+                item.position.set(Math.random()*100+50,0,0)
+            });
+
+            gifts.forEach(function(item, index, array) {
+                Santa.add(item)
+                item.visible=true
+                item.position.set(0,0,0)
+                item.Vy=.1
+            })
+            giftNum=10
+
+            snow.forEach(function(item, index, array) {
+                item.position.set(Math.random()*100-50,Math.random()*20,Math.random()*40-20)
+            });
+
+            trees.forEach(function(item, index, array) {
+                item.position.set(Math.random()*100-50,0,Math.random()*10-5)
+                item.rotation.y=Math.floor(Math.random() * 4) * Math.PI / 2
+            });
+        }setup()
+        
+        function startLoop(){
+        intervalID=
+        setInterval(function() {
+
+            if(Vx>0){
+                var hud=document.getElementById("hud");
+                hud.innerHTML="[W]：飛起, [E]：發射  <br>"+
+                    "距離："+Math.floor(distence)+"<br>"+
+                    "禮物："+giftNum+"<br>"+
+                    "送達："+score+"<br><br>"
+                distence+=0.01*Vx/0.2
+            }
+
+
+
+            if(Vx>0){
+            // 控制聖誕老人，按W向上飛
+                if((keys['w']||keys['arrowup']) && Santa.position.y<=20) {
+                    Santa.position.y += .2;
+                }
+                else if((keys['w']||keys['arrowup'])) {
+                    // 按住時靠在頂端不會震動
+                }
+                // 放開時往下降
+                else if(Santa.position.y>1.2) {
+                    Santa.position.y -= .1;
+                }
+            }else{ // 撞到東西，遊戲停止的行為
+
+                if(Santa.Vy<0 && Santa.position.y<=0){
+                    Santa.position.y=0
+                }else{
+                    Santa.position.y+= Santa.Vy
+                    Santa.Vy+=Ay
+                }
+            }
+
+            function collision(){
+                hud.innerHTML+="好棒喔~~<br>截圖分享你送了多少禮物吧<br>按下[空白鍵]重新挑戰"
+                hit.play()
+                Vx=0
+                runDeer.visible=false
+                stopDeer.visible=true
+                gifts.forEach(function(gift, index, array) {
+                    gift.visible=false
+                })
+            }
+
+            // 控制禮物行為
+            giftCD+=1
+            gifts.forEach(function(gift, index, array) {
+                // 按E觸發禮物拋出
+                if(Vx>0 && (keys['e']||keys['arrowright']) && index==giftNum-1 && giftCD>50){
+                    Santa.remove(gift)
+                    scene.add(gift)
+                    gift.position.copy(Santa.position);
+                    giftNum-=1,giftCD=0
+                    shoot.play()
+                }
+                // 禮物飛行中
+                if (gift.parent === scene && gift.position.y>0) {
+                    gift.position.x+=.3
+                    gift.position.y+= gift.Vy
+                    gift.Vy+=Ay
+                    gift.rotation.z+=.1
+                }
+                // 禮物掉地上
+                if (gift.parent === scene && gift.position.y<=0) {
+                    gift.position.x-=Vx
+                    gift.position.y=0
+                }
+
+                houses.forEach(function(house, j, array) {
+                    if(gift.parent === scene && gift.position.distanceTo(house.position)<2){
+                        laugh.play()
+                        score+=1
+                        gift.position.z=1000
+                    }
+                });
+            })
+
+            if(Vx>0){
+                houses.forEach(function(house, index, array) {
+                    house.position.x-=Vx
+                    if(house.position.x<-50){ house.position.x=Math.random()*100+50 }
+                    if(Santa.position.distanceTo(house.position)<2){
+                        // hit.play()
+                        collision()
+                    }
+                });
+
+                helicopter.position.x-=Vx*2
+                if(helicopter.position.x<-50){
+                    helicopter.position.set(Math.random()*100+50,Math.random()*10+10,0)
+                }
+                if(Santa.position.distanceTo(helicopter.position)<2){
+                    // hit.play()
+                    collision()
+                }
+
+                building.position.x-=Vx
+                if(building.position.x<-50){building.position.x=Math.random()*100+50}
+                if(Math.abs(Santa.position.x-building.position.x)<2 && Santa.position.y<12){
+                    // hit.play()
+                    collision()
+                }
+            }
+
+            // 榭寄生移動，碰到補充禮物
+            mistletoe.position.x-=Vx
+            if(Santa.position.distanceTo(mistletoe.position)<1){
+                mistletoe.position.set(Math.random()*100+250,20,0)
+                giftNum=10
+                gifts.forEach(function(item, index, array) {
+                    item.position.set(0,0,0)
+                    item.Vy=.1
+                    item.rotation.z=0
+                    scene.remove(item)
+                    Santa.add(item)
+                })
+                get.play()
+            }
+            if(mistletoe.position.x<-50){
+                mistletoe.position.set(Math.random()*100+50,20,0)
+            }
+
+            // 隨機雪花
+            snow.forEach(function(item, index, array) {
+                item.position.x-=Vx
+                item.position.y-=0.03
+                if(item.position.x<-50){
+                    item.position.set(Math.random()*100+50,Math.random()*20+20,Math.random()*10-5)
+                }
+            });
+            // 隨機小樹林
+            trees.forEach(function(item, index, array) {
+                item.position.x-=Vx
+                if(item.position.x<-50){
+                    item.position.set(Math.random()*100+50,0,Math.random()*40-20)
+                    item.rotation.y=Math.floor(Math.random() * 4) * Math.PI / 2
+                }
+            });
+        },10)
+        }
+
+        
+        // 監聽鍵盤事件
+        document.addEventListener('keydown', function(event) {
+            BGM.play();
+            if (event.key === ' ') {
+                setup()
+                clearInterval(intervalID);
+                startLoop()
+            }
+        });
+    }
+
+    setTimeout(function(){gameProcess()},1000)
+
+    // window.addEventListener("load", function() {
+    //     const startButton = document.getElementById("startButton");
+    //     startButton.addEventListener("click", function() {
+    //         clearInterval(intervalID);
+    //         gameProcess(); // 點擊按鈕後觸發遊戲流程函數
+    //     });
+    // });
+</script>

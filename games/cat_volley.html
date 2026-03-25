@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>🐈 貓貓排球</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #87ceeb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI Emoji', sans-serif;
+    gap: 10px;
+  }
+  h1 { color: #2d6a2d; font-size: 1.4rem; letter-spacing: 0.1em; text-shadow: 0 2px 4px #ffffff88; }
+  #gameCanvas { border: 3px solid #4a8a4a; border-radius: 8px; box-shadow: 0 6px 24px #00000033; }
+  #ui { display: flex; align-items: center; gap: 24px; color: #2d5a2d; font-size: 0.85rem; }
+  label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>🐈 貓貓排球 🏐</h1>
+<canvas id="gameCanvas" width="800" height="560"></canvas>
+<div id="ui">
+  <span>← → / A D 移動　↑ / W / 空白 跳躍　空中再按跳 = 二段跳旋轉</span>
+  <label><input type="checkbox" id="debugToggle"> 顯示碰撞體</label>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script>
+const canvas  = document.getElementById('gameCanvas');
+const ctx     = canvas.getContext('2d');
+const debugCB = document.getElementById('debugToggle');
+let   debugMode = false;
+debugCB.addEventListener('change', () => { debugMode = debugCB.checked; });
+
+const W = 800, H = 560;
+const GROUND_Y    = H - 90;   // 視覺地面
+const WALL_W      = 28;       // 網寬（物理）
+const NET_SOLID_H = 120;      // 下段實體牆高度（貓+球都擋）
+const BLOCK_SIZE  = 28;
+
+// ════════════════════════════════
+//  Matter.js
+// ════════════════════════════════
+const { Engine, Bodies, Body, World, Events } = Matter;
+const engine = Engine.create({ gravity: { y: 1.8 } });
+const world  = engine.world;
+
+// 地板
+const ground = Bodies.rectangle(W / 2, GROUND_Y + 25, W, 50, {
+  isStatic: true, label: 'ground', friction: 0.05, restitution: 0.05,
+});
+// 左右牆
+const wallL = Bodies.rectangle(-10, H / 2, 20, H * 2, { isStatic: true, label: 'wall' });
+const wallR = Bodies.rectangle(W + 10, H / 2, 20, H * 2, { isStatic: true, label: 'wall' });
+// 天花板
+const ceiling = Bodies.rectangle(W / 2, -10, W, 20, { isStatic: true, label: 'ceiling' });
+
+// ── 球網：下段實體（catFilter + ballFilter 都碰撞）
+const CAT_CAT  = 0x0001;
+const CAT_BALL = 0x0002;
+const CAT_WALL = 0x0004;
+
+const netSolid = Bodies.rectangle(
+  W / 2, GROUND_Y - NET_SOLID_H / 2, WALL_W, NET_SOLID_H,
+  {
+    isStatic: true, label: 'netSolid',
+    friction: 0.01, restitution: 0.4,
+    collisionFilter: { category: CAT_WALL, mask: CAT_CAT | CAT_BALL },
+  }
+);
+
+// ── 球網：上段空氣牆（只擋貓，球穿過）
+const AIR_H   = GROUND_Y - NET_SOLID_H; // 從實體牆頂到畫面頂的高度
+const netAir  = Bodies.rectangle(
+  W / 2, AIR_H / 2, WALL_W, AIR_H,
+  {
+    isStatic: true, label: 'netAir',
+    friction: 0, restitution: 0.1,
+    collisionFilter: { category: CAT_WALL, mask: CAT_CAT },  // 只擋貓
+  }
+);
+
+// 貓咪
+const CAT_R   = 26;
+const catBody = Bodies.circle(W * 3 / 4, GROUND_Y - CAT_R - 2, CAT_R, {
+  label: 'cat',
+  friction: 0.05, restitution: 0.05,
+  inertia: Infinity, frictionAir: 0.01, mass: 5,
+  collisionFilter: { category: CAT_CAT, mask: CAT_BALL | CAT_WALL | 0x0008 },
+});
+
+// 排球
+const BALL_R = 18;
+const ball   = Bodies.circle(W * 3 / 4, GROUND_Y - 200, BALL_R, {
+  label: 'ball',
+  restitution: 0.5, friction: 0.01, frictionAir: 0.004, mass: 1,
+  collisionFilter: { category: CAT_BALL, mask: CAT_CAT | CAT_WALL | 0x0008 },
+});
+
+// 地板/牆/天花板用預設 filter，但要讓它們能碰到貓和球
+// 做法：給 ground/wallL/wallR/ceiling 一個特殊 category，讓貓球的 mask 包含它
+const STATIC_CAT = 0x0008;
+[ground, wallL, wallR, ceiling].forEach(b => {
+  b.collisionFilter = { category: STATIC_CAT, mask: CAT_CAT | CAT_BALL };
+});
+
+World.add(world, [ground, wallL, wallR, ceiling, netSolid, netAir, catBody, ball]);
+
+// ════════════════════════════════
+//  貓咪狀態
+// ════════════════════════════════
+const JUMP_FORCE = -12;
+const CAT_SPEED  = 10;
+const WALK_FRAMES = 2;
+const WALK_SPEED  = 4;
+const legOffsets  = [[0, 0], [0, -4]];
+
+const catAnim = {
+  facing: 1,
+  onGround: false,
+  walkFrame: 0,
+  walkTick: 0,
+  // 二段跳
+  canDoubleJump: false,
+  doubleJumped: false,
+  jumpKeyReleased: true,  // 一段跳後必須放開跳鍵才能觸發二段跳
+  // 旋轉動畫
+  spinning: false,
+  spinAngle: 0,
+  spinDir: 1,
+};
+
+// 落地偵測
+Events.on(engine, 'collisionStart', e => {
+  e.pairs.forEach(({ bodyA, bodyB }) => {
+    const lb = [bodyA.label, bodyB.label];
+    if (lb.includes('cat') && lb.includes('ground')) {
+      catAnim.onGround     = true;
+      catAnim.canDoubleJump = false;
+      catAnim.doubleJumped  = false;
+      catAnim.spinning      = false;
+      catAnim.spinAngle     = 0;
+    }
+  });
+});
+Events.on(engine, 'collisionEnd', e => {
+  e.pairs.forEach(({ bodyA, bodyB }) => {
+    const lb = [bodyA.label, bodyB.label];
+    if (lb.includes('cat') && lb.includes('ground')) {
+      catAnim.onGround     = false;
+      catAnim.canDoubleJump = true;  // 離地後開放二段跳
+    }
+  });
+});
+
+// ── 鍵盤 ──
+const keys     = {};
+const justDown = {};
+window.addEventListener('keydown', e => {
+  if (!keys[e.key]) justDown[e.key] = true;
+  keys[e.key] = true;
+  e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function isJump(key) { return key === 'ArrowUp' || key === 'w' || key === 'W' || key === ' '; }
+
+// ════════════════════════════════
+//  繪製
+// ════════════════════════════════
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  grad.addColorStop(0, '#5bb8f5');
+  grad.addColorStop(1, '#aaddff');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+}
+
+const clouds = [
+  { x: 120, y: 60, s: 1.0 }, { x: 340, y: 90, s: 0.7 },
+  { x: 580, y: 50, s: 1.2 }, { x: 700, y: 100, s: 0.8 },
+];
+function drawClouds() {
+  ctx.font = '48px Segoe UI Emoji, Apple Color Emoji';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  clouds.forEach(c => {
+    ctx.save();
+    ctx.translate(c.x, c.y); ctx.scale(c.s, c.s); ctx.globalAlpha = 0.85;
+    ctx.fillText('☁️', 0, 0);
+    ctx.restore();
+  });
+}
+
+function drawGround() {
+  const grad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  grad.addColorStop(0, '#4caf50'); grad.addColorStop(0.3, '#388e3c'); grad.addColorStop(1, '#2e7d32');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.strokeStyle = '#66bb6a'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
+}
+
+function drawNet() {
+  // 下段：紅色磚塊堆疊
+  const bSize = BLOCK_SIZE;
+  const netX  = W / 2;
+  ctx.font = `${bSize}px Segoe UI Emoji, Apple Color Emoji`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const blockCount = Math.ceil(NET_SOLID_H / bSize);
+  for (let i = 0; i < blockCount; i++) {
+    const by = GROUND_Y - bSize * 0.5 - i * bSize;
+    if (by < GROUND_Y - NET_SOLID_H) break;
+    ctx.fillText('🟥', netX, by);
+  }
+  // 上段：無視覺（空氣牆），debug 模式才顯示
+}
+
+function drawShadow(x, r, alpha) {
+  ctx.save();
+  ctx.translate(x, GROUND_Y + 3); ctx.scale(1, 0.2);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, `rgba(0,0,0,${alpha})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawCat(x, y, facing, frame, spinAngle) {
+  const [lx, ly] = legOffsets[frame];
+  ctx.save();
+  ctx.translate(x, y);
+  // 旋轉（二段跳）
+  if (spinAngle !== 0) ctx.rotate(spinAngle);
+  if (facing > 0) ctx.scale(-1, 1);
+  ctx.font = '52px Segoe UI Emoji, Apple Color Emoji';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🐈‍⬛', lx, ly);
+  ctx.restore();
+}
+
+function drawBallEmoji(x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.font = '36px Segoe UI Emoji, Apple Color Emoji';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🏐', 0, 0);
+  ctx.restore();
+}
+
+function drawDebug() {
+  ctx.save();
+  ctx.lineWidth = 2;
+
+  // 貓
+  ctx.strokeStyle = 'rgba(255,80,80,0.85)';
+  ctx.beginPath(); ctx.arc(catBody.position.x, catBody.position.y, CAT_R, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,80,80,0.85)';
+  ctx.beginPath(); ctx.arc(catBody.position.x, catBody.position.y, 3, 0, Math.PI*2); ctx.fill();
+
+  // 球
+  ctx.strokeStyle = 'rgba(80,160,255,0.85)';
+  ctx.beginPath(); ctx.arc(ball.position.x, ball.position.y, BALL_R, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = 'rgba(80,160,255,0.85)';
+  ctx.beginPath(); ctx.arc(ball.position.x, ball.position.y, 3, 0, Math.PI*2); ctx.fill();
+
+  // 下段實體牆
+  ctx.strokeStyle = 'rgba(255,80,0,0.8)';
+  ctx.strokeRect(W/2 - WALL_W/2, GROUND_Y - NET_SOLID_H, WALL_W, NET_SOLID_H);
+
+  // 上段空氣牆（只擋貓）
+  ctx.strokeStyle = 'rgba(180,100,255,0.6)';
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(W/2 - WALL_W/2, 0, WALL_W, GROUND_Y - NET_SOLID_H);
+  ctx.setLineDash([]);
+
+  // 地板
+  ctx.strokeStyle = 'rgba(0,200,0,0.5)';
+  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
+
+  ctx.restore();
+}
+
+// ════════════════════════════════
+//  主循環
+// ════════════════════════════════
+function gameLoop() {
+
+  // ── 跳躍輸入偵測（用 justDown 避免連觸）──
+  const jumpPressed = Object.keys(justDown).some(isJump);
+  for (const k in justDown) delete justDown[k]; // 清除本幀 just-down
+
+  // ── 移動控制：只在地面上才能改變速度/方向 ──
+  let moving = false;
+  if (catAnim.onGround) {
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+      Body.setVelocity(catBody, { x: -CAT_SPEED, y: catBody.velocity.y });
+      catAnim.facing = -1;
+      moving = true;
+    } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+      Body.setVelocity(catBody, { x: CAT_SPEED, y: catBody.velocity.y });
+      catAnim.facing = 1;
+      moving = true;
+    } else {
+      Body.setVelocity(catBody, { x: catBody.velocity.x * 0.7, y: catBody.velocity.y });
+    }
+  }
+  // 空中：完全不干涉水平速度（隨慣性）
+
+  // ── 跳鍵放開偵測（給二段跳隔離用）──
+  const jumpHeld = keys['ArrowUp'] || keys['w'] || keys['W'] || keys[' '];
+  if (!jumpHeld) catAnim.jumpKeyReleased = true;
+
+  // ── 一段跳 ──
+  if (jumpPressed && catAnim.onGround) {
+    Body.setVelocity(catBody, { x: catBody.velocity.x, y: JUMP_FORCE });
+    catAnim.onGround      = false;
+    catAnim.canDoubleJump  = true;
+    catAnim.doubleJumped   = false;
+    catAnim.jumpKeyReleased = false;  // 標記：尚未放開
+  }
+
+  // ── 二段跳：必須放開跳鍵後再按 ──
+  if (jumpPressed && !catAnim.onGround && catAnim.canDoubleJump && !catAnim.doubleJumped && catAnim.jumpKeyReleased) {
+    const addVy = JUMP_FORCE * 0.5;  // 追加量 = 原始起跳速度的一半
+    Body.setVelocity(catBody, { x: catBody.velocity.x, y: addVy });
+    catAnim.canDoubleJump = false;
+    catAnim.doubleJumped  = true;
+    catAnim.spinning      = true;
+    catAnim.spinAngle     = 0;
+    catAnim.spinDir       = catAnim.facing > 0 ? 1 : -1; // 面右順時針
+  }
+
+  // ── 旋轉動畫推進（一圈 = 2π，約 30 幀轉完）──
+  if (catAnim.spinning) {
+    catAnim.spinAngle += catAnim.spinDir * (Math.PI * 2 / 10);
+    if (Math.abs(catAnim.spinAngle) >= Math.PI * 2) {
+      catAnim.spinning  = false;
+      catAnim.spinAngle = 0;
+    }
+  }
+
+  // ── 走路動畫 ──
+  if (moving && catAnim.onGround) {
+    catAnim.walkTick++;
+    if (catAnim.walkTick >= WALK_SPEED) {
+      catAnim.walkTick  = 0;
+      catAnim.walkFrame = (catAnim.walkFrame + 1) % WALK_FRAMES;
+    }
+  } else if (catAnim.onGround) {
+    catAnim.walkFrame = 0; catAnim.walkTick = 0;
+  }
+
+  Engine.update(engine, 1000 / 60 * 0.8);
+
+  // ── 繪製 ──
+  ctx.clearRect(0, 0, W, H);
+  drawSky();
+  drawClouds();
+  drawGround();
+  drawNet();
+
+  const ballH = Math.max(0, (GROUND_Y - ball.position.y) / GROUND_Y);
+  drawShadow(catBody.position.x, CAT_R * 1.4, 0.3);
+  drawShadow(ball.position.x, BALL_R * (1.2 - ballH * 0.5), 0.2 * (1 - ballH * 0.5));
+
+  drawCat(catBody.position.x, catBody.position.y, catAnim.facing, catAnim.walkFrame, catAnim.spinAngle);
+  drawBallEmoji(ball.position.x, ball.position.y);
+
+  if (debugMode) drawDebug();
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>

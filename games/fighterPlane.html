@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fighter Game for RL with Keyboard Control (Konva.js)</title>
+    <script src="https://unpkg.com/konva@8.4.3/konva.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        #game-container { 
+            width: 400px; 
+            height: 600px; 
+            background: black; 
+            border: 1px solid black; 
+        }
+        .controls { text-align: left; margin: 10px; }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <div class="controls">
+        <p>遊戲模式：</p>
+        <label><input type="radio" name="mode" value="static" checked> 靜態模式</label>
+        <label><input type="radio" name="mode" value="randomX"> 隨機X模式</label>
+        <label><input type="radio" name="mode" value="randomXY"> 隨機XY模式</label>
+        <p>回饋機制：</p>
+        <label><input type="checkbox" id="hitReward" checked> 打中 +10</label>
+        <label><input type="checkbox" id="missPenalty" checked> 沒打中 -1</label>
+        <label><input type="checkbox" id="actionPenalty"> 行動消耗 -0.1</label>
+    </div>
+    <script>
+        const stage = new Konva.Stage({
+            container: 'game-container',
+            width: 400,
+            height: 600
+        });
+        const layer = new Konva.Layer();
+        stage.add(layer);
+
+        let player;
+        let bullet = null;
+        let rock;
+        let gameState = "running";
+        let rewardBuffer = 0;
+        let currentMode = "static";
+        let lastShotGameTime = 0; // 上次射擊的遊戲時間
+        const baseLogicInterval = 10; // 基礎間隔 10ms (100Hz)
+        let logicInterval = baseLogicInterval; // 當前邏輯間隔
+        const shootCooldown = 300; // 冷卻時間 300ms（遊戲時間）
+        let logicTimer;
+        let isAccelerated = false; // 是否加速模式
+        let gameTime = 0; // 遊戲時間（毫秒）
+        
+        let hitRewardEnabled = true;      // 打中 +10
+        let missPenaltyEnabled = true;    // 沒打中 -1
+        let shotPenaltyEnabled = false; // 動作懲罰 -0.1
+
+        class Player {
+            constructor() {
+                this.x = stage.width() / 2;
+                this.y = stage.height() - 40;
+                this.currentSpeed = 0;
+                this.targetSpeed = 0;
+                this.acceleration = 2;
+                this.group = new Konva.Group({
+                    x: this.x,
+                    y: this.y
+                });
+                this.shape = new Konva.Shape({
+                    sceneFunc: (context, shape) => {
+                        context.beginPath();
+                        context.moveTo(-15, 20);
+                        context.lineTo(15, 20);
+                        context.lineTo(0, -20);
+                        context.closePath();
+                        context.fillStrokeShape(shape);
+                    },
+                    fill: 'blue'
+                });
+                this.group.add(this.shape);
+                layer.add(this.group);
+            }
+            setTargetSpeed(speed) {
+                this.targetSpeed = speed;
+            }
+            update() {
+                if (this.currentSpeed < this.targetSpeed) {
+                    this.currentSpeed = Math.min(this.currentSpeed + this.acceleration, this.targetSpeed);
+                } else if (this.currentSpeed > this.targetSpeed) {
+                    this.currentSpeed = Math.max(this.currentSpeed - this.acceleration, this.targetSpeed);
+                }
+                this.x += this.currentSpeed;
+                if (this.x > stage.width()) this.x -= stage.width();
+                if (this.x < 0) this.x += stage.width();
+                this.group.x(this.x);
+            }
+        }
+
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.r = 5;
+                this.speed = 20;
+                this.shape = new Konva.Circle({
+                    x: this.x,
+                    y: this.y,
+                    radius: this.r,
+                    fill: 'lightblue'
+                });
+                layer.add(this.shape);
+            }
+            update() {
+                this.y -= this.speed;
+                this.shape.y(this.y);
+            }
+            offScreen() {
+                return this.y < 0;
+            }
+            hits(rock) {
+                const d = Math.sqrt(
+                    (this.x - rock.x) ** 2 + (this.y - rock.y) ** 2
+                );
+                return d < this.r + rock.r;
+            }
+            remove() {
+                this.shape.destroy();
+            }
+        }
+
+        class Rock {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.r = 20;
+                this.shape = new Konva.Circle({
+                    x: this.x,
+                    y: this.y,
+                    radius: this.r,
+                    fill: 'gray'
+                });
+                layer.add(this.shape);
+            }
+            updatePosition() {
+                if (currentMode === "randomX") {
+                    this.x = Math.random() * (stage.width() - 40) + 20;
+                    this.shape.x(this.x);
+                } else if (currentMode === "randomXY") {
+                    this.x = Math.random() * (stage.width() - 40) + 20;
+                    this.y = Math.random() * (500 - 100) + 100;
+                    this.shape.x(this.x);
+                    this.shape.y(this.y);
+                }
+            }
+            remove() {
+                this.shape.destroy();
+            }
+        }
+
+        function setup() {
+            player = new Player();
+            rock = new Rock(stage.width() / 2, stage.height() / 2);
+            window.addEventListener("message", receiveMessage);
+            window.parent.postMessage({ type: "ready" }, "*");
+            startGameLoop();
+            requestAnimationFrame(updateCanvas);
+            document.querySelectorAll('input[name="mode"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    currentMode = e.target.value;
+                });
+            });
+            document.addEventListener('keydown', keyPressed);
+            document.addEventListener('keyup', keyReleased);
+            
+            
+            document.getElementById('hitReward').addEventListener('change', (e) => {
+                hitRewardEnabled = e.target.checked;
+            });
+            document.getElementById('missPenalty').addEventListener('change', (e) => {
+                missPenaltyEnabled = e.target.checked;
+            });
+            document.getElementById('actionPenalty').addEventListener('change', (e) => {
+                shotPenaltyEnabled = e.target.checked;
+            });
+        }
+
+        function startGameLoop() {
+            if (logicTimer) clearInterval(logicTimer);
+            logicTimer = setInterval(updateGameLogic, logicInterval);
+        }
+
+
+        let hitRockNum=0
+
+        function updateGameLogic() {
+            gameTime += baseLogicInterval; // 每次累加基礎間隔
+            // gameTime += 10
+            if (gameState !== "running") return;
+            player.update();
+            if (bullet) {
+                bullet.update();
+                if (bullet.hits(rock)) {
+                    if (hitRewardEnabled) {
+                        rewardBuffer += 100; // 打中時加 10
+                    }
+                    hitRockNum+=1
+                    if(hitRockNum==10){
+                      window.parent.postMessage({type: "endEpisode"}, "*");
+                      hitRockNum=0
+                    }
+                    if (currentMode !== "static") {
+                        rock.updatePosition();
+                    }
+                    bullet.remove();
+                    bullet = null;
+                } else if (bullet.offScreen()) {
+                  
+                    if (missPenaltyEnabled) {
+                        rewardBuffer -= 10; // 沒打中時扣 1
+                    }
+                    bullet.remove();
+                    bullet = null;
+                }
+            }
+            if (player.y > stage.height() + 20) {
+                endEpisode();
+            }
+            window.parent.postMessage({ type: "frame" }, "*");
+        }
+
+        function updateCanvas() {
+            layer.batchDraw();
+            requestAnimationFrame(updateCanvas);
+        }
+
+        function receiveMessage(event) {
+            const msg = event.data;
+            switch (msg.type) {
+                case "questInfo":
+                    sendGameInfo();
+                    break;
+                case "action":
+                    handleAction(msg.action);
+                    break;
+                case "pause":
+                    gameState = (gameState === "running") ? "paused" : "running";
+                    break;
+                case "accel":
+                    handleAccelerate(); // 處理 accel 訊號
+                    break;
+            }
+        }
+
+        function handleAccelerate() {
+            if (!isAccelerated) {
+                // 進入加速模式
+                isAccelerated = true;
+                logicInterval = baseLogicInterval / 5; // 2ms (500Hz)
+                startGameLoop();
+                console.log("進入加速模式: 5 倍速");
+            } else {
+                // 退出加速模式
+                isAccelerated = false;
+                logicInterval = baseLogicInterval; // 10ms (100Hz)
+                startGameLoop();
+                console.log("退出加速模式: 正常速度");
+            }
+        }
+
+        function sendGameInfo() {
+            const gameInfo = {
+                type: "gameInfo",
+                players: [{
+                    role: "fighter",
+                    stateInfo: [
+                        { name: "bulletX", min: -200, max: 200, bin: 10 },
+                        { name: "bulletY", min: -300, max: 300, bin: 10 },
+                        { name: "playerX", min: -200, max: 200, bin: 10 },
+                        { name: "rockX", min: -200, max: 200, bin: 10 },
+                        { name: "rockY", min: -300, max: 300, bin: 10 }
+                    ],
+                    actionInfo: [
+                        { type: "switch", level: 4, name: ["none", "left", "right", "shoot"] }
+                    ]
+                }]
+            };
+            window.parent.postMessage(gameInfo, "*");
+        }
+
+        function handleAction(action) {
+
+            // rewardBuffer-=1
+            // console.log(action)
+            if (action === 1) {
+                player.setTargetSpeed(-10);
+                // rewardBuffer -= 0.1;
+            } else if (action === 2) {
+                player.setTargetSpeed(10);
+                // rewardBuffer -= 0.1;
+            } else if (action === 0) {
+                player.setTargetSpeed(0);
+            } else if (action === 3 && !bullet && gameTime - lastShotGameTime >= shootCooldown) {
+                bullet = new Bullet(player.x, player.y);
+                lastShotGameTime = gameTime;
+                if (shotPenaltyEnabled && action !== 0) {
+                    rewardBuffer -= 1; // 除了 action 0 外，每次動作扣 0.1
+                }
+                // rewardBuffer -= 0.1;
+            }
+            const state = [
+                bullet ? bullet.x-200 : player.x-200,
+                bullet ? (bullet.y-300)*-1 : (560-300)*-1,
+                player.x-200,
+                rock.x-200,
+                (rock.y-300)*-1
+            ];
+            window.parent.postMessage({
+                type: "reward_state",
+                reward: rewardBuffer,
+                state: state
+            }, "*");
+            rewardBuffer = 0;
+        }
+
+        function endEpisode() {
+            window.parent.postMessage({ type: "endEpisode" }, "*");
+            player.group.destroy();
+            if (bullet) bullet.remove();
+            bullet = null;
+            rock.remove();
+            player = new Player();
+            rock = new Rock(stage.width() / 2, stage.height() / 2);
+            gameState = "running";
+            rewardBuffer = 0;
+            gameTime = 0;
+            lastShotGameTime = 0;
+        }
+
+        function keyPressed(e) {
+            if (e.key === 'a' || e.key === 'A') {
+                player.setTargetSpeed(-10);
+            } else if (e.key === 'd' || e.key === 'D') {
+                player.setTargetSpeed(10);
+            } else if (e.key === 's' || e.key === 'S') {
+                if (!bullet && gameTime - lastShotGameTime >= shootCooldown) {
+                    bullet = new Bullet(player.x, player.y);
+                    lastShotGameTime = gameTime;
+                }
+            }
+        }
+
+        function keyReleased(e) {
+            if (e.key === 'a' || e.key === 'A' || e.key === 'd' || e.key === 'D') {
+                player.setTargetSpeed(0);
+            }
+        }
+
+        setup();
+    </script>
+</body>
+</html>

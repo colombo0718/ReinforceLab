@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>🧙 魔法對決</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      margin: 20px;
+      text-align: center;
+    }
+    th, td {
+      border: 1px solid black;
+      width: 80px;
+      height: 80px;
+      position: relative;
+      font-size: 18px;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    /* 斜線效果（由左下到右上） */
+    .split {
+      background: linear-gradient(to top right, transparent calc(50% - 1px), black calc(50% - 1px), black calc(50% + 1px), transparent calc(50% + 1px));
+    }
+    /* 左下與右上顯示數值 */
+    .bottom-left {
+      position: absolute;
+      bottom: 5px;
+      left: 5px;
+      padding: 2px 4px;
+    }
+    .top-right {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      padding: 2px 4px;
+    }
+    /* Emoji 按鈕樣式 */
+    .emoji-btn {
+      font-size: 1.5rem;
+      padding: 5px;
+      border: 1px solid #ccc;
+      background: #fff;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+    .emoji-btn.active {
+      background-color: #ddd;
+      border-color: #888;
+    }
+  </style>
+</head>
+<body>
+  <table id="rewardTable">
+    <!-- 標題列：第一個單元格顯示 P1/P2 標示，其餘為 P2 的選項 -->
+    <tr>
+      <th class="split">
+        <span class="bottom-left">P1</span>
+        <span class="top-right">P2</span>
+      </th>
+      <th>
+        <button class="emoji-btn" data-group="player2" data-index="0" data-emoji="🌳">🌳</button>
+      </th>
+      <th>
+        <button class="emoji-btn" data-group="player2" data-index="1" data-emoji="🔥">🔥</button>
+      </th>
+      <th>
+        <button class="emoji-btn" data-group="player2" data-index="2" data-emoji="🧱">🧱</button>
+      </th>
+      <th>
+        <button class="emoji-btn" data-group="player2" data-index="3" data-emoji="⚔️">⚔️</button>
+      </th>
+      <th>
+        <button class="emoji-btn" data-group="player2" data-index="4" data-emoji="🌊">🌊</button>
+      </th>
+    </tr>
+    <!-- 每列：第一個單元格為 P1 的選項，其餘格為獎勵表對應數值 -->
+    <!-- Row for 木 (🌳) - p1 index 0 -->
+    <tr>
+      <th>
+        <button class="emoji-btn" data-group="player1" data-index="0" data-emoji="🌳">🌳</button>
+      </th>
+      <td class="split">
+        <span class="bottom-left">0</span>
+        <span class="top-right">0</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-1</span>
+        <span class="top-right">+1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+2</span>
+        <span class="top-right">-2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-2</span>
+        <span class="top-right">+2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+1</span>
+        <span class="top-right">-1</span>
+      </td>
+    </tr>
+    <!-- Row for 火 (🔥) - p1 index 1 -->
+    <tr>
+      <th>
+        <button class="emoji-btn" data-group="player1" data-index="1" data-emoji="🔥">🔥</button>
+      </th>
+      <td class="split">
+        <span class="bottom-left">+1</span>
+        <span class="top-right">-1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">0</span>
+        <span class="top-right">0</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-1</span>
+        <span class="top-right">+1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+2</span>
+        <span class="top-right">-2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-2</span>
+        <span class="top-right">+2</span>
+      </td>
+    </tr>
+    <!-- Row for 土 (🧱) - p1 index 2 -->
+    <tr>
+      <th>
+        <button class="emoji-btn" data-group="player1" data-index="2" data-emoji="🧱">🧱</button>
+      </th>
+      <td class="split">
+        <span class="bottom-left">-2</span>
+        <span class="top-right">+2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+1</span>
+        <span class="top-right">-1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">0</span>
+        <span class="top-right">0</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-1</span>
+        <span class="top-right">+1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+2</span>
+        <span class="top-right">-2</span>
+      </td>
+    </tr>
+    <!-- Row for 金 (⚔️) - p1 index 3 -->
+    <tr>
+      <th>
+        <button class="emoji-btn" data-group="player1" data-index="3" data-emoji="⚔️">⚔️</button>
+      </th>
+      <td class="split">
+        <span class="bottom-left">+2</span>
+        <span class="top-right">-2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-2</span>
+        <span class="top-right">+2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+1</span>
+        <span class="top-right">-1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">0</span>
+        <span class="top-right">0</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-1</span>
+        <span class="top-right">+1</span>
+      </td>
+    </tr>
+    <!-- Row for 水 (🌊) - p1 index 4 -->
+    <tr>
+      <th>
+        <button class="emoji-btn" data-group="player1" data-index="4" data-emoji="🌊">🌊</button>
+      </th>
+      <td class="split">
+        <span class="bottom-left">-1</span>
+        <span class="top-right">+1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+2</span>
+        <span class="top-right">-2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">-2</span>
+        <span class="top-right">+2</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">+1</span>
+        <span class="top-right">-1</span>
+      </td>
+      <td class="split">
+        <span class="bottom-left">0</span>
+        <span class="top-right">0</span>
+      </td>
+    </tr>
+  </table>
+
+  <script>
+    // 定義獎勵表，依據規則排列 (p1, p2)
+    const rewardTable = [
+      [ {p1:0,  p2:0},  {p1:-1, p2:+1}, {p1:+2, p2:-2}, {p1:-2, p2:+2}, {p1:+1, p2:-1} ],
+      [ {p1:+1, p2:-1}, {p1:0,  p2:0},  {p1:-1, p2:+1}, {p1:+2, p2:-2}, {p1:-2, p2:+2} ],
+      [ {p1:-2, p2:+2}, {p1:+1, p2:-1}, {p1:0,  p2:0},  {p1:-1, p2:+1}, {p1:+2, p2:-2} ],
+      [ {p1:+2, p2:-2}, {p1:-2, p2:+2}, {p1:+1, p2:-1}, {p1:0,  p2:0},  {p1:-1, p2:+1} ],
+      [ {p1:-1, p2:+1}, {p1:+2, p2:-2}, {p1:-2, p2:+2}, {p1:+1, p2:-1}, {p1:0,  p2:0} ]
+    ];
+
+    // 當任一 emoji 按鈕點擊後，檢查是否雙方皆已選取
+    const emojiButtons = document.querySelectorAll('.emoji-btn');
+    emojiButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const group = btn.getAttribute('data-group');
+        if (group) {
+          // 同組中其他按鈕取消 active
+          document.querySelectorAll(`.emoji-btn[data-group="${group}"]`).forEach(other => {
+            other.classList.remove('active');
+          });
+        }
+        btn.classList.add('active');
+        checkDuel();
+      });
+    });
+
+    function checkDuel() {
+      const p1Btn = document.querySelector('.emoji-btn[data-group="player1"].active');
+      const p2Btn = document.querySelector('.emoji-btn[data-group="player2"].active');
+      if (p1Btn && p2Btn) {
+        const p1Index = parseInt(p1Btn.getAttribute('data-index'));
+        const p2Index = parseInt(p2Btn.getAttribute('data-index'));
+        const tableElem = document.getElementById('rewardTable');
+        // 第 0 行是表頭，故 p1 的對應列在 index = p1Index + 1
+        const row = tableElem.rows[p1Index + 1];
+        // 每列第一個 cell 為行標題，故 td 在 index = p2Index + 1
+        const cell = row.cells[p2Index + 1];
+        const outcome = rewardTable[p1Index][p2Index];
+        
+        // 使用線性漸層改變整個 cell 的背景，並在中間留出 2px 寬的黑色斜線
+        if (outcome.p1 > 0) {
+          if (outcome.p1 === 2) {
+            // 當 p1 得分為 +2：p1 勝利，使用深橙 (左下) 與深藍 (右上)
+            cell.style.background = "linear-gradient(to top right, #D9743C 49%, black 49%, black 51%, #7AAFE0 51%)";
+          } else { // outcome.p1 === 1
+            // 當 p1 得分為 +1：p1 勝利，使用原本的淺橙 (左下) 與淺藍 (右上)
+            cell.style.background = "linear-gradient(to top right, #F7D6AE 49%, black 49%, black 51%, #AEDFF7 51%)";
+          }
+        } else if (outcome.p1 < 0) {
+          if (outcome.p1 === -2) {
+            // 當 p1 得分為 -2：p2 勝利，使用深藍 (左下) 與深橙 (右上)
+            cell.style.background = "linear-gradient(to top right, #7AAFE0 49%, black 49%, black 51%, #D9743C 51%)";
+          } else { // outcome.p1 === -1
+            // 當 p1 得分為 -1：p2 勝利，使用原本的淺藍 (左下) 與淺橙 (右上)
+            cell.style.background = "linear-gradient(to top right, #AEDFF7 49%, black 49%, black 51%, #F7D6AE 51%)";
+          }
+        } else {
+          // 平局：兩個區域皆使用淺灰色 (#D3D3D3)
+          cell.style.background = "linear-gradient(to top right, #D3D3D3 49%, black 49%, black 51%, #D3D3D3 51%)";
+        }
+        
+        // 0.5 秒後清除背景並重置所有按鈕
+        setTimeout(() => {
+          cell.style.background = "";
+          emojiButtons.forEach(btn => btn.classList.remove('active'));
+        }, 500);
+      }
+    }
+    
+    
+    // 父頁面傳遞的訊息處理，只處理 questInfo 相關訊息
+    function handleMessage(event) {
+      const message = event.data;
+      if (message.type === "questInfo") {
+        // 回傳基本遊戲資訊（魔法對決遊戲資訊）
+        const gameInfo = {
+          type: "gameInfo",
+          players: [
+            {
+              role: "MageA",
+              stateInfo: [
+                {
+                  name: "opponentLastAction",
+                  min: 0,
+                  max: 4,
+                  bin: 5
+                }
+              ],
+              actionInfo: [
+                {
+                  type: "switch",
+                  level: 5,
+                  name: ["Action0", "Action1", "Action2", "Action3", "Action4"]
+                }
+              ]
+            },
+            {
+              role: "MageB",
+              stateInfo: [
+                {
+                  name: "opponentLastAction",
+                  min: 0,
+                  max: 4,
+                  bin: 5
+                }
+              ],
+              actionInfo: [
+                {
+                  type: "switch",
+                  level: 5,
+                  name: ["Action0", "Action1", "Action2", "Action3", "Action4"]
+                }
+              ]
+            }
+          ]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      }
+    }
+    
+    // 註冊事件監聽器
+    window.addEventListener("message", handleMessage, false);
+  </script>
+</body>
+</html>

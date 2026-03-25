@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emoji Dino Runner</title>
+  <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦖</text></svg>">
+  <script src="https://unpkg.com/konva@8.4.0/konva.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #222;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    /* Konva 的容器大小交給 JS 控制 */
+    #container {
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+<div id="container"></div>
+
+<script>
+  // ===== 遊戲邏輯座標（固定解析度） =====
+  const GAME_W = 960;
+  const GAME_H = 540;
+  const GROUND_Y = 360;     // 地面高度（往上抬一點）
+  const GRAVITY = 0.6;
+  const JUMP_VELOCITY = -11;
+  const GAME_SPEED = 5;
+
+  const SHOW_HITBOX = true; // 顯示碰撞框方便調整
+  const EMOJI_FONT = 'Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+
+  const container = document.getElementById('container');
+
+  const stage = new Konva.Stage({
+    container: 'container',
+    width: GAME_W,
+    height: GAME_H,
+  });
+
+  const gameLayer = new Konva.Layer(); // 地面、恐龍、障礙物
+  const uiLayer = new Konva.Layer();   // 分數、按鈕、GameOver
+  stage.add(gameLayer);
+  stage.add(uiLayer);
+
+  // ===== 地面線 =====
+  const groundLine = new Konva.Line({
+    points: [0, GROUND_Y + 20, GAME_W, GROUND_Y + 20],
+    stroke: '#999',
+    strokeWidth: 2,
+  });
+  gameLayer.add(groundLine);
+
+  // ===== 恐龍物件（emoji 🦖） =====
+  const DINO_FONT_SIZE = 40;
+  let runPhase = 0; // 用來做跑步晃動動畫
+
+  const dino = {
+    x: 220,            // 靠中間一點
+    y: GROUND_Y,
+    vy: 0,
+    onGround: true,
+    fontSize: DINO_FONT_SIZE,
+    hitW: 40,
+    hitH: 40,
+    group: null,       // 裝 sprite 的 group，原點在腳底
+    sprite: null,
+    hitbox: null,
+  };
+
+  // 以腳底為原點的 group
+  dino.group = new Konva.Group({
+    x: dino.x,      // 腳底位置
+    y: dino.y,
+  });
+  gameLayer.add(dino.group);
+
+  // 真正的 emoji 畫在 group 裡
+  dino.sprite = new Konva.Text({
+    x: -dino.fontSize / 2,   // 讓腳底在 (0,0)
+    y: -dino.fontSize,
+    text: '🦖',
+    fontSize: dino.fontSize,
+    fontFamily: EMOJI_FONT,
+  });
+  dino.group.add(dino.sprite);
+
+  // 水平鏡像 🦖（只影響 sprite，不動 group）
+  (function mirrorDino() {
+    const w = dino.sprite.width();
+    dino.sprite.offsetX(w);
+    dino.sprite.scaleX(-1);
+  })();
+
+  if (SHOW_HITBOX) {
+    dino.hitbox = new Konva.Rect({
+      x: dino.x - dino.hitW / 2,
+      y: dino.y - dino.hitH,
+      width: dino.hitW,
+      height: dino.hitH,
+      stroke: 'rgba(0,200,0,0.9)',
+      strokeWidth: 2,
+    });
+    gameLayer.add(dino.hitbox);
+  }
+
+  function updateDinoNodes() {
+    // group 的 (x,y) 就是腳底位置
+    dino.group.position({
+      x: dino.x,
+      y: dino.y,
+    });
+
+    // 在地上時左右晃動，跳起來就站直
+    const tilt = dino.onGround ? Math.sin(runPhase) * 8 : 0; // 8度可再調
+    dino.group.rotation(tilt);
+
+    if (SHOW_HITBOX && dino.hitbox) {
+      dino.hitbox.position({
+        x: dino.x - dino.hitW / 3,  // 你校正好的偏移
+        y: dino.y - dino.hitH,
+      });
+    }
+  }
+
+  // ===== 障礙物（🌵 / 🛸） =====
+  let obstacles = []; // { x, y, fontSize, hitW, hitH, sprite, hitbox, type }
+
+  function spawnObstacle() {
+    const isUfo = Math.random() < 0.35;
+    let emojiChar, y, fontSize, type;
+
+    fontSize = 40;
+
+    if (isUfo) {
+      emojiChar = '🛸';
+      y = GROUND_Y - 80;
+      type = 'ufo';
+    } else {
+      emojiChar = '🌵';
+      y = GROUND_Y;
+      type = 'cactus';
+    }
+
+    const hitW = 40;
+    const hitH = 40;
+    const x = GAME_W + fontSize; // 從右側外面出現
+
+    const sprite = new Konva.Text({
+      x: x - fontSize / 2,
+      y: y - fontSize,
+      text: emojiChar,
+      fontSize,
+      fontFamily: EMOJI_FONT,
+    });
+    gameLayer.add(sprite);
+
+    // 水平鏡像 🛸
+    if (type === 'ufo') {
+      const w = sprite.width();
+      sprite.offsetX(w);
+      sprite.scaleX(-1);
+    }
+
+    let hitbox = null;
+    if (SHOW_HITBOX) {
+      hitbox = new Konva.Rect({
+        x: x - hitW / 2,
+        y: y - hitH,
+        width: hitW,
+        height: hitH,
+        stroke: 'rgba(220,0,0,0.9)',
+        strokeWidth: 2,
+      });
+      gameLayer.add(hitbox);
+    }
+
+    obstacles.push({
+      x,
+      y,
+      fontSize,
+      hitW,
+      hitH,
+      sprite,
+      hitbox,
+      type,
+    });
+  }
+
+  // ===== 碰撞工具 =====
+  function getRect(obj) {
+    const w = obj.hitW;
+    const h = obj.hitH;
+    return {
+      left: obj.x - w / 2,
+      right: obj.x + w / 2,
+      top: obj.y - h,
+      bottom: obj.y,
+    };
+  }
+
+  function checkCollision(a, b) {
+    const ra = getRect(a);
+    const rb = getRect(b);
+    return !(
+      ra.right < rb.left ||
+      ra.left > rb.right ||
+      ra.bottom < rb.top ||
+      ra.top > rb.bottom
+    );
+  }
+
+  // ===== 分數顯示 =====
+  let score = 0;
+  let frameCount = 0;
+  let gameState = 'playing'; // 'playing' | 'gameover'
+
+  const scoreText = new Konva.Text({
+    x: GAME_W - 10,
+    y: 10,
+    text: 'Score: 0',
+    fontSize: 18,
+    fontFamily: 'Arial, sans-serif',
+    fill: '#555',
+    align: 'right',
+  });
+  scoreText.offsetX(scoreText.width());
+  gameLayer.add(scoreText);
+
+  // ===== Game Over 畫面 =====
+  const gameOverGroup = new Konva.Group({
+    x: GAME_W / 2,
+    y: GAME_H / 2,
+    visible: false,
+  });
+
+  const gameOverBg = new Konva.Rect({
+    x: -160,
+    y: -60,
+    width: 320,
+    height: 120,
+    fill: 'rgba(0,0,0,0.7)',
+    cornerRadius: 12,
+  });
+
+  const gameOverTitle = new Konva.Text({
+    x: -150,
+    y: -40,
+    width: 300,
+    align: 'center',
+    text: 'GAME OVER',
+    fontSize: 28,
+    fontFamily: 'Arial, sans-serif',
+    fill: '#fff',
+  });
+
+  const gameOverHint = new Konva.Text({
+    x: -150,
+    y: 0,
+    width: 300,
+    align: 'center',
+    text: '按 ⬆️ 或空白鍵重新開始',
+    fontSize: 16,
+    fontFamily: 'Arial, sans-serif',
+    fill: '#eee',
+  });
+
+  gameOverGroup.add(gameOverBg);
+  gameOverGroup.add(gameOverTitle);
+  gameOverGroup.add(gameOverHint);
+  uiLayer.add(gameOverGroup);
+
+  // ===== 跳躍邏輯 =====
+  function doJump() {
+    if (gameState === 'gameover') {
+      resetGame();
+    } else if (dino.onGround) {
+      dino.vy = JUMP_VELOCITY;
+      dino.onGround = false;
+    }
+  }
+
+  // ===== 左下角 ⬆️ emoji 按鈕（放大版） =====
+  const jumpButton = new Konva.Text({
+    x: 40,
+    y: GAME_H - 120,   // 稍微往上，避免擋到主角
+    text: '⬆️',
+    fontSize: 72,
+    fontFamily: EMOJI_FONT,
+  });
+  uiLayer.add(jumpButton);
+
+  jumpButton.on('mousedown touchstart', (e) => {
+    doJump();
+    e.evt.preventDefault();
+  });
+
+  // 鍵盤控制
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      doJump();
+      e.preventDefault();
+    }
+  });
+
+  // ===== 重置遊戲 =====
+  function resetGame() {
+    gameState = 'playing';
+    score = 0;
+    frameCount = 0;
+
+    obstacles.forEach((obs) => {
+      obs.sprite.destroy();
+      if (obs.hitbox) obs.hitbox.destroy();
+    });
+    obstacles = [];
+
+    dino.x = 220;
+    dino.y = GROUND_Y;
+    dino.vy = 0;
+    dino.onGround = true;
+    runPhase = 0;
+
+    scoreText.text('Score: 0');
+    gameOverGroup.visible(false);
+
+    updateDinoNodes();
+    gameLayer.batchDraw();
+    uiLayer.batchDraw();
+  }
+
+  // ===== 遊戲主迴圈 =====
+  function update() {
+    if (gameState !== 'playing') return;
+
+    frameCount++;
+    score += 1;
+    scoreText.text('Score: ' + score);
+
+    // 產生障礙物（帶一點隨機）
+    if (frameCount % 80 === 0 && Math.random() < 0.7) {
+      spawnObstacle();
+    }
+
+    // 恐龍物理
+    dino.y += dino.vy;
+    dino.vy += GRAVITY;
+    if (dino.y >= GROUND_Y) {
+      dino.y = GROUND_Y;
+      dino.vy = 0;
+      dino.onGround = true;
+    } else {
+      dino.onGround = false;
+    }
+
+    // 在地面時讓恐龍左右小幅度擺動
+    if (dino.onGround && gameState === 'playing') {
+      runPhase += 0.4;  // 越大跑得越「急」
+    } else {
+      runPhase = 0;
+    }
+
+    updateDinoNodes();
+
+    // 障礙物移動 + 碰撞
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const obs = obstacles[i];
+      obs.x -= GAME_SPEED;
+
+      obs.sprite.position({
+        x: obs.x - obs.fontSize / 2,
+        y: obs.y - obs.fontSize,
+      });
+
+      if (SHOW_HITBOX && obs.hitbox) {
+        obs.hitbox.position({
+          x: obs.x - obs.hitW / 3,
+          y: obs.y - obs.hitH,
+        });
+      }
+
+      // 超出左邊刪除
+      if (obs.x + obs.fontSize / 2 < 0) {
+        obs.sprite.destroy();
+        if (obs.hitbox) obs.hitbox.destroy();
+        obstacles.splice(i, 1);
+        continue;
+      }
+
+      // 碰撞判定
+      if (checkCollision(dino, obs)) {
+        gameState = 'gameover';
+        gameOverGroup.visible(true);
+        break;
+      }
+    }
+  }
+
+  function loop() {
+    update();
+    gameLayer.batchDraw();
+    uiLayer.batchDraw();
+    requestAnimationFrame(loop);
+  }
+
+  // ===== 響應式縮放：維持 16:9，等比例放大並置中 =====
+  function fitStageIntoWindow() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    const scale = Math.min(w / GAME_W, h / GAME_H);
+    const newWidth  = GAME_W * scale;
+    const newHeight = GAME_H * scale;
+
+    stage.width(newWidth);
+    stage.height(newHeight);
+    stage.scale({ x: scale, y: scale });
+
+    container.style.width  = newWidth + 'px';
+    container.style.height = newHeight + 'px';
+
+    stage.draw();
+  }
+
+  window.addEventListener('resize', fitStageIntoWindow);
+
+  // 啟動
+  resetGame();
+  fitStageIntoWindow();
+  loop();
+</script>
+</body>
+</html>

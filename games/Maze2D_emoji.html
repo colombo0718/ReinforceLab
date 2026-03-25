@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>10×10 棋盤地圖遊戲 - p5.js 版</title>
+  <!-- 載入 p5.js 函式庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #game-container {
+      width: 500px;
+      height: 500px;
+      margin: auto;
+    }
+    #level-select {
+      text-align: center;
+      margin: 20px;
+    }
+    #level-select label {
+      margin: 0 10px;
+      cursor: pointer;
+    }
+    #info {
+      width: 500px;
+      margin: auto;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 遊戲畫布容器 -->
+  <div id="game-container"></div>
+
+  <!-- 關卡選擇區，使用 radio 按鈕 -->
+  <div id="level-select">
+    <h3>選擇關卡：</h3>
+    <label><input type="radio" name="level" value="0" onclick="changeLevel(0)" checked> 關卡 1</label>
+    <label><input type="radio" name="level" value="1" onclick="changeLevel(1)"> 關卡 2</label>
+    <label><input type="radio" name="level" value="2" onclick="changeLevel(2)"> 關卡 3</label>
+    <label><input type="radio" name="level" value="3" onclick="changeLevel(3)"> 關卡 4</label>
+    <label><input type="radio" name="level" value="4" onclick="changeLevel(4)"> 關卡 5</label>
+    <label><input type="radio" name="level" value="5" onclick="changeLevel(5)"> 關卡 6</label>
+  </div>
+
+  <!-- 遊戲說明區 -->
+  <div id="info">
+    <h2>遊戲說明</h2>
+    <p>
+      本遊戲以 10×10 棋盤呈現（500×500 畫布，每格 50×50 px）。<br>
+      棋盤座標以左下為原點，玩家初始位置與目標位置由關卡資料決定。<br>
+      控制動作：none、up、down、left、right；鍵盤採用 WASD 控制。<br>
+      部分地圖物件會影響玩家移動，例如牆壁阻擋、火箭直接傳送到目標點等。
+    </p>
+    <h3>State 描述</h3>
+    <ul>
+      <li>playerX：角色 X 座標 (0 ~ 500)</li>
+      <li>playerY：角色 Y 座標 (0 ~ 500)</li>
+    </ul>
+    <h3>Action 描述</h3>
+    <ul>
+      <li>0：none（不動作）</li>
+      <li>1：up（向上移動一格）</li>
+      <li>2：down（向下移動一格）</li>
+      <li>3：left（向左移動一格）</li>
+      <li>4：right（向右移動一格）</li>
+    </ul>
+  </div>
+
+  <script>
+    // ===== 全域參數 =====
+    const gridSize = 10;          // 10×10 棋盤
+    const cellSize = 50;          // 每格 50×50 px
+    const canvasSize = 500;       // 畫布 500×500 px
+
+    let currentLevel = 0;         // 當前關卡索引
+    let playerGrid = { x: 0, y: 0 };  // 玩家所在棋盤格子座標
+    const goalGrid = { x: 9, y: 9 };    // 目標位置 (假設固定在右上角)
+
+    let rewardBuffer = 0;         // 獎勵暫存
+    let currentState = [];        // 狀態資訊（玩家像素座標）
+    let currentSessionId = 0;
+
+    // 關卡資料，每個關卡為一個字串陣列，代表棋盤各行：
+    // 'P'：玩家初始位置、'G'：目標、'#'：牆壁、'C'：金錢、'F'：火焰、'B'：炸彈、'S'：火箭
+    const levels = [
+      [
+        "P.........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        ".........T"
+      ],
+      [
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "....######",
+        "....#P....",
+        "....#.....",
+        "....#.....",
+        "....#.....",
+        "....#....T"
+      ],
+      [
+        "P.........",
+        "..........",
+        "..........",
+        "...G......",
+        "..........",
+        "..........",
+        "......G...",
+        "..........",
+        "..........",
+        ".........T"
+      ],
+      [
+        "P.........",
+        "..........",
+        "..........",
+        "G.........",
+        "..........",
+        "..........",
+        "G.........",
+        "..........",
+        "..........",
+        "G..G..G..T"
+      ],
+      [
+        "P..F..F..T",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        ".........."
+      ],
+      [
+        "G.........",
+        "..........",
+        "..........",
+        "...P......",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        ".........T"
+      ],      
+    ];
+
+    // ===== p5.js 設定 =====
+    function setup() {
+      let canvas = createCanvas(canvasSize, canvasSize);
+      canvas.parent('game-container');
+      textAlign(CENTER, CENTER);
+      textSize(32);
+      // 初始化關卡與玩家位置
+      initLevel();
+      updateState();
+      noLoop();  // 採用 redraw() 進行手動刷新
+    }
+
+    function draw() {
+      push();
+      // 翻轉畫布，讓 (0,0) 變為左下角
+      translate(0, height);
+      scale(1, -1);
+      background(240);
+      drawGrid();
+      drawLevel();
+      pop();
+    }
+
+    // ===== 畫面繪製相關 =====
+
+    // 畫棋盤網格
+    function drawGrid() {
+      stroke(180);
+      strokeWeight(1);
+      for (let i = 0; i <= gridSize; i++) {
+        let x = i * cellSize;
+        line(x, 0, x, canvasSize);
+      }
+      for (let j = 0; j <= gridSize; j++) {
+        let y = j * cellSize;
+        line(0, y, canvasSize, y);
+      }
+    }
+
+    // 將棋盤座標轉換成畫布像素座標（取格子中心）
+    function gridToPixel(grid) {
+      return {
+        x: grid.x * cellSize + cellSize / 2,
+        y: grid.y * cellSize + cellSize / 2
+      };
+    }
+
+    // 為讓 emoji 正向顯示（因為畫布整體翻轉），局部再翻轉回來
+    function drawEmoji(emoji, pos) {
+      push();
+      translate(pos.x, pos.y);
+      scale(1, -1);
+      text(emoji, 0, 0);
+      pop();
+    }
+
+    // ===== 關卡初始化與繪製 =====
+
+    // 初始化關卡：從關卡資料中找到 'P'，並設定玩家初始位置
+    let level = [];
+    function initLevel() {
+      level = levels[currentLevel].slice();
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          if (level[y][x] === 'P') {
+            playerGrid = { x: x, y: y };
+            return;
+          }
+        }
+      }
+    }
+
+    // 畫出關卡物件與背景（玩家位置優先）
+    function drawLevel() {
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          let pos = gridToPixel({ x, y });
+          // 若該格為玩家所在位置，優先畫出玩家 emoji
+          if (x === playerGrid.x && y === playerGrid.y) {
+            drawEmoji("🧑", pos);
+            continue;
+          }
+          let char = level[y][x];
+          switch (char) {
+            case 'P': // 初始玩家位置（已由 playerGrid 處理）
+              break;
+            case 'T': // 目標
+              drawEmoji("🚪", pos);
+              break;
+            case '#': // 牆壁
+              drawEmoji("🚧", pos);
+              break;
+            case 'G': // 金錢
+              drawEmoji("💰", pos);
+              break;
+            case 'F': // 火焰
+              drawEmoji("🔥", pos);
+              break;
+            case 'B': // 炸彈
+              drawEmoji("💣", pos);
+              break;
+            case 'S': // 火箭
+              drawEmoji("🚀", pos);
+              break;
+            case 'C': // 糖果
+              drawEmoji("🍬", pos);
+              break;
+            case 'L': // 閃電
+              drawEmoji("⚡", pos);
+              break;
+            default:
+              // 空白不繪製
+              break;
+          }
+        }
+      }
+    }
+
+    // ===== 關卡與玩家移動處理 =====
+
+    // 當關卡改變時，更新 currentLevel 並重新初始化關卡
+    function changeLevel(levelIndex) {
+      currentLevel = levelIndex;
+      initLevel();
+      updateState();
+      redraw();
+    }
+
+    // 更新玩家狀態資訊（像素座標）
+    function updateState() {
+      let pos = gridToPixel(playerGrid);
+      currentState = [ pos.x.toFixed(2), pos.y.toFixed(2) ];
+    }
+
+    // 處理來自父頁面的訊息（例如 RL）
+    function handleMessage(event) {
+      let message = event.data;
+      if (message.type === "action") {
+        processAction(message.action);
+        updateState();
+        sendRewardState();
+        redraw();
+      } else if (message.type === "questInfo") {
+        currentSessionId = message.sessionId;
+
+        // 回傳遊戲資訊
+        let gameInfo = {
+          type: "gameInfo",
+          players: [{
+            stateInfo: [
+              { name: 'playerX', min: 0, max: canvasSize, bin: 10 },
+              { name: 'playerY', min: 0, max: canvasSize, bin: 10 }
+            ],
+            actionInfo: [
+              { type: "switch", level: 5, name: ['❌', '➡️', '⬇️', '⬅️', '⬆️'] }
+            ]
+          }]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      }
+    }
+    window.addEventListener("message", handleMessage);
+
+    // 鍵盤控制：使用 WASD 對應移動方向
+    function keyPressed() {
+      let action = 0;
+      if (key === 'w' || key === 'W') action = 1;
+      else if (key === 's' || key === 'S') action = 2;
+      else if (key === 'a' || key === 'A') action = 3;
+      else if (key === 'd' || key === 'D') action = 4;
+      processAction(action);
+      updateState();
+      sendRewardState();
+      redraw();
+    }
+
+    // 傳送狀態與獎勵給父頁面
+    function sendRewardState() {
+      window.parent.postMessage({
+        type: "reward_state",
+        reward: rewardBuffer,
+        state: currentState,
+        sessionId: currentSessionId
+      }, "*");
+      rewardBuffer = 0;
+    }
+
+    // 處理玩家動作：
+    // 先計算預計移動位置，再依據該格物件決定最終玩家位置
+    function processAction(action) {
+      // 複製目前位置為預計位置
+      let proposedGrid = { x: playerGrid.x, y: playerGrid.y };
+
+      // 根據動作更新預計位置
+      if (action === 1 && playerGrid.x < gridSize - 1) {
+        proposedGrid.x++;
+      } else if (action === 2 && playerGrid.y > 0) {
+        proposedGrid.y--;
+      } else if (action === 3 && playerGrid.x > 0) {
+        proposedGrid.x--;
+      } else if (action === 4 && playerGrid.y < gridSize - 1) {
+        proposedGrid.y++;
+      }
+
+      // 檢查預計位置上的物件效應，決定最終位置
+      let newPlayerGrid = evaluateProposedMove(proposedGrid);
+      playerGrid = newPlayerGrid;
+
+      // 執行該格物件效果（包含金錢、火焰、門G、炸彈B等）
+      processCellEffect(playerGrid.x, playerGrid.y);
+    }
+
+    // 根據預計移動位置上的物件決定最終位置
+    function evaluateProposedMove(proposedGrid) {
+      let cellChar = level[proposedGrid.y][proposedGrid.x];
+      switch (cellChar) {
+        case '#': // 遇到牆壁，不允許移動
+          // console.log("遇到牆壁，無法移動");
+          return { x: playerGrid.x, y: playerGrid.y };
+        case 'S': // 遇到火箭，直接傳送到目標位置
+          console.log("踩到火箭，傳送至目標點！");
+          return { x: goalGrid.x, y: goalGrid.y };
+        default:
+          // 其他情況正常移動
+          return proposedGrid;
+      }
+    }
+
+    // 處理玩家所在格子的物件效果
+    function processCellEffect(x, y) {
+      let cellChar = level[y][x];
+      switch (cellChar) {
+        case 'G': // gold
+          rewardBuffer += 10;
+          console.log("撿到金錢，獎勵 +5");
+          updateLevelCell(x, y, '.');  // 收集後清除
+          break;
+        case 'F': // fire
+          rewardBuffer -= 10;
+          console.log("經過火焰，獎勵 -3");
+          updateLevelCell(x, y, '.');  // 火焰消失
+          break;
+        case 'T': // target
+          rewardBuffer += 100;
+          console.log("走到門，獎勵 +10");
+          updateLevelCell(x, y, '.');  // 門清除
+          endTurn();
+          break;
+        case 'B': //bomb
+          rewardBuffer -= 100;
+          console.log("走到炸彈B，獎勵 -10");
+          updateLevelCell(x, y, '.');  // 炸彈清除
+          endTurn();
+          break;
+        // 可擴充其他物件效果
+        default:
+          break;
+      }
+    }
+
+    // 結束回合：回到起點並重製關卡（例如重置場上物件）
+    function endTurn() {
+      // 如果需要通知外層 (例如 RL 環境) 回合結束，可發送訊息
+      window.parent.postMessage({
+        type: "endEpisode",
+        sessionId: currentSessionId
+      }, "*");
+      console.log("結束回合，重置關卡！");
+      initLevel();
+    }
+
+    // 更新關卡資料中指定格子的內容（例如收集後變成空白）
+    function updateLevelCell(x, y, newChar) {
+      let row = level[y].split('');
+      row[x] = newChar;
+      level[y] = row.join('');
+    }
+  </script>
+</body>
+</html>

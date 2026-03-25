@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RL 太鼓達人遊戲</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
+</head>
+<body>
+
+  <div id="game-container">
+  </div>
+
+   <div>
+    <h2>遊戲說明</h2>
+    <p>這是一個模擬太鼓達人的簡易遊戲，玩家需要在紅色圓接觸空心圓時進行敲擊，以獲得高分。</p>
+    <p>遊戲不僅可以手動操作，還可以讓程式控制，適合用於強化學習的訓練環境。</p>
+
+    <h3>遊戲機制</h3>
+    <ul>
+      <li>紅圓接觸空心圓並按下敲擊鍵時，重合度越高分越多，得分範圍0~10分。</li>
+      <li>若紅圓尚未接觸空心圓時按下敲擊鍵，距離越遠扣分越多，扣分範圍0~4分。</li>
+      <li>若紅圓超過空心圓未被敲擊，則扣10分。</li>
+    </ul>
+    <h3> 手動遊玩 </h3>
+    <ul>
+      <li> 鍵盤 A： 敲擊 </li>
+    </ul>
+
+    <h3>State 描述</h3>
+    <ul>
+      <li> redX : 紅色圓圈位置 (範圍 0~200)</li>
+    </ul>
+
+    <h3> Action 描述</h3>
+    <ul>
+      <li> 0：沒動作</li>
+      <li> 1：敲擊</li>
+    </ul>
+  </div>
+
+  <script>
+    let redX; // 實心圓的 x 位置
+    let redY = 100; // 實心圓的固定 y 位置
+    let targetX = 100; // 空心圓的固定 x 位置
+    let targetY = 100; // 空心圓的固定 y 位置
+    let score = 0; // 總分數
+    let redSpeed = -2; // 實心圓的移動速度
+    let isPressed = false; // 標記是否按下
+    let reward = 0;
+    let state = [redX];
+    let rewardBuffer = 0; // 獎勵緩衝區，初始為0
+
+    function setup() {
+      let canvas = createCanvas(400, 200);
+      canvas.parent('game-container'); // 指定將畫布嵌入到 #game-container 中的 canvas
+      resetGame(); // 初始化遊戲
+      window.addEventListener("message", handleMessage); // 監聽父頁面傳來的動作
+    }
+
+    function draw() {
+      background(240);
+
+      // 繪製紅圓的運動軌跡（黑色直線）
+      strokeWeight(1);
+      stroke(0); // 黑色線條
+      line(120, redY, width - 100, redY); // 繪製直線，覆蓋整個畫布寬度
+
+      // 繪製空心圓
+      strokeWeight(1);
+      stroke(isPressed ? 'yellow' : 0); // 如果按下，邊框顯示為黃色
+      noFill();
+      ellipse(targetX, targetY, 40, 40);
+
+      // 繪製實心圓
+      fill(255, 0, 0);
+      stroke(0);
+      ellipse(redX, redY, 40, 40);
+
+      // 更新實心圓的位置
+      redX += redSpeed;
+
+      // 判斷實心圓是否越界
+      if (redX < targetX) {
+        rewardBuffer -= 10; // 累積 -10 分
+        score -= 10;
+        resetGame();
+      }
+
+      // 顯示分數
+      if(score < 0){ score = 0; }
+      textSize(24);
+      fill(0);
+      noStroke();
+      text(`Score: ${score}`, 10, 30);
+    }
+
+    // 重置遊戲
+    function resetGame() {
+      if (score < 0) score = 0;
+      redSpeed = -2 - Math.sqrt(score) / 5;
+      redX = random(200, width - 100); // 隨機重置實心圓位置
+    }
+
+// 接收父頁面的動作
+    function handleMessage(event) {
+      const message = event.data;
+      if (message.type === "action") {
+        const action = message.action; // 父頁面傳遞的動作（0 或 1）
+        processAction(action);
+        sendRewardState();
+        rewardBuffer = 0; // 重置 rewardBuffer
+      } else if (message.type === "questInfo") {
+        // 回傳基本遊戲資訊
+        const gameInfo = {
+          type: "gameInfo",
+          // playerNumber: 1,
+          // stateInfo: [{ name: "redX", min: 0, max: 200 }],
+          // actionInfo: [{type: "switch",level: 2,name: ["none", "beat"]}
+          players:[
+            {
+              stateInfo: [{ name: "redX", min: 0, max: 200 }],
+              actionInfo: [{type: "switch",level: 2,name: ["none", "beat"]}]
+            }          
+          ]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      }
+    }
+
+
+    // 處理動作
+    function processAction(action) {
+      if (action === 1) { // 敲下鼓動作
+        isPressed = true; // 設置按下狀態
+        let overlap = 140 - redX; // 計算重疊度
+        if (overlap > 0) {
+          reward = Math.round(overlap / 4);
+          rewardBuffer += reward; // 累積正回饋
+          score += reward;
+          resetGame();
+        } else {
+          reward = Math.round(overlap / 40);
+          rewardBuffer += reward; // 累積負回饋
+          score += reward;
+        }
+      } else if (action === 0) {
+        reward = 0;
+        rewardBuffer += reward; // 累積無回饋
+        isPressed = false;
+      }
+      state = [(redX-100).toFixed(2)];
+    }
+
+    // 發送遊戲狀態給父頁面
+    function sendState() {
+      window.parent.postMessage({ type: "state", state }, "*");
+    }
+
+    // 一次性傳送 reward + state
+    function sendRewardState() {
+      window.parent.postMessage({ type: "reward_state", reward: rewardBuffer, state: state }, "*");
+    }
+
+    // 模擬按鍵動作（僅用於本地測試）
+    function keyPressed() {
+      if (key === 'A' || key === 'a') {
+        processAction(1); // 模擬按下動作
+      }
+    }
+
+    // 放開按鍵時
+    function keyReleased() {
+      if (key === 'A' || key === 'a') {
+        processAction(0); // 模擬放開動作
+      }
+    }
+  </script>
+</body>
+</html>

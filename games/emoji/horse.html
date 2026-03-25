@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emoji Horse Runner (Animation MVP)</title>
+  <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏇</text></svg>">
+  <script src="https://unpkg.com/konva@8.4.0/konva.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #222;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #container { background: #fff; }
+  </style>
+</head>
+<body>
+<div id="container"></div>
+
+<script>
+  // ===== 遊戲邏輯座標（固定解析度） =====
+  const GAME_W = 1000;
+  const GAME_H = 1000;
+
+  const GROUND_Y = 700;        // 地面高度
+    const GRAVITY_Z = 0.5;      // 往下加速度（數值可微調）
+    const JUMP_VZ   = 7;        // 起跳初速度（正值=往上）
+
+  const EMOJI_FONT = 'Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+
+  const container = document.getElementById('container');
+
+  const stage = new Konva.Stage({
+    container: 'container',
+    width: GAME_W,
+    height: GAME_H,
+  });
+
+  const gameLayer = new Konva.Layer();
+  const uiLayer = new Konva.Layer();
+  stage.add(gameLayer);
+  stage.add(uiLayer);
+
+// ===== 背景分層：天空 / 草地 / 土地 =====
+// 0~300：天空藍
+const bgSky = new Konva.Rect({
+  x: 0,
+  y: 0,
+  width: GAME_W,
+  height: 300,
+  fill: '#7EC8FF', // 天空藍（你要更淡/更深再調）
+});
+
+// 300~800：綠地（主角/地圖物件跑的區域）
+const bgGrass = new Konva.Rect({
+  x: 0,
+  y: 300,
+  width: GAME_W,
+  height: 500,     // 800 - 300
+  fill: '#6ED36E', // 草地綠
+});
+
+// 800~1000：土地（咖啡色）
+const bgDirt = new Konva.Rect({
+  x: 0,
+  y: 800,
+  width: GAME_W,
+  height: 200,     // 1000 - 800
+  fill: '#8B5A2B', // 土地咖啡
+});
+
+// ✅ 背景要先 add，確保在所有物件下面
+gameLayer.add(bgSky);
+gameLayer.add(bgGrass);
+gameLayer.add(bgDirt);
+
+  // ===== 玩家（🏇） + 陰影（🕳） =====
+  const PLAYER_FONT_SIZE = 44;
+  let runPhase = 0;
+
+const player = {
+  // 位置（邏輯座標）
+  x: 850,
+  y: GROUND_Y, // 代表「賽道高度 / 踩在哪條跑道」
+  z: 0,        // 代表「離地高度」（跳躍用）
+
+  // 速度（邏輯速度）
+  vx: 5,      // 世界相對速度：你之後會拿它去推「背景/障礙物」往左移
+  vy: 0,       // 變換跑道時才用（例如上下換跑道的滑動速度）；跳躍不再用它
+  vz: 0,       // 跳躍初速度放這裡（起跳 = 給它一個正值）
+
+  onGround: true,
+
+  fontSize: PLAYER_FONT_SIZE,
+  group: null,
+  sprite: null,
+};
+
+  // 以腳底為原點的 group
+  player.group = new Konva.Group({
+    x: player.x,
+    y: player.y,
+  });
+  gameLayer.add(player.group);
+
+  // 真正的 emoji 畫在 group 裡 
+  player.sprite = new Konva.Text({
+    x: -player.fontSize / 2,
+    y: -player.fontSize,
+    text: '🏇',
+    fontSize: player.fontSize,
+    fontFamily: EMOJI_FONT,
+  });
+  player.group.add(player.sprite);
+
+  // 陰影 🕳（固定貼地、跟隨玩家 X，Y 固定地面）
+  const shadow = new Konva.Text({
+    x: player.x -player.fontSize / 2,
+    y: player.y,
+    text: '⚫',
+    fontSize: 28,
+    fontFamily: EMOJI_FONT,
+    opacity: 0.85,
+    scaleX: 1.5,               //  
+    scaleY: 0.5,               // 
+  });
+  gameLayer.add(shadow);
+
+  function updatePlayerNodes() {
+    // 地面跑步：做「橫著的 8」軌跡（Lissajous 1:2）
+    // - 上下：較大幅度，較短周期（sin(t)）
+    // - 前後：較小幅度，周期兩倍長（sin(t/2)）
+    // 這組合看起來會像橫著的∞（figure-eight-ish）
+    const yBounceAmp = 4; // 上下幅度
+    const xSwayAmp   = 2; // 前後(左右)幅度（比上下小）
+
+    const yBounce = player.onGround ? Math.sin(runPhase) * yBounceAmp : 0;
+    const xSway   = player.onGround ? Math.sin(runPhase / 2) * xSwayAmp : 0;
+
+    // 🏇 微微「前後晃」：讓馬的 group 在 x 上偏移
+    // 🕳 陰影固定在地上，不跟著 xSway，這樣你會更清楚看到「馬 vs 陰影」距離變化
+    player.group.position({
+      x: player.x + xSway,
+      y: (player.y - player.z) + yBounce,  // ✅ z 越大，馬越往上
+    });
+
+    shadow.position({
+      x: player.x - player.fontSize / 2+ xSway + player.z/2,
+      y: player.y - player.fontSize / 6,
+    });
+  }
+  // ===== 跳躍邏輯 =====
+    function doJump() {
+    if (player.onGround) {
+        player.vz = JUMP_VZ;    // ✅ 起跳初速度放在 z 方向
+        player.onGround = false;
+    }
+    }
+
+// ===== 鍵盤控制：Space 跳；W/S 或 ↑/↓ 讓 player.y 平滑移動 =====
+let moveUp = false;
+let moveDown = false;
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    doJump();
+    e.preventDefault();
+    return;
+  }
+
+  if (e.code === 'KeyW' || e.code === 'ArrowUp') {
+    moveUp = true;
+    e.preventDefault();
+    return;
+  }
+
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+    moveDown = true;
+    e.preventDefault();
+    return;
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'KeyW' || e.code === 'ArrowUp') {
+    moveUp = false;
+    e.preventDefault();
+    return;
+  }
+
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+    moveDown = false;
+    e.preventDefault();
+    return;
+  }
+});
+
+// ===== y 軸平滑移動（按住固定速度），範圍 500~700 =====
+const RUN_MIN_Y = 550;
+const RUN_MAX_Y = 750;
+
+const Y_SPEED = 5; // 按住時的 y 方向速度（你可調：4~10）
+
+
+// ===== 物件生成（只要會動就好） =====
+const movers = []; // { node, kind }
+
+function rand(min, max) {
+  return Math.random() * (max - min) + min;
+}
+function choice(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function spawnRunnerItem() {
+  const emoji = choice(['🚧', '🍎']); // 草地跑道內出現
+  const node = new Konva.Text({
+    x: -60, // 從左邊外面出生
+    y: rand(RUN_MIN_Y, RUN_MAX_Y),
+    text: emoji,
+    fontSize: 44,
+    fontFamily: EMOJI_FONT,
+  });
+  gameLayer.add(node);
+  movers.push({ node, kind: 'runner' });
+}
+
+function spawnTarget() {
+  const node = new Konva.Text({
+    x: -60,
+    y: rand(350, 450), // 靶子區
+    text: '🎯',
+    fontSize: 44,
+    fontFamily: EMOJI_FONT,
+  });
+  gameLayer.add(node);
+  movers.push({ node, kind: 'target' });
+}
+
+// 生成節奏：用「倒數」做隨機間隔（簡單穩）
+let spawnRunnerIn = 0;
+let spawnTargetIn = 0;
+
+function resetRunnerTimer() {
+  spawnRunnerIn = Math.floor(rand(18, 45)); // 越小越密（幀數）
+}
+function resetTargetTimer() {
+  spawnTargetIn = Math.floor(rand(40, 90));
+}
+resetRunnerTimer();
+resetTargetTimer();
+
+  // ===== 主迴圈：只有物理 + 動畫（不含障礙物、分數、碰撞） =====
+  function update() {
+    // 物理：跳躍（z 軸）
+    player.z += player.vz;
+    player.vz -= GRAVITY_Z;    // ✅ 往下拉（z 速度遞減）
+
+    if (player.z <= 0) {       // ✅ 落地：z 回到 0
+    player.z = 0;
+    player.vz = 0;
+    player.onGround = true;
+    } else {
+    player.onGround = false;
+    }
+
+// 依按鍵直接給速度（放開就會回到 0）
+if (moveUp && !moveDown) player.vy = -Y_SPEED;
+else if (moveDown && !moveUp) player.vy =  Y_SPEED;
+else player.vy = 0;
+
+// 更新 y
+player.y += player.vy;
+
+// 範圍限制
+if (player.y < RUN_MIN_Y) player.y = RUN_MIN_Y;
+if (player.y > RUN_MAX_Y) player.y = RUN_MAX_Y;
+
+// ===== 物件隨機生成 =====
+spawnRunnerIn--;
+spawnTargetIn--;
+
+if (spawnRunnerIn <= 0) {
+  spawnRunnerItem();
+  resetRunnerTimer();
+}
+if (spawnTargetIn <= 0) {
+  spawnTarget();
+  resetTargetTimer();
+}
+
+// ===== 物件移動（依 player.vx 往右）+ 超出就移除 =====
+const killX = GAME_W + 80;
+for (let i = movers.length - 1; i >= 0; i--) {
+  const m = movers[i];
+  m.node.x(m.node.x() + player.vx);
+
+  if (m.node.x() > killX) {
+    m.node.destroy();
+    movers.splice(i, 1);
+  }
+}
+
+
+    // 在地面時跑步動畫（顛簸頻率）
+    if (player.onGround) {
+      runPhase += 0.4;
+    } else {
+      // 空中就不顛
+      runPhase = 0;
+    }
+
+    updatePlayerNodes();
+  }
+
+  function loop() {
+    update();
+    gameLayer.batchDraw();
+    uiLayer.batchDraw();
+    requestAnimationFrame(loop);
+  }
+
+  // ===== 響應式縮放：維持 16:9，等比例放大並置中 =====
+  function fitStageIntoWindow() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    const scale = Math.min(w / GAME_W, h / GAME_H);
+    const newWidth  = GAME_W * scale;
+    const newHeight = GAME_H * scale;
+
+    stage.width(newWidth);
+    stage.height(newHeight);
+    stage.scale({ x: scale, y: scale });
+
+    container.style.width  = newWidth + 'px';
+    container.style.height = newHeight + 'px';
+
+    stage.draw();
+  }
+
+  window.addEventListener('resize', fitStageIntoWindow);
+
+  // 啟動
+  updatePlayerNodes();
+  fitStageIntoWindow();
+  loop();
+</script>
+</body>
+</html>

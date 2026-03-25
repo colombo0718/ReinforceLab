@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>10×10 棋盤地圖遊戲 - p5.js 版</title>
+  <!-- 載入 p5.js 函式庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #game-container {
+      width: 500px;
+      height: 500px;
+      margin: auto;
+    }
+    #info {
+      width: 500px;       /* 控制區塊寬度 */
+      margin: auto;       /* 讓區塊置中 */
+      text-align: left;   /* 內部文字靠左 */
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 遊戲畫布容器 -->
+  <div id="game-container"></div>
+  
+  <!-- 遊戲說明區 -->
+  <div id="info">
+    <h2>遊戲說明</h2>
+    <p>
+      本遊戲以 10×10 棋盤形式呈現（500×500 畫布，每格 50×50 px）。<br>
+      棋盤座標皆介於 0～9，畫布座標則為 0～500。<br>
+      左下角棋盤座標 [0,0] 對應畫布 (25,25) 為起點，右上角 [9,9] 對應 (475,475) 為終點。
+    </p>
+    <h3>遊戲機制</h3>
+    <ul>
+      <li>角色以綠色圓形呈現，移動時每次直接跳至下一格（50 px）。</li>
+      <li>控制動作共有 5 種：none、up、down、left、right；鍵盤控制採用 WASD。</li>
+      <li>當角色移至終點區（右上 [9,9]）時，遊戲通關並獲得獎勵。</li>
+      <li>同時支援 RL 通訊介面，父頁面可傳送動作指令。</li>
+    </ul>
+    <h3>State 描述</h3>
+    <ul>
+      <li>playerX：角色 X 座標 (0 ~ 500)</li>
+      <li>playerY：角色 Y 座標 (0 ~ 500)</li>
+    </ul>
+    <h3>Action 描述</h3>
+    <ul>
+      <li>0：none（不動作）</li>
+      <li>1：up（向上移動一格）</li>
+      <li>2：down（向下移動一格）</li>
+      <li>3：left（向左移動一格）</li>
+      <li>4：right（向右移動一格）</li>
+    </ul>
+  </div>
+
+  <script>
+    // ===== 全域參數 =====
+    const gridSize = 10;         // 棋盤為 10×10 格
+    const cellSize = 50;         // 每格尺寸 50×50 px
+    const canvasSize = 500;      // 畫布尺寸 500×500 px
+    
+    // 玩家在棋盤中的格子座標（初始於左下 [0,0]）
+    let playerGrid = { x: 0, y: 0 };
+    // 終點位於右上角 [9,9]
+    const goalGrid = { x: 9, y: 9 };
+
+    // RL 相關變數
+    let rewardBuffer = 0;        // 獎勵暫存
+    let currentState = [];       // 當前狀態
+
+    // ===== p5.js 主要函式 =====
+    function setup() {
+      let canvas = createCanvas(canvasSize, canvasSize);
+      canvas.parent('game-container');
+      // 使用 CENTER 模式讓圓形及矩形以中心為基準繪製
+      ellipseMode(CENTER);
+      rectMode(CENTER);
+      updateState();
+    }
+
+    function draw() {
+      // 為了讓棋盤座標 [0,0] 為左下，翻轉畫布
+      push();
+      translate(0, height);
+      scale(1, -1);
+
+      background(240);
+      drawGrid();
+      drawGoal();
+      drawPlayer();
+
+      pop();
+    }
+
+    // 畫棋盤網格，每條線間隔 50 px
+    function drawGrid() {
+      stroke(180);
+      strokeWeight(1);
+      for (let i = 0; i <= gridSize; i++) {
+        let x = i * cellSize;
+        line(x, 0, x, canvasSize);
+      }
+      for (let j = 0; j <= gridSize; j++) {
+        let y = j * cellSize;
+        line(0, y, canvasSize, y);
+      }
+    }
+
+    // 將棋盤座標轉換成畫布像素座標（以格子中心為基準）
+    function gridToPixel(grid) {
+      return {
+        x: grid.x * cellSize + cellSize / 2,
+        y: grid.y * cellSize + cellSize / 2
+      };
+    }
+
+    // 畫玩家（綠色圓形）
+    function drawPlayer() {
+      fill(0, 255, 0);
+      noStroke();
+      let pos = gridToPixel(playerGrid);
+      ellipse(pos.x, pos.y, cellSize * 0.6, cellSize * 0.6);
+    }
+
+    // 畫終點區域（藍色半透明矩形）
+    function drawGoal() {
+      fill(0, 0, 255, 150);
+      noStroke();
+      let pos = gridToPixel(goalGrid);
+      rect(pos.x, pos.y, cellSize, cellSize);
+    }
+
+    // ===== RL 控制相關 =====
+    // 根據 RL 指令處理移動動作
+    // 動作定義：0 = none, 1 = up, 2 = down, 3 = left, 4 = right
+    function processAction(action) {
+      if (action === 1 && playerGrid.y < gridSize - 1) {
+        playerGrid.y++;
+      } else if (action === 2 && playerGrid.y > 0) {
+        playerGrid.y--;
+      } else if (action === 3 && playerGrid.x > 0) {
+        playerGrid.x--;
+      } else if (action === 4 && playerGrid.x < gridSize - 1) {
+        playerGrid.x++;
+      }
+      updateState();
+
+      // 當抵達終點，發送通關訊息與獎勵，並重置玩家座標
+      if (playerGrid.x === goalGrid.x && playerGrid.y === goalGrid.y) {
+        rewardBuffer += 10;  // 通關獎勵
+        window.parent.postMessage({type: "endEpisode"}, "*");
+        console.log("達成通關！");
+        playerGrid = { x: 0, y: 0 };
+        updateState();
+      }
+    }
+
+    // 更新狀態資訊，回報玩家的像素座標（保留小數點後兩位）
+    function updateState() {
+      let pos = gridToPixel(playerGrid);
+      currentState = [ pos.x.toFixed(2), pos.y.toFixed(2) ];
+    }
+
+    // 傳送狀態與獎勵回饋給父頁面
+    function sendRewardState() {
+      window.parent.postMessage({
+        type: "reward_state",
+        reward: rewardBuffer,
+        state: currentState
+      }, "*");
+      rewardBuffer = 0;
+    }
+
+    // 處理來自父頁面的訊息
+    function handleMessage(event) {
+      let message = event.data;
+      if (message.type === "action") {
+        processAction(message.action);
+        sendRewardState();
+      } else if (message.type === "questInfo") {
+        // 回傳遊戲資訊，包括狀態範圍與動作說明
+        let gameInfo = {
+          type: "gameInfo",
+          players: [
+            {
+              stateInfo: [
+                { name: 'playerX', min: 0, max: canvasSize, bin: 10 },
+                { name: 'playerY', min: 0, max: canvasSize, bin: 10 }
+              ],
+              actionInfo: [
+                { type: "switch", level: 5, name: ['none', 'up', 'down', 'left', 'right'] }
+              ]
+            }
+          ]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      } 
+    }
+    window.addEventListener("message", handleMessage);
+
+    // ===== 鍵盤控制 =====
+    // 使用 WASD 鍵控制動作，方便手動測試
+    function keyPressed() {
+      let action = 0;
+      if (key === 'w' || key === 'W') action = 1;
+      else if (key === 's' || key === 'S') action = 2;
+      else if (key === 'a' || key === 'A') action = 3;
+      else if (key === 'd' || key === 'D') action = 4;
+      processAction(action);
+      sendRewardState();
+    }
+  </script>
+</body>
+</html>

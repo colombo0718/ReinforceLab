@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>XuanXuexi Flash Card</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --card:#101826;
+      --text:#e8eef7;
+      --muted:#98a6ba;
+      --blue:#4da3ff;
+      --red:#ff5a7a;
+      --border:rgba(255,255,255,.10);
+      --chip:rgba(255,255,255,.08);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      background:var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    }
+    .wrap{
+      width:min(560px, 92vw);
+      padding:16px;
+    }
+
+    /* ===== Brand Header ===== */
+    .brand{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .brand-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .logo{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.03);
+      padding:6px;
+      flex:0 0 auto;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+    .brand-text{
+      display:flex;
+      flex-direction:column;
+      line-height:1.05;
+      min-width:0;
+    }
+    .brand-zh{
+      font-weight:800;
+      font-size:18px;
+      letter-spacing:.5px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand-en{
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand-tag{
+      flex:0 0 auto;
+      border:1px solid var(--border);
+      background:var(--chip);
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      letter-spacing:.6px;
+      color:var(--text);
+      user-select:none;
+    }
+
+    /* ===== Controls Row ===== */
+    .topbar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:10px;
+    }
+    .select{
+      flex:1;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    select{
+      width:100%;
+      background:transparent;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+      font-size:14px;
+    }
+    .hint{
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+      user-select:none;
+    }
+
+    /* ===== Card ===== */
+    .card{
+      position:relative;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:18px 18px 16px;
+      overflow:hidden;
+    }
+    .emoji{
+      height:220px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:140px;
+      line-height:1;
+      user-select:none;
+    }
+    .divider{
+      height:1px;
+      background:var(--border);
+      margin:8px 0 14px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px 14px;
+    }
+    .field{
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px 12px 10px;
+      min-height:64px;
+    }
+    .label{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+    .value{
+      font-size: clamp(18px, 4.2vw, 26px);
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    .blue .value{ color:var(--blue); }
+    .red  .value{ color:var(--red); }
+
+    .nav{
+      margin-top:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .btn{
+      border:1px solid var(--border);
+      background:transparent;
+      color:var(--text);
+      border-radius:14px;
+      padding:10px 14px;
+      font-size:14px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .counter{
+      color:var(--muted);
+      font-size:13px;
+      user-select:none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <!-- ✅ Brand Header -->
+    <div class="brand">
+      <div class="brand-left">
+        <img class="logo" src="./XuanXuexi_emoji.png" alt="XuanXuexi" />
+        <div class="brand-text">
+          <div class="brand-zh">宣學習</div>
+          <div class="brand-en">XuanXuexi</div>
+        </div>
+      </div>
+      <div class="brand-tag">Flash Card</div>
+    </div>
+
+    <div class="topbar">
+      <div class="select">
+        <select id="category"></select>
+      </div>
+      <div class="hint">←/→ 換卡</div>
+    </div>
+
+    <div class="card" id="card">
+      <div class="emoji" id="emoji">🍎</div>
+      <div class="divider"></div>
+
+      <!-- 你圖上的布局：1.zh 2.py / 3.en 4.vi -->
+      <div class="grid">
+        <div class="field blue">
+          <div class="label">1. zh</div>
+          <div class="value" id="zh">紅蘋果</div>
+        </div>
+        <div class="field red">
+          <div class="label">2. py</div>
+          <div class="value" id="py">hóng píngguǒ</div>
+        </div>
+        <div class="field blue">
+          <div class="label">3. en</div>
+          <div class="value" id="en">red apple</div>
+        </div>
+        <div class="field red">
+          <div class="label">4. vi</div>
+          <div class="value" id="vi">táo đỏ</div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <button class="btn" id="prev">← Prev</button>
+        <div class="counter" id="counter">1 / 20</div>
+        <button class="btn" id="next">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { EMOJI_DB } from "./emoji_db.js";
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      category: $("category"),
+      emoji: $("emoji"),
+      zh: $("zh"),
+      py: $("py"),
+      en: $("en"),
+      vi: $("vi"),
+      prev: $("prev"),
+      next: $("next"),
+      counter: $("counter"),
+    };
+
+    const categories = EMOJI_DB.keys();
+    let catIndex = 0;
+    let cardIndex = 0;
+
+    function getPackByCatIndex(i){
+      const key = categories[i];
+      return { key, entries: EMOJI_DB(key) || [] };
+    }
+
+    function render(){
+      const { key, entries } = getPackByCatIndex(catIndex);
+      if (!entries.length) return;
+
+      cardIndex = ((cardIndex % entries.length) + entries.length) % entries.length;
+
+      const e = entries[cardIndex];
+      els.emoji.textContent = e.u || "❓";
+      els.zh.textContent = e.zh || "";
+      els.py.textContent = e.py || "";
+      els.en.textContent = e.en || "";
+      els.vi.textContent = e.vi || "";
+
+      els.counter.textContent = `${cardIndex + 1} / ${entries.length}`;
+      els.category.value = key;
+    }
+
+    function nextCard(){ cardIndex++; render(); }
+    function prevCard(){ cardIndex--; render(); }
+
+    function initCategorySelect(){
+      els.category.innerHTML = categories
+        .map(k => `<option value="${k}">${k}</option>`)
+        .join("");
+
+      els.category.addEventListener("change", () => {
+        const key = els.category.value;
+        catIndex = Math.max(0, categories.indexOf(key));
+        cardIndex = 0;
+        render();
+      });
+    }
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "ArrowRight") { ev.preventDefault(); nextCard(); }
+      if (ev.key === "ArrowLeft")  { ev.preventDefault(); prevCard(); }
+    }, { passive:false });
+
+    els.next.addEventListener("click", nextCard);
+    els.prev.addEventListener("click", prevCard);
+
+    initCategorySelect();
+    render();
+  </script>
+</body>
+</html>
