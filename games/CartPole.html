@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RR CartPole</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <style>
+    body {
+      width: 600px;
+      margin: auto;
+      font-family: Arial, "Noto Sans TC", sans-serif;
+      color: #111827;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #eee;
+    }
+    #controls {
+      margin: 12px 0 16px;
+      line-height: 1.9;
+    }
+    #info ul {
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🎡 CartPole 平衡桿</h2>
+
+<div id="game-container"></div>
+
+<div id="controls">
+  <strong>起始擾動：</strong>
+  <label style="margin-left:8px;">
+    <input type="range" id="perturbSlider" min="0" max="30" value="5"
+           oninput="updatePerturb(this.value)" style="width:140px; vertical-align:middle;">
+    <span id="perturbValue">5</span>°
+  </label>
+</div>
+
+<div id="info">
+  <h2>遊戲說明</h2>
+  <p>
+    本遊戲為經典 CartPole 平衡控制任務。玩家控制小車左右移動，使桿子保持直立不倒。
+    桿子傾斜角度超過 ±90°，或小車碰到左右邊界，即結束回合。
+  </p>
+
+  <h3>遊戲機制</h3>
+  <ul>
+    <li>小車受重力與摩擦力影響，桿子透過樞紐鉸接在車頂。</li>
+    <li>每個存活的 frame 累積 +0.1 小回饋。</li>
+    <li>桿子倒下或小車出界時扣 10 分並結束回合。</li>
+    <li>按空白鍵可手動重置。</li>
+  </ul>
+
+  <h3>操作方式</h3>
+  <ul>
+    <li>← / A 鍵：向左施力</li>
+    <li>→ / D 鍵：向右施力</li>
+    <li>空白鍵：重置</li>
+  </ul>
+
+  <h3>State 描述</h3>
+  <ul>
+    <li>cartX：小車中心 X 座標（0 ～ 600）</li>
+    <li>cartVelX：小車水平速度（約 -20 ～ 20）</li>
+    <li>poleAngle：桿子傾斜角度（弧度，-1.57 ～ 1.57）</li>
+    <li>poleAngularVel：桿子角速度（約 -10 ～ 10）</li>
+  </ul>
+
+  <h3>Action 描述</h3>
+  <ul>
+    <li>0：none（不施力）</li>
+    <li>1：left（向左施力）</li>
+    <li>2：right（向右施力）</li>
+  </ul>
+</div>
+
+<script>
+const { Engine, Render, Runner, Bodies, Body, World, Constraint, Events } = Matter;
+
+// ── 畫布設定 ──────────────────────────────────────────
+const CANVAS_W = 600;
+const CANVAS_H = 400;
+
+// ── 物理常數 ──────────────────────────────────────────
+const FORCE = 0.005;
+const CART_Y = 320;
+
+// ── 遊戲狀態 ──────────────────────────────────────────
+let isLeftPressed  = false;
+let isRightPressed = false;
+let isPaused       = false;
+let isAccel        = false;
+let rewardBuffer   = 0;
+let currentState   = [0, 0, 0, 0];
+let gameOver       = false;
+let episodeCount   = 0;
+let currentSessionId = 0;
+let perturbDeg     = 5; // 起始擾動角度（度）
+
+// ── Matter.js 初始化 ──────────────────────────────────
+const engine = Engine.create();
+const world   = engine.world;
+
+const render = Render.create({
+  element: document.getElementById('game-container'),
+  engine,
+  options: {
+    width: CANVAS_W,
+    height: CANVAS_H,
+    wireframes: false,
+    background: '#f0f9ff',
+  },
+});
+Render.run(render);
+
+const runner = Runner.create();
+Runner.run(runner, engine);
+
+// 靜態邊界
+const ground    = Bodies.rectangle(CANVAS_W / 2, CANVAS_H, CANVAS_W + 20, 20,
+  { isStatic: true, render: { fillStyle: '#2ecc71' } });
+const leftWall  = Bodies.rectangle(-10, CANVAS_H / 2, 20, CANVAS_H, { isStatic: true });
+const rightWall = Bodies.rectangle(CANVAS_W + 10, CANVAS_H / 2, 20, CANVAS_H, { isStatic: true });
+World.add(world, [ground, leftWall, rightWall]);
+
+// 碰撞分類（小車與桿子互不碰撞）
+const CART_CAT = 0x0001;
+const POLE_CAT = 0x0002;
+
+let cart, pole, pivot;
+
+function buildCartPole() {
+  cart = Bodies.rectangle(CANVAS_W / 2, CART_Y, 80, 20, {
+    friction: 0,
+    mass: 5,
+    render: { fillStyle: '#3b82f6' },
+    collisionFilter: { category: CART_CAT, mask: ~POLE_CAT },
+  });
+
+  // 起始時給桿子一個小擾動，讓訓練更有挑戰性
+  const perturbRad = (perturbDeg * Math.PI / 180) * (Math.random() > 0.5 ? 1 : -1);
+
+  pole = Bodies.rectangle(CANVAS_W / 2, CART_Y - 85, 10, 150, {
+    friction: 0,
+    mass: 1,
+    angle: perturbRad,
+    render: { fillStyle: '#f97316' },
+    collisionFilter: { category: POLE_CAT, mask: ~CART_CAT },
+  });
+
+  pivot = Constraint.create({
+    bodyA: cart,
+    pointA: { x: 0, y: -10 },
+    bodyB: pole,
+    pointB: { x: 0, y: 75 },
+    stiffness: 1,
+    length: 0,
+  });
+
+  World.add(world, [cart, pole, pivot]);
+}
+
+// ── 每步物理更新 ──────────────────────────────────────
+Events.on(engine, 'beforeUpdate', () => {
+  if (isPaused || gameOver) return;
+
+  // 施力
+  if (isLeftPressed) {
+    Body.applyForce(cart, cart.position, { x: -FORCE, y: 0 });
+  }
+  if (isRightPressed) {
+    Body.applyForce(cart, cart.position, { x: FORCE, y: 0 });
+  }
+
+  // 存活回饋
+  rewardBuffer += 0.1;
+
+  // 更新狀態
+  updateState();
+
+  // 終止條件：桿子倒下或小車出界
+  if (Math.abs(pole.angle) > Math.PI / 2 ||
+      cart.position.x < 10 || cart.position.x > CANVAS_W - 10) {
+    triggerEndEpisode();
+  }
+});
+
+// ── 狀態更新 ──────────────────────────────────────────
+function updateState() {
+  currentState = [
+    Number(cart.position.x.toFixed(2)),
+    Number(cart.velocity.x.toFixed(3)),
+    Number(pole.angle.toFixed(4)),
+    Number(pole.angularVelocity.toFixed(4)),
+  ];
+}
+
+// ── 回合結束 ──────────────────────────────────────────
+function triggerEndEpisode() {
+  if (gameOver) return;
+  rewardBuffer -= 10;
+  gameOver = true;
+
+  window.parent.postMessage({ type: 'endEpisode' }, '*');
+}
+
+// ── 重置 ──────────────────────────────────────────────
+function resetGame() {
+  gameOver = false;
+  rewardBuffer = 0;
+  isLeftPressed = false;
+  isRightPressed = false;
+  episodeCount++;
+
+  // 移除舊的 cart/pole/pivot
+  World.remove(world, [cart, pole, pivot]);
+  buildCartPole();
+  updateState();
+}
+
+// ── RR 通訊協定 ──────────────────────────────────────
+function sendRewardState() {
+  updateState();
+  window.parent.postMessage({
+    type: 'reward_state',
+    reward: Number(rewardBuffer.toFixed(4)),
+    state: currentState,
+    sessionId: currentSessionId,
+  }, '*');
+  rewardBuffer = 0;
+}
+
+function processAction(action) {
+  if (gameOver) {
+    resetGame();
+    return;
+  }
+  isLeftPressed  = (action === 1);
+  isRightPressed = (action === 2);
+}
+
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg || typeof msg !== 'object') return;
+
+  if (msg.type === 'questInfo') {
+    currentSessionId = msg.sessionId || 0;
+    window.parent.postMessage({
+      type: 'gameInfo',
+      players: [{
+        stateInfo: [
+          { name: 'cartX',         min: 0,     max: CANVAS_W, bin: 10 },
+          { name: 'cartVelX',      min: -20,   max: 20,       bin: 10 },
+          { name: 'poleAngle',     min: -1.57, max: 1.57,     bin: 10 },
+          { name: 'poleAngularVel',min: -10,   max: 10,       bin: 10 },
+        ],
+        actionInfo: [
+          { type: 'switch', level: 3, name: ['⬜無', '⬅️左', '➡️右'] }
+        ],
+      }]
+    }, '*');
+
+  } else if (msg.type === 'action') {
+    processAction(msg.action);
+    sendRewardState();
+
+  } else if (msg.type === 'pause') {
+    isPaused = !isPaused;
+    runner.enabled = !isPaused;
+
+  } else if (msg.type === 'accel') {
+    isAccel = !isAccel;
+    engine.timing.timeScale = isAccel ? 4 : 1;
+  }
+});
+
+// ── 鍵盤操作 ──────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'ArrowLeft'  || e.code === 'KeyA') isLeftPressed  = true;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') isRightPressed = true;
+  if (e.code === 'Space') { e.preventDefault(); resetGame(); }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'ArrowLeft'  || e.code === 'KeyA') isLeftPressed  = false;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') isRightPressed = false;
+});
+
+// ── 起始擾動滑桿 ──────────────────────────────────────
+function updatePerturb(value) {
+  perturbDeg = Number(value);
+  document.getElementById('perturbValue').textContent = value;
+}
+
+// ── 初始化 ────────────────────────────────────────────
+buildCartPole();
+</script>
+</body>
+</html>
