@@ -341,9 +341,14 @@
         type: "reward_state",
         reward: rewardBuffer,
         state: currentState,
+        done: episodeDone,
         sessionId: currentSessionId
       }, "*");
       rewardBuffer = 0;
+      if (episodeDone) {
+        initLevel();
+        episodeDone = false;
+      }
     }
 
     // 處理玩家動作：
@@ -419,15 +424,12 @@
       }
     }
 
-    // 結束回合：回到起點並重製關卡（例如重置場上物件）
+    let episodeDone = false;
+
+    // 結束回合：標記終局，由 sendRewardState 送出後再重置
     function endTurn() {
-      // 如果需要通知外層 (例如 RL 環境) 回合結束，可發送訊息
-      window.parent.postMessage({
-        type: "endEpisode",
-        sessionId: currentSessionId
-      }, "*");
+      episodeDone = true;
       console.log("結束回合，重置關卡！");
-      initLevel();
     }
 
     // 更新關卡資料中指定格子的內容（例如收集後變成空白）

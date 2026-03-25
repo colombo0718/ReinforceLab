@@ -278,14 +278,10 @@
           // console.log('get action'+ message.action)
           // processAction(action);
           pullMachine( message.action)
-          sendRewardState();
-          
-          // 拉10次是一回合
           pullCounter+=1
-          if(pullCounter==10){
-            pullCounter=0
-            window.parent.postMessage({type: "endEpisode"}, "*");
-          }
+          const done = pullCounter >= 10;
+          sendRewardState(done);
+          if (done) pullCounter = 0;
           
           // rewardBuffer = 0; // 重置 rewardBuffer
         } else if (message.type === "questInfo") {
@@ -307,8 +303,8 @@
         }
       }
       // 傳送遊戲狀態和獎勵
-      function sendRewardState() {
-        window.parent.postMessage({ type: "reward_state", reward: reward, state: [0] }, "*");
+      function sendRewardState(done = false) {
+        window.parent.postMessage({ type: "reward_state", reward: reward, state: [0], done: done }, "*");
       }
       
       window.addEventListener("message", handleMessage); // 監聽父頁面傳來的動作

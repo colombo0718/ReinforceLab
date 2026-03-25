@@ -135,6 +135,8 @@
     // ===== RL 控制相關 =====
     // 根據 RL 指令處理移動動作
     // 動作定義：0 = none, 1 = up, 2 = down, 3 = left, 4 = right
+    let episodeDone = false;
+
     function processAction(action) {
       if (action === 1 && playerGrid.y < gridSize - 1) {
         playerGrid.y++;
@@ -147,13 +149,10 @@
       }
       updateState();
 
-      // 當抵達終點，發送通關訊息與獎勵，並重置玩家座標
-      if (playerGrid.x === goalGrid.x && playerGrid.y === goalGrid.y) {
-        rewardBuffer += 10;  // 通關獎勵
-        window.parent.postMessage({type: "endEpisode"}, "*");
+      episodeDone = (playerGrid.x === goalGrid.x && playerGrid.y === goalGrid.y);
+      if (episodeDone) {
+        rewardBuffer += 10;
         console.log("達成通關！");
-        playerGrid = { x: 0, y: 0 };
-        updateState();
       }
     }
 
@@ -168,9 +167,15 @@
       window.parent.postMessage({
         type: "reward_state",
         reward: rewardBuffer,
-        state: currentState
+        state: currentState,
+        done: episodeDone
       }, "*");
       rewardBuffer = 0;
+      if (episodeDone) {
+        playerGrid = { x: 0, y: 0 };
+        updateState();
+        episodeDone = false;
+      }
     }
 
     // 處理來自父頁面的訊息

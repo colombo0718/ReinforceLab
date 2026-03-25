@@ -268,24 +268,19 @@
       updateState();
       renderMachines();
 
-      if (stepCount >= episodeStepLimit) {
-        window.parent.postMessage({
-          type: "endEpisode",
-          sessionId: currentSessionId
-        }, "*");
-        stepCount = 0;
-      }
     }
 
-    function sendRewardState() {
+    function sendRewardState(done = false) {
       window.parent.postMessage({
         type: "reward_state",
         reward: rewardBuffer,
         state: currentState,
+        done: done,
         sessionId: currentSessionId
       }, "*");
 
       rewardBuffer = 0;
+      if (done) stepCount = 0;
     }
 
     window.addEventListener("message", (event) => {
@@ -293,7 +288,7 @@
 
       if (msg.type === "action") {
         processAction(msg.action);
-        sendRewardState();
+        sendRewardState(stepCount >= episodeStepLimit);
 
       } else if (msg.type === "questInfo") {
         currentSessionId = msg.sessionId;

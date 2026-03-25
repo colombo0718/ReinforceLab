@@ -131,18 +131,12 @@ function checkGameState() {
   if (gameMap[playerPos] === "💣") {
     rewardBuffer -= 10;
     gameOver = true;
-    window.parent.postMessage({ type: "endEpisode" }, "*");
-    resetGame();
   } else if (gameMap[playerPos] === "🏆") {
     rewardBuffer += 10;
     gameOver = true;
-    window.parent.postMessage({ type: "endEpisode" }, "*");
-    resetGame();
   } else if (gameMap[playerPos] === "🍕") {
     rewardBuffer += 2;
     gameOver = true;
-    window.parent.postMessage({ type: "endEpisode" }, "*");
-    resetGame();
   }
 }
 
@@ -170,11 +164,12 @@ function updateState() {
   currentState = [playerPos];
 }
 
-function sendRewardState() {
+function sendRewardState(done = false) {
   window.parent.postMessage({
     type: "reward_state",
     reward: rewardBuffer,
     state: currentState,
+    done: done,
     sessionId: currentSessionId
   }, "*");
   rewardBuffer = 0;
@@ -195,7 +190,8 @@ window.addEventListener("message", (event) => {
   let msg = event.data;
   if (msg.type === "action") {
     processAction(msg.action);
-    sendRewardState();
+    sendRewardState(gameOver);
+    if (gameOver) resetGame();
     // currentSessionId = msg.sessionId;
     // console.log(currentSessionId)
   } else if (msg.type === "questInfo") {
