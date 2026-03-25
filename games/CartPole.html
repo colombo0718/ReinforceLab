@@ -145,7 +145,15 @@ function buildCartPole() {
   // 起始時給桿子一個小擾動，讓訓練更有挑戰性
   const perturbRad = (perturbDeg * Math.PI / 180) * (Math.random() > 0.5 ? 1 : -1);
 
-  pole = Bodies.rectangle(CANVAS_W / 2, CART_Y - 85, 10, 150, {
+  // 轉軸在小車頂端（CART_Y - 10），桿子的 pointB=(0,75) 必須落在轉軸上
+  // 所以桿子質心 = 轉軸位置 - rotate((0,75), perturbRad)
+  // 即: cx = pivotX - 75*sin(θ),  cy = pivotY - 75*cos(θ)
+  const pivotX = CANVAS_W / 2;
+  const pivotY = CART_Y - 10;
+  const poleCX = pivotX - 75 * Math.sin(perturbRad);
+  const poleCY = pivotY - 75 * Math.cos(perturbRad);
+
+  pole = Bodies.rectangle(poleCX, poleCY, 10, 150, {
     friction: 0,
     mass: 1,
     angle: perturbRad,
