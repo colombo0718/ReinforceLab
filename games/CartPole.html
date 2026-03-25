@@ -32,15 +32,6 @@
 
 <div id="game-container"></div>
 
-<div id="controls">
-  <strong>起始擾動：</strong>
-  <label style="margin-left:8px;">
-    <input type="range" id="perturbSlider" min="0" max="30" value="5"
-           oninput="updatePerturb(this.value)" style="width:140px; vertical-align:middle;">
-    <span id="perturbValue">5</span>°
-  </label>
-</div>
-
 <div id="info">
   <h2>遊戲說明</h2>
   <p>
@@ -100,7 +91,6 @@ let currentState   = [0, 0, 0, 0];
 let gameOver       = false;
 let episodeCount   = 0;
 let currentSessionId = 0;
-let perturbDeg     = 5; // 起始擾動角度（度）
 
 // ── Matter.js 初始化 ──────────────────────────────────
 const engine = Engine.create();
@@ -142,16 +132,15 @@ function buildCartPole() {
     collisionFilter: { category: CART_CAT, mask: ~POLE_CAT },
   });
 
-  // 起始時給桿子一個小擾動，讓訓練更有挑戰性
-  const perturbRad = (perturbDeg * Math.PI / 180) * (Math.random() > 0.5 ? 1 : -1);
-
   pole = Bodies.rectangle(CANVAS_W / 2, CART_Y - 85, 10, 150, {
     friction: 0,
     mass: 1,
-    angle: perturbRad,
     render: { fillStyle: '#f97316' },
     collisionFilter: { category: POLE_CAT, mask: ~CART_CAT },
   });
+
+  // 給小車一個隨機初速，讓桿子因慣性自然開始晃動
+  Body.setVelocity(cart, { x: (Math.random() * 2 - 1) * 3, y: 0 });
 
   pivot = Constraint.create({
     bodyA: cart,
@@ -289,12 +278,6 @@ document.addEventListener('keyup', (e) => {
   if (e.code === 'ArrowLeft'  || e.code === 'KeyA') isLeftPressed  = false;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') isRightPressed = false;
 });
-
-// ── 起始擾動滑桿 ──────────────────────────────────────
-function updatePerturb(value) {
-  perturbDeg = Number(value);
-  document.getElementById('perturbValue').textContent = value;
-}
 
 // ── 初始化 ────────────────────────────────────────────
 buildCartPole();
