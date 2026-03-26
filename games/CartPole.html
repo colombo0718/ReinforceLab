@@ -179,33 +179,14 @@ Events.on(engine, 'beforeUpdate', () => {
   }
 });
 
-// ── State 前處理：歸一化 + sign(x)·√|x| 壓縮 ──────────
-const STATE_RANGES = [
-  { min: 0,     max: CANVAS_W }, // cartX
-  { min: -10,   max: 10       }, // cartVelX
-  { min: -1.57, max: 1.57     }, // poleAngle
-  { min: -6,    max: 6        }, // poleAngularVel
-];
-
-function transformState(raw) {
-  return raw.map((v, i) => {
-    const { min, max } = STATE_RANGES[i];
-    const mid = (min + max) / 2;
-    const half = (max - min) / 2;
-    const n = Math.max(-1, Math.min(1, (v - mid) / half)); // 歸一化並 clamp
-    return Math.sign(n) * Math.sqrt(Math.abs(n));           // sign·√|x|
-  });
-}
-
 // ── 狀態更新 ──────────────────────────────────────────
 function updateState() {
-  const raw = [
+  currentState = [
     cart.position.x,
     cart.velocity.x,
     pole.angle,
     pole.angularVelocity,
-  ];
-  currentState = transformState(raw).map(v => Number(v.toFixed(4)));
+  ].map(v => Number(v.toFixed(4)));
 }
 
 // ── 回合結束 ──────────────────────────────────────────
@@ -253,10 +234,10 @@ window.addEventListener('message', (event) => {
       type: 'gameInfo',
       players: [{
         stateInfo: [
-          { name: 'cartX',         min: -1, max: 1, bin: 10 },
-          { name: 'cartVelX',      min: -1, max: 1, bin: 10 },
-          { name: 'poleAngle',     min: -1, max: 1, bin: 10 },
-          { name: 'poleAngularVel',min: -1, max: 1, bin: 10 },
+          { name: 'cartX',         min: 0,     max: 600,  bin: 10 },
+          { name: 'cartVelX',      min: -10,   max: 10,   bin: 10 },
+          { name: 'poleAngle',     min: -1.57, max: 1.57, bin: 10 },
+          { name: 'poleAngularVel',min: -6,    max: 6,    bin: 10 },
         ],
         actionInfo: [
           { type: 'switch', level: 3, name: ['⬜無', '⬅️左', '➡️右'] }

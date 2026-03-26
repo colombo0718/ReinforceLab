@@ -67,8 +67,8 @@ games/              各遊戲 HTML 環境
 | CartPole.html | 新 | Matter.js 物理，4D state |
 
 CartPole 額外特性：
-- State 有 `sign(x)·√|x|` 非線性前處理，先歸一化到 [-1,1] 再 transform
-- STATE_RANGES 定義在遊戲頂部，stateInfo 全部是 `min:-1, max:1`
+- State 直接送原始物理值，無任何前處理（歸一化交由平台處理）
+- stateInfo 宣告真實物理範圍：cartX [0,600]、cartVelX [-10,10]、poleAngle [-1.57,1.57]、poleAngularVel [-6,6]
 
 games/ 下還有其他遊戲（heli、dinasour、magic 等），部分是舊協定或 neocities 備份，未必全部更新。
 
