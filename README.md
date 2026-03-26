@@ -1,6 +1,6 @@
 # 🤖 Rein Room — 瀏覽器強化學習實驗平台
 
-Rein Room 是一個完全在瀏覽器中運行的強化學習（Reinforcement Learning）互動實驗平台。
+Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforcement Learning）互動實驗平台。
 無需安裝任何軟體，開啟網頁即可讓 AI Agent 在各種遊戲環境中從零開始學習，並即時觀察訓練過程與數據分析。
 
 ---
@@ -8,7 +8,7 @@ Rein Room 是一個完全在瀏覽器中運行的強化學習（Reinforcement Le
 ## 功能特色
 
 - **零安裝**：純前端架構，所有計算在瀏覽器本地執行
-- **多演算法支援**：Q-Table（表格型）與 DQN（神經網路型）
+- **多演算法支援**：Q-Table（表格型）；DQN（神經網路型）開發中
 - **多探索策略**：ε-greedy 與 Softmax
 - **雙 Agent 並行**：可同時訓練兩個 Agent，方便對照比較
 - **即時視覺化**：Reward 曲線、Steps 統計、Q-Table 熱力圖等多種圖表
@@ -27,24 +27,21 @@ Rein Room 是一個完全在瀏覽器中運行的強化學習（Reinforcement Le
 | 網址輸入框 | 輸入遊戲頁面的 URL |
 | ♻️ 載入 | 將輸入的網址載入到遊戲 iframe |
 | ⏸️ 暫停 / ▶️ 繼續 | 暫停或繼續 Agent 的動作輸出 |
-| 🚀 加速 / 🐢 正常 | 切換訓練速度（加速模式約快 5 倍） |
+| 🚀 加速 / 🐢 正常 | 切換訓練速度（遊戲端加速約 4 倍） |
 | 動作按鈕列 | 顯示遊戲支援的動作，Agent 執行時對應按鈕會閃亮 |
 
 ### 右側：控制面板（Tabs）
 
 #### 🧭 指南
-強化學習教學文章，涵蓋 RL 基礎、Q-Learning 原理、探索策略、GridWorld、CartPole 等主題。
+強化學習教學文章，涵蓋 RL 基礎、Q-Learning 原理、探索策略等主題。
 
 #### 🎮 遊戲
 快速載入官方遊戲環境的捷徑按鈕，包含：
-- 📏 Maze1D — 一維線性迷宮
-- 🗺️ Maze2D — 二維格子迷宮
 - 🎰 Multi-Armed Bandit
-- 🦖 Dinosaur Jump
-- 🥁 Taiko Beat
-- 🎯 Easy Shoot
-- ✈️ Space Fighter
-- 🧙 Magic Duel
+- 📏 Maze1D — 一維線性迷宮
+- 🗺️ Maze2D — 二維格子迷宮（emoji 版）
+- 🚁 Heli Flappy — 直升機躲牆即時遊戲
+- 🎡 CartPole — 平衡桿控制
 
 #### ℹ️ 關於
 平台介紹、隱私政策與聯絡資訊。
@@ -52,7 +49,7 @@ Rein Room 是一個完全在瀏覽器中運行的強化學習（Reinforcement Le
 #### 📊 儀錶（Agent 1 / Agent 2）
 
 **演算法選擇**
-- 學習方式：`Q-Table` 或 `DQN`
+- 學習方式：`Q-Table` 或 `DQN`（DQN 開發中）
 - 抉擇策略：`ε-greedy` 或 `Softmax`
 
 **超參數設置**（拉桿調整，即時生效）
@@ -78,23 +75,19 @@ Rein Room 是一個完全在瀏覽器中運行的強化學習（Reinforcement Le
 - 💾 **導出**：將目前 Q-Table 下載為 `.json` 檔案
 - 📂 **載入**：從 `.json` 檔案載入先前儲存的 Q-Table
 
-**圖表控制**
+**Q-Table 視覺化**
 - 選擇 X / Y 軸對應的狀態維度
 - 勾選「跟隨當下」自動追蹤 Agent 目前所在狀態
 - 維度切片滑桿：手動瀏覽多維狀態空間的截面
-
-**分析圖表**
-- 動作色環：各動作的方向示意
-- 動作價值長條圖：當前選中狀態的各動作 Q 值
-- Q 值折線圖、差異圖、最大值圖、最小值圖
 
 ---
 
 ## 遊戲環境協定
 
 任何網頁遊戲只要實作以下 `postMessage` 通訊協定，就能接入 Rein Room 平台。
+完整規格見：[RR平台可控遊戲環境宣告與通訊協定.md](./RR平台可控遊戲環境宣告與通訊協定.md)
 
-### 父平台 → 遊戲
+### RR 平台 → 遊戲
 
 | 訊息類型 | 說明 |
 |----------|------|
@@ -103,13 +96,24 @@ Rein Room 是一個完全在瀏覽器中運行的強化學習（Reinforcement Le
 | `{ type: "pause" }` | 切換暫停/繼續 |
 | `{ type: "accel" }` | 切換加速/正常 |
 
-### 遊戲 → 父平台
+### 遊戲 → RR 平台
 
 | 訊息類型 | 說明 |
 |----------|------|
 | `{ type: "gameInfo", players: [...] }` | 回傳狀態空間與動作空間定義 |
-| `{ type: "reward_state", reward, state, sessionId }` | 每步回傳獎勵與當前狀態 |
-| `{ type: "endEpisode" }` | 通知一個回合結束 |
+| `{ type: "reward_state", reward, state, done, sessionId }` | 每步回傳獎勵、當前狀態與是否終局 |
+
+---
+
+## 官方遊戲環境
+
+| 遊戲 | 難度 | 說明 |
+|------|------|------|
+| MAB | ★ | 多臂拉霸機，最簡單的 RL 入門環境 |
+| Maze1D | ★ | 一維線性迷宮，單一狀態維度 |
+| Maze2D | ★★ | 二維格子迷宮，emoji 視覺呈現 |
+| Heli Flappy | ★★★ | 直升機躲牆，即時制高頻控制 |
+| CartPole | ★★★ | 平衡桿，四維連續狀態空間 |
 
 ---
 
@@ -117,19 +121,23 @@ Rein Room 是一個完全在瀏覽器中運行的強化學習（Reinforcement Le
 
 ```
 ReinforceLab/
-├── index.html              # 主平台頁面
-├── reinforceEngine.js      # Q-Learning 核心引擎（Q-Table、策略函數）
-├── dqnWebWorker.js         # DQN 神經網路（Web Worker）
-├── generalCharts.js        # 通用圖表（Reward / Steps）
+├── index.html              # 主平台頁面（含 Q-Learning 邏輯）
+├── reinforceEngine.js      # Q-Learning 核心引擎
+├── dqnWebWorker.js         # DQN 神經網路（Web Worker，開發中）
+├── generalCharts.js        # Reward / Steps 即時圖表
 ├── qualityCharts.js        # Q-Table 分析圖表
 ├── style.css               # 樣式
 ├── docs/
-│   ├── tutorial.html       # 教學文章
-│   ├── gamelist.html       # 官方遊戲清單
+│   ├── tutorial.html       # 強化學習教學文章
+│   ├── gamelist.html       # 官方遊戲清單（動態載入）
 │   └── about.html          # 關於 / 隱私政策
-└── games/
-    ├── Maze1D.html         # 一維迷宮遊戲
-    └── ninja.html          # 忍者遊戲
+├── games/
+│   ├── MAB.html            # 多臂拉霸
+│   ├── Maze1D.html         # 一維迷宮
+│   ├── Maze2D_emoji.html   # 二維迷宮（emoji）
+│   ├── heli.html           # 直升機
+│   └── CartPole.html       # 平衡桿
+└── RR平台可控遊戲環境宣告與通訊協定.md   # 遊戲接入完整規格
 ```
 
 ---
@@ -138,7 +146,8 @@ ReinforceLab/
 
 - [TensorFlow.js](https://www.tensorflow.org/js) — DQN 神經網路運算
 - [Plotly.js](https://plotly.com/javascript/) — 互動式數據圖表
-- [p5.js](https://p5js.org/) — 遊戲畫面繪製
+- [p5.js](https://p5js.org/) — 遊戲畫面繪製（各遊戲自行引入）
+- [Matter.js](https://brm.io/matter-js/) — CartPole 物理模擬
 
 ---
 
