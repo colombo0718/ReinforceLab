@@ -57,9 +57,9 @@
   <h3>State 描述</h3>
   <ul>
     <li>cartX：小車中心 X 座標（0 ～ 600）</li>
-    <li>cartVelX：小車水平速度（約 -20 ～ 20）</li>
+    <li>cartVelX：小車水平速度（約 -10 ～ 10）</li>
     <li>poleAngle：桿子傾斜角度（弧度，-1.57 ～ 1.57）</li>
-    <li>poleAngularVel：桿子角速度（約 -10 ～ 10）</li>
+    <li>poleAngularVel：桿子角速度（約 -6 ～ 6）</li>
   </ul>
 
   <h3>Action 描述</h3>
@@ -179,14 +179,33 @@ Events.on(engine, 'beforeUpdate', () => {
   }
 });
 
+// ── State 前處理：歸一化 + sign(x)·√|x| 壓縮 ──────────
+const STATE_RANGES = [
+  { min: 0,     max: CANVAS_W }, // cartX
+  { min: -10,   max: 10       }, // cartVelX
+  { min: -1.57, max: 1.57     }, // poleAngle
+  { min: -6,    max: 6        }, // poleAngularVel
+];
+
+function transformState(raw) {
+  return raw.map((v, i) => {
+    const { min, max } = STATE_RANGES[i];
+    const mid = (min + max) / 2;
+    const half = (max - min) / 2;
+    const n = Math.max(-1, Math.min(1, (v - mid) / half)); // 歸一化並 clamp
+    return Math.sign(n) * Math.sqrt(Math.abs(n));           // sign·√|x|
+  });
+}
+
 // ── 狀態更新 ──────────────────────────────────────────
 function updateState() {
-  currentState = [
-    Number(cart.position.x.toFixed(2)),
-    Number(cart.velocity.x.toFixed(3)),
-    Number(pole.angle.toFixed(4)),
-    Number(pole.angularVelocity.toFixed(4)),
+  const raw = [
+    cart.position.x,
+    cart.velocity.x,
+    pole.angle,
+    pole.angularVelocity,
   ];
+  currentState = transformState(raw).map(v => Number(v.toFixed(4)));
 }
 
 // ── 回合結束 ──────────────────────────────────────────
@@ -234,10 +253,10 @@ window.addEventListener('message', (event) => {
       type: 'gameInfo',
       players: [{
         stateInfo: [
-          { name: 'cartX',         min: 0,     max: CANVAS_W, bin: 10 },
-          { name: 'cartVelX',      min: -20,   max: 20,       bin: 10 },
-          { name: 'poleAngle',     min: -1.57, max: 1.57,     bin: 10 },
-          { name: 'poleAngularVel',min: -10,   max: 10,       bin: 10 },
+          { name: 'cartX',         min: -1, max: 1, bin: 10 },
+          { name: 'cartVelX',      min: -1, max: 1, bin: 10 },
+          { name: 'poleAngle',     min: -1, max: 1, bin: 10 },
+          { name: 'poleAngularVel',min: -1, max: 1, bin: 10 },
         ],
         actionInfo: [
           { type: 'switch', level: 3, name: ['⬜無', '⬅️左', '➡️右'] }
