@@ -513,6 +513,7 @@
       });
 
       syncStateInfoToWorker();
+      initChartControls(); // 更新分析頁的維度選單與滑桿範圍
       gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
     });
 
