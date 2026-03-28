@@ -30,6 +30,29 @@
 
 ---
 
+## 社群 / 直播
+
+- [ ] **Google 帳號登入（OAuth）**
+  RR 平台加入 Google 帳號登入，作為後續會員功能與 YouTube 直播整合的基礎。
+
+- [ ] **一鍵直播到 YouTube（WHIP 協定）**
+  登入後透過 YouTube Data API 建立直播，用 `getDisplayMedia()` 擷取 RR 頁面畫面，經 WebRTC + WHIP 協定直接推流到 YouTube，不需 OBS 或後端伺服器。符合 RR 純前端架構。
+  流程：Google OAuth → 建立直播 → 取得 WHIP endpoint → 瀏覽器直接推流 → 自動分享連結。
+  > 需等 Google 登入完成後接著做。可搭配自動發文腳本同步分享到 Discord / X。
+
+---
+
+## UI / 體驗
+
+- [ ] **豎屏模式（適配 YouTube Shorts / 短視頻）**
+  新增豎屏版面：遊戲區與控制面板改為上下分割，大幅簡化 UI。
+  - 保留：超參數調整 slider
+  - 保留圖表：每秒獎勵、每回合步數（各一張）
+  - 停用：Q-Table 熱力圖、其餘分析圖表、分析 tab
+  目標讓直播畫面在手機直式螢幕上清晰可讀，適合錄製 Shorts 展示 Agent 學習過程。
+
+---
+
 ## 教學 / 論文
 
 （暫無）
