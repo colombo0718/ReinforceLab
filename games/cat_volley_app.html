@@ -16,9 +16,33 @@
     user-select: none; -webkit-user-select: none;
   }
   canvas { display: block; touch-action: none; }
+
+  /* 直屏提示 */
+  #rotate-hint {
+    display: none;
+    position: fixed; inset: 0;
+    background: #1a3a5c;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    z-index: 999;
+  }
+  #rotate-hint .icon { font-size: 72px; animation: spin 2s ease-in-out infinite; }
+  #rotate-hint p { color: #fff; font-size: 1.2rem; font-family: 'Segoe UI Emoji', sans-serif; }
+  @keyframes spin {
+    0%, 100% { transform: rotate(0deg);   }
+    40%, 60% { transform: rotate(90deg);  }
+  }
+  @media (orientation: portrait) {
+    #rotate-hint { display: flex; }
+  }
 </style>
 </head>
 <body>
+<div id="rotate-hint">
+  <div class="icon">📱</div>
+  <p>請橫放手機遊玩 🐈🏐🐈‍⬛</p>
+</div>
 <canvas id="gameCanvas" width="800" height="560"></canvas>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -299,7 +323,7 @@ const clouds = [
   { x: 580, y: 50, s: 1.2 }, { x: 700, y: 100, s: 0.8 },
 ];
 function drawClouds() {
-  ctx.font = '48px Segoe UI Emoji, Apple Color Emoji';
+  ctx.font = '48px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   clouds.forEach(c => {
     ctx.save(); ctx.translate(c.x, c.y); ctx.scale(c.s, c.s); ctx.globalAlpha = 0.85;
@@ -317,7 +341,7 @@ function drawGround() {
 
 function drawNet() {
   const bSize = BLOCK_SIZE, netX = W / 2;
-  ctx.font = `${bSize}px Segoe UI Emoji, Apple Color Emoji`;
+  ctx.font = `${bSize}px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const blockCount = Math.ceil(NET_SOLID_H / bSize);
   for (let i = 0; i < blockCount; i++) {
@@ -341,21 +365,21 @@ function drawCatEmoji(x, y, facing, frame, spinAngle, emoji) {
   ctx.save(); ctx.translate(x, y);
   if (spinAngle !== 0) ctx.rotate(spinAngle);
   if (facing > 0) ctx.scale(-1, 1);
-  ctx.font = '52px Segoe UI Emoji, Apple Color Emoji';
+  ctx.font = '52px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(emoji, lx, ly); ctx.restore();
 }
 
 function drawBallEmoji(x, y) {
   ctx.save(); ctx.translate(x, y);
-  ctx.font = '36px Segoe UI Emoji, Apple Color Emoji';
+  ctx.font = '36px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('🔵', 0, 0); ctx.restore();
 }
 
 // 手機按鈕畫在草地上（純 emoji，無外框）
 function drawButtons() {
-  ctx.font = '64px Segoe UI Emoji, Apple Color Emoji';
+  ctx.font = '64px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('◀️', BTN.left.x,  BTN.left.y);
   ctx.fillText('▶️', BTN.right.x, BTN.right.y);
