@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>貓貓排球</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐈</text></svg>">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #87ceeb;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
+  }
+  canvas { display: block; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="560"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+
+const W = 800, H = 560;
+const GROUND_Y       = H - 90;
+const GROUND_SURFACE = GROUND_Y + 10;
+const WALL_W      = 28;
+const NET_SOLID_H = 112;
+const BLOCK_SIZE  = 28;
+
+// ── canvas 等比例縮放 ──────────────────────────────
+function resize() {
+  const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
+  canvas.style.width  = Math.round(W * scale) + 'px';
+  canvas.style.height = Math.round(H * scale) + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ════════════════════════════════
+//  Matter.js
+// ════════════════════════════════
+const { Engine, Bodies, Body, World, Events } = Matter;
+const engine = Engine.create({ gravity: { y: 1.8 } });
+const world  = engine.world;
+
+const ground  = Bodies.rectangle(W / 2, GROUND_SURFACE + 25, W, 50, {
+  isStatic: true, label: 'ground', friction: 0.05, restitution: 0.05,
+});
+const wallL   = Bodies.rectangle(-10, H / 2, 20, H * 2, { isStatic: true, label: 'wall',    friction: 0 });
+const wallR   = Bodies.rectangle(W + 10, H / 2, 20, H * 2, { isStatic: true, label: 'wall', friction: 0 });
+const ceiling = Bodies.rectangle(W / 2, -10, W, 20,       { isStatic: true, label: 'ceiling', friction: 0 });
+
+const CAT_CAT    = 0x0001;
+const CAT_BALL   = 0x0002;
+const CAT_WALL   = 0x0004;
+const STATIC_CAT = 0x0008;
+
+const netSolid = Bodies.rectangle(
+  W / 2, GROUND_SURFACE - NET_SOLID_H / 2, WALL_W, NET_SOLID_H,
+  { isStatic: true, label: 'netSolid', friction: 0, restitution: 0.4,
+    collisionFilter: { category: CAT_WALL, mask: CAT_CAT | CAT_BALL } }
+);
+const AIR_H  = GROUND_SURFACE - NET_SOLID_H;
+const netAir = Bodies.rectangle(
+  W / 2, AIR_H / 2, WALL_W, AIR_H,
+  { isStatic: true, label: 'netAir', friction: 0, restitution: 0.1,
+    collisionFilter: { category: CAT_WALL, mask: CAT_CAT } }
+);
+
+const CAT_R   = 26;
+const catBody = Bodies.circle(W * 3 / 4, GROUND_Y - CAT_R - 2, CAT_R, {
+  label: 'cat', friction: 0.05, restitution: 0.05,
+  inertia: Infinity, frictionAir: 0.01, mass: 5,
+  collisionFilter: { category: CAT_CAT, mask: CAT_BALL | CAT_WALL | STATIC_CAT },
+});
+const blackCatBody = Bodies.circle(W / 4, GROUND_Y - CAT_R - 2, CAT_R, {
+  label: 'blackCat', friction: 0.05, restitution: 0.05,
+  inertia: Infinity, frictionAir: 0.01, mass: 5,
+  collisionFilter: { category: CAT_CAT, mask: CAT_BALL | CAT_WALL | STATIC_CAT },
+});
+
+const BALL_R = 18;
+const ball   = Bodies.circle(W * 3 / 4, GROUND_Y - 200, BALL_R, {
+  label: 'ball', restitution: 0.5, friction: 0.01, frictionAir: 0.004, mass: 1,
+  collisionFilter: { category: CAT_BALL, mask: CAT_CAT | CAT_WALL | STATIC_CAT },
+});
+
+[ground, wallL, wallR, ceiling].forEach(b => {
+  b.collisionFilter = { category: STATIC_CAT, mask: CAT_CAT | CAT_BALL };
+});
+World.add(world, [ground, wallL, wallR, ceiling, netSolid, netAir, catBody, blackCatBody, ball]);
+
+// ════════════════════════════════
+//  貓咪狀態
+// ════════════════════════════════
+const JUMP_FORCE  = -12;
+const CAT_SPEED   = 10;
+const WALK_FRAMES = 2;
+const WALK_SPEED  = 4;
+const legOffsets  = [[0, 0], [0, -4]];
+
+function makeCatAnim(facingInit) {
+  return { facing: facingInit, onGround: false, walkFrame: 0, walkTick: 0,
+           canDoubleJump: false, doubleJumped: false, jumpKeyReleased: true,
+           spinning: false, spinAngle: 0, spinDir: 1 };
+}
+const catAnim      = makeCatAnim(-1); // 橘貓初始朝左
+const blackCatAnim = makeCatAnim(1);  // 黑貓初始朝右
+
+// ════════════════════════════════
+//  賽制狀態
+// ════════════════════════════════
+const STATE = { WAITING: 'waiting', PLAYING: 'playing', SCORED: 'scored', GAMEOVER: 'gameover' };
+let gameState  = STATE.WAITING;
+let stateStart = Date.now();
+let leftWins   = 0, rightWins  = 0;
+let serveRight = true, lastScorer = '';
+let pendingScore = null;
+let servePos     = { x: W * 3 / 4, y: GROUND_Y - 200 };
+
+function setState(s) { gameState = s; stateStart = Date.now(); }
+
+function resetCats() {
+  Body.setPosition(catBody,      { x: W * 3 / 4, y: GROUND_Y - CAT_R - 15 });
+  Body.setVelocity(catBody,      { x: 0, y: 0 });
+  Body.setPosition(blackCatBody, { x: W / 4,      y: GROUND_Y - CAT_R - 15 });
+  Body.setVelocity(blackCatBody, { x: 0, y: 0 });
+  catAnim.onGround = false; blackCatAnim.onGround = false;
+}
+
+function startServe() {
+  const serveX = serveRight ? W * 3 / 4 : W / 4;
+  servePos = { x: serveX, y: GROUND_Y - 200 };
+  Body.setPosition(ball, servePos);
+  Body.setVelocity(ball, { x: 0, y: 0 });
+  resetCats();
+  setState(STATE.WAITING);
+}
+
+startServe();
+
+// ── 球浮力（抵消 50% 重力）──
+Events.on(engine, 'beforeUpdate', () => {
+  if (gameState === STATE.PLAYING) {
+    const lift = engine.gravity.y * (engine.gravity.scale ?? 0.001) * ball.mass * 0.5;
+    Body.applyForce(ball, ball.position, { x: 0, y: -lift });
+  }
+});
+
+// ── 落地偵測 ──
+Events.on(engine, 'collisionStart', e => {
+  e.pairs.forEach(({ bodyA, bodyB }) => {
+    const lb = [bodyA.label, bodyB.label];
+    if (lb.includes('cat') && lb.includes('ground')) {
+      catAnim.onGround = true; catAnim.canDoubleJump = false;
+      catAnim.doubleJumped = false; catAnim.spinning = false; catAnim.spinAngle = 0;
+    }
+    if (lb.includes('blackCat') && lb.includes('ground')) {
+      blackCatAnim.onGround = true; blackCatAnim.canDoubleJump = false;
+      blackCatAnim.doubleJumped = false; blackCatAnim.spinning = false; blackCatAnim.spinAngle = 0;
+    }
+    if (lb.includes('ball') && lb.includes('ground') && gameState === STATE.PLAYING && pendingScore === null) {
+      pendingScore = ball.position.x < W / 2 ? 'right' : 'left';
+    }
+  });
+});
+Events.on(engine, 'collisionEnd', e => {
+  e.pairs.forEach(({ bodyA, bodyB }) => {
+    const lb = [bodyA.label, bodyB.label];
+    if (lb.includes('cat')      && lb.includes('ground')) { catAnim.onGround      = false; catAnim.canDoubleJump      = true; }
+    if (lb.includes('blackCat') && lb.includes('ground')) { blackCatAnim.onGround = false; blackCatAnim.canDoubleJump = true; }
+  });
+});
+
+// ════════════════════════════════
+//  鍵盤（WASD 與方向鍵都控橘貓）
+// ════════════════════════════════
+const keys     = {};
+const justDown = {};
+window.addEventListener('keydown', e => {
+  if (!keys[e.key]) justDown[e.key] = true;
+  keys[e.key] = true;
+  if ((e.key === 'r' || e.key === 'R') && gameState === STATE.GAMEOVER) restart();
+  e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function restart() { leftWins = 0; rightWins = 0; serveRight = true; startServe(); }
+
+// ════════════════════════════════
+//  手機觸控（按鈕畫在 canvas 上）
+// ════════════════════════════════
+// 按鈕位置（canvas 座標，草地中央）
+const BTN = {
+  left:  { x: 55,  y: 513 },
+  right: { x: 135, y: 513 },
+  jump:  { x: 745, y: 513 },
+};
+const BTN_R = 38; // 命中半徑
+
+let mobileLeft     = false;
+let mobileRight    = false;
+let mobileJumpHeld = false;
+let mobileJumpJust = false;
+const activePointers = {}; // pointerId → btn name
+
+function toCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const pt   = e.changedTouches ? e.changedTouches[0] : e;
+  return {
+    x: (pt.clientX - rect.left) * (W / rect.width),
+    y: (pt.clientY - rect.top)  * (H / rect.height),
+  };
+}
+
+function hitBtn(px, py) {
+  for (const name of ['left', 'right', 'jump']) {
+    const b = BTN[name];
+    if (Math.hypot(px - b.x, py - b.y) <= BTN_R) return name;
+  }
+  return null;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (gameState === STATE.GAMEOVER) { restart(); return; }
+  const { x, y } = toCanvasPos(e);
+  const name = hitBtn(x, y);
+  if (!name) return;
+  activePointers[e.pointerId] = name;
+  if (name === 'left')  mobileLeft  = true;
+  if (name === 'right') mobileRight = true;
+  if (name === 'jump')  { mobileJumpHeld = true; mobileJumpJust = true; }
+});
+
+function onPtrRelease(e) {
+  e.preventDefault();
+  const name = activePointers[e.pointerId];
+  if (name === 'left')  mobileLeft      = false;
+  if (name === 'right') mobileRight     = false;
+  if (name === 'jump')  mobileJumpHeld  = false;
+  delete activePointers[e.pointerId];
+}
+canvas.addEventListener('pointerup',     onPtrRelease);
+canvas.addEventListener('pointercancel', onPtrRelease);
+
+// ════════════════════════════════
+//  菁英 AI（黑貓）
+// ════════════════════════════════
+let aiJumpWasDown = false;
+
+function predictBallLandX(targetY) {
+  if (ball.velocity.y <= 0) return ball.position.x;
+  const steps = (targetY - ball.position.y) / ball.velocity.y;
+  let landX = ball.position.x + ball.velocity.x * steps;
+  landX = ((landX % W) + W) % W;
+  return landX;
+}
+
+function computeAIInput() {
+  const cx  = blackCatBody.position.x;
+  const cy  = blackCatBody.position.y;
+  const bx  = ball.position.x;
+  const by  = ball.position.y;
+  const bvy = ball.velocity.y;
+  const onG    = blackCatAnim.onGround;
+  const canDbl = blackCatAnim.canDoubleJump && !blackCatAnim.doubleJumped;
+
+  const landX  = bvy > 0
+    ? Math.min(Math.max(predictBallLandX(cy - CAT_R), CAT_R + 5), W / 2 - WALL_W / 2 - CAT_R - 5)
+    : W / 4;
+  const targetX = by < cy ? landX : W / 4;
+  const dx = targetX - cx;
+  const moveLeft  = Math.abs(dx) > 8 && dx < 0;
+  const moveRight = Math.abs(dx) > 8 && dx > 0;
+  let jump = false;
+  if (onG  && by < cy - 15 && Math.abs(bx - cx) < 150) jump = true;
+  if (!onG && canDbl && by < cy - 70 && Math.abs(bx - cx) < 130) jump = true;
+  return { moveLeft, moveRight, jump };
+}
+
+// ════════════════════════════════
+//  繪製
+// ════════════════════════════════
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  grad.addColorStop(0, '#5bb8f5'); grad.addColorStop(1, '#aaddff');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, GROUND_Y);
+}
+
+const clouds = [
+  { x: 120, y: 60, s: 1.0 }, { x: 340, y: 90, s: 0.7 },
+  { x: 580, y: 50, s: 1.2 }, { x: 700, y: 100, s: 0.8 },
+];
+function drawClouds() {
+  ctx.font = '48px Segoe UI Emoji, Apple Color Emoji';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  clouds.forEach(c => {
+    ctx.save(); ctx.translate(c.x, c.y); ctx.scale(c.s, c.s); ctx.globalAlpha = 0.85;
+    ctx.fillText('☁️', 0, 0); ctx.restore();
+  });
+}
+
+function drawGround() {
+  const grad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  grad.addColorStop(0, '#4caf50'); grad.addColorStop(0.3, '#388e3c'); grad.addColorStop(1, '#2e7d32');
+  ctx.fillStyle = grad; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.strokeStyle = '#66bb6a'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
+}
+
+function drawNet() {
+  const bSize = BLOCK_SIZE, netX = W / 2;
+  ctx.font = `${bSize}px Segoe UI Emoji, Apple Color Emoji`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const blockCount = Math.ceil(NET_SOLID_H / bSize);
+  for (let i = 0; i < blockCount; i++) {
+    const by = GROUND_SURFACE - bSize * 0.5 - i * bSize;
+    if (by < GROUND_SURFACE - NET_SOLID_H) break;
+    ctx.fillText('🟥', netX, by);
+  }
+}
+
+function drawShadow(x, r, alpha) {
+  ctx.save();
+  ctx.translate(x, GROUND_Y + 3); ctx.scale(1, 0.2);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, `rgba(0,0,0,${alpha})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawCatEmoji(x, y, facing, frame, spinAngle, emoji) {
+  const [lx, ly] = legOffsets[frame];
+  ctx.save(); ctx.translate(x, y);
+  if (spinAngle !== 0) ctx.rotate(spinAngle);
+  if (facing > 0) ctx.scale(-1, 1);
+  ctx.font = '52px Segoe UI Emoji, Apple Color Emoji';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, lx, ly); ctx.restore();
+}
+
+function drawBallEmoji(x, y) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.font = '36px Segoe UI Emoji, Apple Color Emoji';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🔵', 0, 0); ctx.restore();
+}
+
+// 手機按鈕畫在草地上（純 emoji，無外框）
+function drawButtons() {
+  ctx.font = '64px Segoe UI Emoji, Apple Color Emoji';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('◀️', BTN.left.x,  BTN.left.y);
+  ctx.fillText('▶️', BTN.right.x, BTN.right.y);
+  ctx.fillText('🔼', BTN.jump.x,  BTN.jump.y);
+}
+
+function drawMatchUI() {
+  const elapsed = (Date.now() - stateStart) / 1000;
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
+  ctx.fillRect(W / 2 - 130, 8, 260, 48);
+  ctx.font = 'bold 28px Arial, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`🐈‍⬛  ${leftWins} : ${rightWins}  🐈`, W / 2, 33);
+  ctx.font = '16px Arial';
+  for (let i = 0; i < leftWins;  i++) ctx.fillText('⭐', W / 2 - 110 + i * 22, 52);
+  for (let i = 0; i < rightWins; i++) ctx.fillText('⭐', W / 2 + 110 - i * 22, 52);
+
+  const shadow = (text, x, y, font, color) => {
+    ctx.font = font;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillText(text, x + 2, y + 2);
+    ctx.fillStyle = color;              ctx.fillText(text, x, y);
+  };
+
+  if (gameState === STATE.WAITING) {
+    const cd = Math.max(0, Math.ceil(3 - elapsed));
+    shadow(cd > 0 ? String(cd) : 'GO!', W / 2, 155, 'bold 64px Arial, sans-serif', '#ffe066');
+    shadow(serveRight ? '🐈 右貓發球' : '🐈‍⬛ 左貓發球', W / 2, 210, '22px Arial, sans-serif', '#fff');
+  } else if (gameState === STATE.SCORED) {
+    const cd = Math.max(0, Math.ceil(3 - elapsed));
+    shadow(lastScorer === 'left' ? '🐈‍⬛ 黑貓得分！' : '🐈 橘貓得分！', W / 2, 155, 'bold 36px Arial, sans-serif', '#ffe066');
+    shadow(`${cd} 秒後繼續`, W / 2, 200, '22px Arial, sans-serif', '#fff');
+  } else if (gameState === STATE.GAMEOVER) {
+    shadow(leftWins >= 3 ? '🐈‍⬛ 黑貓勝利！' : '🐈 橘貓勝利！', W / 2, 155, 'bold 42px Arial, sans-serif', '#ffe066');
+    shadow('點擊畫面重新開始', W / 2, 205, '24px Arial, sans-serif', '#fff');
+  }
+  ctx.restore();
+}
+
+// ════════════════════════════════
+//  主循環
+// ════════════════════════════════
+function updateCat(body, anim, moveLeft, moveRight, jumpPressed, jumpHeld) {
+  if (!jumpHeld) anim.jumpKeyReleased = true;
+
+  let moving = false;
+  if (anim.onGround) {
+    if (moveLeft) {
+      Body.setVelocity(body, { x: -CAT_SPEED, y: body.velocity.y });
+      anim.facing = -1; moving = true;
+    } else if (moveRight) {
+      Body.setVelocity(body, { x: CAT_SPEED, y: body.velocity.y });
+      anim.facing = 1; moving = true;
+    } else {
+      Body.setVelocity(body, { x: body.velocity.x * 0.7, y: body.velocity.y });
+    }
+  }
+  if (jumpPressed && anim.onGround) {
+    Body.setVelocity(body, { x: body.velocity.x, y: JUMP_FORCE });
+    anim.onGround = false; anim.canDoubleJump = true;
+    anim.doubleJumped = false; anim.jumpKeyReleased = false;
+  }
+  if (jumpPressed && !anim.onGround && anim.canDoubleJump && !anim.doubleJumped && anim.jumpKeyReleased) {
+    Body.setVelocity(body, { x: body.velocity.x, y: JUMP_FORCE * 0.5 });
+    anim.canDoubleJump = false; anim.doubleJumped = true;
+    anim.spinning = true; anim.spinAngle = 0;
+    anim.spinDir = anim.facing > 0 ? 1 : -1;
+  }
+  if (anim.spinning) {
+    anim.spinAngle += anim.spinDir * (Math.PI * 2 / 10);
+    if (Math.abs(anim.spinAngle) >= Math.PI * 2) { anim.spinning = false; anim.spinAngle = 0; }
+  }
+  if (moving && anim.onGround) {
+    anim.walkTick++;
+    if (anim.walkTick >= WALK_SPEED) { anim.walkTick = 0; anim.walkFrame = (anim.walkFrame + 1) % WALK_FRAMES; }
+  } else if (anim.onGround) {
+    anim.walkFrame = 0; anim.walkTick = 0;
+  }
+}
+
+function gameLoop() {
+  const elapsed = (Date.now() - stateStart) / 1000;
+
+  if (gameState === STATE.WAITING && elapsed >= 3) setState(STATE.PLAYING);
+  if (gameState === STATE.SCORED  && elapsed >= 3) { serveRight = !serveRight; startServe(); }
+
+  // 橘貓輸入：WASD 或方向鍵 或手機按鈕
+  const jumpPressedRight =
+    Object.keys(justDown).some(k => k === 'ArrowUp' || k === ' ' || k === 'w' || k === 'W')
+    || mobileJumpJust;
+  const jumpHeldRight =
+    keys['ArrowUp'] || keys[' '] || keys['w'] || keys['W'] || mobileJumpHeld;
+  for (const k in justDown) delete justDown[k];
+  mobileJumpJust = false;
+
+  if (gameState !== STATE.GAMEOVER) {
+    updateCat(catBody, catAnim,
+      keys['ArrowLeft']  || keys['a'] || keys['A'] || mobileLeft,
+      keys['ArrowRight'] || keys['d'] || keys['D'] || mobileRight,
+      jumpPressedRight, jumpHeldRight);
+
+    const ai = computeAIInput();
+    const jumpJust = ai.jump && !aiJumpWasDown;
+    aiJumpWasDown  = ai.jump;
+    updateCat(blackCatBody, blackCatAnim, ai.moveLeft, ai.moveRight, jumpJust, false);
+
+    Engine.update(engine, 1000 / 60 * 0.8);
+
+    if (pendingScore !== null) {
+      if (pendingScore === 'right') { rightWins++; lastScorer = 'right'; }
+      else                          { leftWins++;  lastScorer = 'left';  }
+      pendingScore = null;
+      if (leftWins >= 3 || rightWins >= 3) setState(STATE.GAMEOVER);
+      else setState(STATE.SCORED);
+    }
+    if (gameState === STATE.WAITING) {
+      Body.setPosition(ball, servePos);
+      Body.setVelocity(ball, { x: 0, y: 0 });
+    }
+  }
+
+  // 繪製
+  ctx.clearRect(0, 0, W, H);
+  drawSky(); drawClouds(); drawGround(); drawNet();
+
+  const ballH = Math.max(0, (GROUND_Y - ball.position.y) / GROUND_Y);
+  drawShadow(catBody.position.x,      CAT_R  * 1.4, 0.3);
+  drawShadow(blackCatBody.position.x, CAT_R  * 1.4, 0.3);
+  drawShadow(ball.position.x, BALL_R * (1.2 - ballH * 0.5), 0.2 * (1 - ballH * 0.5));
+
+  drawCatEmoji(catBody.position.x,      catBody.position.y,      catAnim.facing,      catAnim.walkFrame,      catAnim.spinAngle,      '🐈');
+  drawCatEmoji(blackCatBody.position.x, blackCatBody.position.y, blackCatAnim.facing, blackCatAnim.walkFrame, blackCatAnim.spinAngle, '🐈‍⬛');
+  drawBallEmoji(ball.position.x, ball.position.y);
+
+  drawMatchUI();
+  drawButtons();
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>

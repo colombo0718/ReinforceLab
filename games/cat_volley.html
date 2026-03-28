@@ -2,7 +2,8 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>🐈 貓貓排球</title>
+<title>貓貓排球</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐈</text></svg>">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -19,14 +20,20 @@
   #gameCanvas { border: 3px solid #4a8a4a; border-radius: 8px; box-shadow: 0 6px 24px #00000033; }
   #ui { display: flex; align-items: center; gap: 24px; color: #2d5a2d; font-size: 0.85rem; }
   label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-weight: bold; }
+  #ai-ui { display: flex; align-items: center; gap: 20px; color: #2d5a2d; font-size: 0.85rem; }
+  #ai-ui label { cursor: pointer; user-select: none; font-weight: bold; }
 </style>
 </head>
 <body>
 <h1>🐈 貓貓排球 🏐</h1>
 <canvas id="gameCanvas" width="800" height="560"></canvas>
 <div id="ui">
-  <span>← → / A D 移動　↑ / W / 空白 跳躍　空中再按跳 = 二段跳旋轉</span>
+  <span id="ctrl-hint">🐈‍⬛ A D 移動　W 跳躍（左貓）　🐈 ← → 移動　↑ / 空白 跳躍（右貓）</span>
   <label><input type="checkbox" id="debugToggle"> 顯示碰撞體</label>
+</div>
+<div id="ai-ui">
+  <label><input type="radio" name="mode" value="pvp"    checked onchange="setAI(null)">　👥 玩家對玩家</label>
+  <label><input type="radio" name="mode" value="script"        onchange="setAI('elite')">　🤖 玩家對腳本</label>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -38,9 +45,10 @@ let   debugMode = false;
 debugCB.addEventListener('change', () => { debugMode = debugCB.checked; });
 
 const W = 800, H = 560;
-const GROUND_Y    = H - 90;   // 視覺地面
+const GROUND_Y      = H - 90;        // 視覺地面（草地邊緣）
+const GROUND_SURFACE = GROUND_Y + 10;  // 物理碰撞地板頂面
 const WALL_W      = 28;       // 網寬（物理）
-const NET_SOLID_H = 120;      // 下段實體牆高度（貓+球都擋）
+const NET_SOLID_H = 112;      // 下段實體牆高度（4 × BLOCK_SIZE=28，貓+球都擋）
 const BLOCK_SIZE  = 28;
 
 // ════════════════════════════════
@@ -51,31 +59,32 @@ const engine = Engine.create({ gravity: { y: 1.8 } });
 const world  = engine.world;
 
 // 地板
-const ground = Bodies.rectangle(W / 2, GROUND_Y + 25, W, 50, {
+const ground = Bodies.rectangle(W / 2, GROUND_SURFACE + 25, W, 50, {
   isStatic: true, label: 'ground', friction: 0.05, restitution: 0.05,
 });
 // 左右牆
-const wallL = Bodies.rectangle(-10, H / 2, 20, H * 2, { isStatic: true, label: 'wall' });
-const wallR = Bodies.rectangle(W + 10, H / 2, 20, H * 2, { isStatic: true, label: 'wall' });
+const wallL = Bodies.rectangle(-10, H / 2, 20, H * 2, { isStatic: true, label: 'wall', friction: 0 });
+const wallR = Bodies.rectangle(W + 10, H / 2, 20, H * 2, { isStatic: true, label: 'wall', friction: 0 });
 // 天花板
-const ceiling = Bodies.rectangle(W / 2, -10, W, 20, { isStatic: true, label: 'ceiling' });
+const ceiling = Bodies.rectangle(W / 2, -10, W, 20, { isStatic: true, label: 'ceiling', friction: 0 });
 
 // ── 球網：下段實體（catFilter + ballFilter 都碰撞）
-const CAT_CAT  = 0x0001;
-const CAT_BALL = 0x0002;
-const CAT_WALL = 0x0004;
+const CAT_CAT    = 0x0001;
+const CAT_BALL   = 0x0002;
+const CAT_WALL   = 0x0004;
+const STATIC_CAT = 0x0008; // ground / wall / ceiling 的 category
 
 const netSolid = Bodies.rectangle(
-  W / 2, GROUND_Y - NET_SOLID_H / 2, WALL_W, NET_SOLID_H,
+  W / 2, GROUND_SURFACE - NET_SOLID_H / 2, WALL_W, NET_SOLID_H,
   {
     isStatic: true, label: 'netSolid',
-    friction: 0.01, restitution: 0.4,
+    friction: 0, restitution: 0.4,
     collisionFilter: { category: CAT_WALL, mask: CAT_CAT | CAT_BALL },
   }
 );
 
 // ── 球網：上段空氣牆（只擋貓，球穿過）
-const AIR_H   = GROUND_Y - NET_SOLID_H; // 從實體牆頂到畫面頂的高度
+const AIR_H   = GROUND_SURFACE - NET_SOLID_H; // 從實體牆頂到畫面頂的高度
 const netAir  = Bodies.rectangle(
   W / 2, AIR_H / 2, WALL_W, AIR_H,
   {
@@ -91,7 +100,15 @@ const catBody = Bodies.circle(W * 3 / 4, GROUND_Y - CAT_R - 2, CAT_R, {
   label: 'cat',
   friction: 0.05, restitution: 0.05,
   inertia: Infinity, frictionAir: 0.01, mass: 5,
-  collisionFilter: { category: CAT_CAT, mask: CAT_BALL | CAT_WALL | 0x0008 },
+  collisionFilter: { category: CAT_CAT, mask: CAT_BALL | CAT_WALL | STATIC_CAT },
+});
+
+// 黑貓（左側）
+const blackCatBody = Bodies.circle(W / 4, GROUND_Y - CAT_R - 2, CAT_R, {
+  label: 'blackCat',
+  friction: 0.05, restitution: 0.05,
+  inertia: Infinity, frictionAir: 0.01, mass: 5,
+  collisionFilter: { category: CAT_CAT, mask: CAT_BALL | CAT_WALL | STATIC_CAT },
 });
 
 // 排球
@@ -102,14 +119,11 @@ const ball   = Bodies.circle(W * 3 / 4, GROUND_Y - 200, BALL_R, {
   collisionFilter: { category: CAT_BALL, mask: CAT_CAT | CAT_WALL | 0x0008 },
 });
 
-// 地板/牆/天花板用預設 filter，但要讓它們能碰到貓和球
-// 做法：給 ground/wallL/wallR/ceiling 一個特殊 category，讓貓球的 mask 包含它
-const STATIC_CAT = 0x0008;
 [ground, wallL, wallR, ceiling].forEach(b => {
   b.collisionFilter = { category: STATIC_CAT, mask: CAT_CAT | CAT_BALL };
 });
 
-World.add(world, [ground, wallL, wallR, ceiling, netSolid, netAir, catBody, ball]);
+World.add(world, [ground, wallL, wallR, ceiling, netSolid, netAir, catBody, blackCatBody, ball]);
 
 // ════════════════════════════════
 //  貓咪狀態
@@ -121,30 +135,95 @@ const WALK_SPEED  = 4;
 const legOffsets  = [[0, 0], [0, -4]];
 
 const catAnim = {
-  facing: 1,
+  facing: -1,
   onGround: false,
   walkFrame: 0,
   walkTick: 0,
-  // 二段跳
   canDoubleJump: false,
   doubleJumped: false,
-  jumpKeyReleased: true,  // 一段跳後必須放開跳鍵才能觸發二段跳
-  // 旋轉動畫
+  jumpKeyReleased: true,
   spinning: false,
   spinAngle: 0,
   spinDir: 1,
 };
 
-// 落地偵測
+const blackCatAnim = {
+  facing: 1,   // 初始面右（朝向球網）
+  onGround: false,
+  walkFrame: 0,
+  walkTick: 0,
+  canDoubleJump: false,
+  doubleJumped: false,
+  jumpKeyReleased: true,
+  spinning: false,
+  spinAngle: 0,
+  spinDir: 1,
+};
+
+// ════════════════════════════════
+//  賽制狀態
+// ════════════════════════════════
+const STATE = { WAITING: 'waiting', PLAYING: 'playing', SCORED: 'scored', GAMEOVER: 'gameover' };
+let gameState  = STATE.WAITING;
+let stateStart = Date.now();
+let leftWins   = 0;      // 黑貓勝局數
+let rightWins  = 0;      // 橘貓勝局數
+let serveRight = true;   // 第一球右貓發
+let lastScorer   = '';     // 'left' | 'right'
+let pendingScore = null;   // 碰撞事件裡設 flag，Engine.update 後才真正處理
+let servePos     = { x: W * 3 / 4, y: GROUND_Y - 200 }; // WAITING 期間球的凍結位置
+
+function setState(s) { gameState = s; stateStart = Date.now(); }
+
+function resetCats() {
+  Body.setPosition(catBody,      { x: W * 3 / 4, y: GROUND_Y - CAT_R - 15 });
+  Body.setVelocity(catBody,      { x: 0, y: 0 });
+  Body.setPosition(blackCatBody, { x: W / 4,      y: GROUND_Y - CAT_R - 15 });
+  Body.setVelocity(blackCatBody, { x: 0, y: 0 });
+  catAnim.onGround = false; blackCatAnim.onGround = false;
+}
+
+function startServe() {
+  const serveX = serveRight ? W * 3 / 4 : W / 4;
+  servePos = { x: serveX, y: GROUND_Y - 200 };
+  Body.setPosition(ball, servePos);
+  Body.setVelocity(ball, { x: 0, y: 0 });
+  resetCats();
+  setState(STATE.WAITING);
+}
+
+startServe(); // 初始發球
+
+// ── 球的緩落補力（抵消 40% 重力，氣球效果）──
+Events.on(engine, 'beforeUpdate', () => {
+  if (gameState === STATE.PLAYING) {
+    const lift = engine.gravity.y * (engine.gravity.scale ?? 0.001) * ball.mass * 0.5;
+    Body.applyForce(ball, ball.position, { x: 0, y: -lift });
+  }
+});
+
+// ════════════════════════════════
+//  落地偵測
 Events.on(engine, 'collisionStart', e => {
   e.pairs.forEach(({ bodyA, bodyB }) => {
     const lb = [bodyA.label, bodyB.label];
     if (lb.includes('cat') && lb.includes('ground')) {
-      catAnim.onGround     = true;
+      catAnim.onGround      = true;
       catAnim.canDoubleJump = false;
       catAnim.doubleJumped  = false;
       catAnim.spinning      = false;
       catAnim.spinAngle     = 0;
+    }
+    if (lb.includes('blackCat') && lb.includes('ground')) {
+      blackCatAnim.onGround      = true;
+      blackCatAnim.canDoubleJump = false;
+      blackCatAnim.doubleJumped  = false;
+      blackCatAnim.spinning      = false;
+      blackCatAnim.spinAngle     = 0;
+    }
+    // 球落地 → 只記 flag，Engine.update 結束後才修改物理世界
+    if (lb.includes('ball') && lb.includes('ground') && gameState === STATE.PLAYING && pendingScore === null) {
+      pendingScore = ball.position.x < W / 2 ? 'right' : 'left';
     }
   });
 });
@@ -152,8 +231,12 @@ Events.on(engine, 'collisionEnd', e => {
   e.pairs.forEach(({ bodyA, bodyB }) => {
     const lb = [bodyA.label, bodyB.label];
     if (lb.includes('cat') && lb.includes('ground')) {
-      catAnim.onGround     = false;
-      catAnim.canDoubleJump = true;  // 離地後開放二段跳
+      catAnim.onGround      = false;
+      catAnim.canDoubleJump = true;
+    }
+    if (lb.includes('blackCat') && lb.includes('ground')) {
+      blackCatAnim.onGround      = false;
+      blackCatAnim.canDoubleJump = true;
     }
   });
 });
@@ -164,11 +247,68 @@ const justDown = {};
 window.addEventListener('keydown', e => {
   if (!keys[e.key]) justDown[e.key] = true;
   keys[e.key] = true;
+  // R 鍵重新開始（只在比賽結束後）
+  if ((e.key === 'r' || e.key === 'R') && gameState === STATE.GAMEOVER) {
+    leftWins = 0; rightWins = 0; serveRight = true;
+    startServe();
+  }
   e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
-function isJump(key) { return key === 'ArrowUp' || key === 'w' || key === 'W' || key === ' '; }
+function isJumpRight(key) { return key === 'ArrowUp' || key === ' '; }
+function isJumpLeft(key)  { return key === 'w' || key === 'W'; }
+
+// ════════════════════════════════
+//  黑貓 AI 腳本
+// ════════════════════════════════
+let blackCatAI     = null;  // null=人類  'beginner'|'veteran'|'elite'
+let aiJumpWasDown  = false; // 上一幀 AI 是否要跳，用來模擬 justDown 機制
+
+// 線性預測球落地時的 X（球下墜中才有意義）
+function predictBallLandX(targetY) {
+  if (ball.velocity.y <= 0) return ball.position.x;
+  const steps = (targetY - ball.position.y) / ball.velocity.y;
+  let landX = ball.position.x + ball.velocity.x * steps;
+  // 簡單左右牆反彈修正
+  landX = ((landX % W) + W) % W;
+  return landX;
+}
+
+function computeAIInput(difficulty) {
+  const cx  = blackCatBody.position.x;
+  const cy  = blackCatBody.position.y;
+  const bx  = ball.position.x;
+  const by  = ball.position.y;
+  const bvy = ball.velocity.y;
+  const onG    = blackCatAnim.onGround;
+  const canDbl = blackCatAnim.canDoubleJump && !blackCatAnim.doubleJumped;
+
+  let moveLeft = false, moveRight = false, jump = false;
+
+  if (difficulty === 'elite') {
+    // 預測落點，站到最佳接球位
+    const landX  = bvy > 0
+      ? Math.min(Math.max(predictBallLandX(cy - CAT_R), CAT_R + 5), W / 2 - WALL_W / 2 - CAT_R - 5)
+      : W / 4;
+    const targetX = by < cy ? landX : W / 4;  // 球高才站落點，否則回中間待命
+    const dx = targetX - cx;
+    if (Math.abs(dx) > 8) { moveLeft = dx < 0; moveRight = dx > 0; }
+    // 精準跳躍
+    if (onG  && by < cy - 15 && Math.abs(bx - cx) < 150) jump = true;
+    if (!onG && canDbl && by < cy - 70 && Math.abs(bx - cx) < 130) jump = true;
+  }
+
+  return { moveLeft, moveRight, jump };
+}
+
+function setAI(level) {
+  blackCatAI    = level;
+  aiJumpWasDown = false;
+  document.getElementById('ctrl-hint').textContent = level === null
+    ? '🐈‍⬛ A D 移動　W 跳躍（左貓）　🐈 ← → 移動　↑ / 空白 跳躍（右貓）'
+    : '🐈 ← → 移動　↑ / 空白 跳躍（右貓）';
+}
 
 // ════════════════════════════════
 //  繪製
@@ -213,8 +353,8 @@ function drawNet() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const blockCount = Math.ceil(NET_SOLID_H / bSize);
   for (let i = 0; i < blockCount; i++) {
-    const by = GROUND_Y - bSize * 0.5 - i * bSize;
-    if (by < GROUND_Y - NET_SOLID_H) break;
+    const by = GROUND_SURFACE - bSize * 0.5 - i * bSize;
+    if (by < GROUND_SURFACE - NET_SOLID_H) break;
     ctx.fillText('🟥', netX, by);
   }
   // 上段：無視覺（空氣牆），debug 模式才顯示
@@ -230,16 +370,15 @@ function drawShadow(x, r, alpha) {
   ctx.restore();
 }
 
-function drawCat(x, y, facing, frame, spinAngle) {
+function drawCatEmoji(x, y, facing, frame, spinAngle, emoji) {
   const [lx, ly] = legOffsets[frame];
   ctx.save();
   ctx.translate(x, y);
-  // 旋轉（二段跳）
   if (spinAngle !== 0) ctx.rotate(spinAngle);
   if (facing > 0) ctx.scale(-1, 1);
   ctx.font = '52px Segoe UI Emoji, Apple Color Emoji';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('🐈‍⬛', lx, ly);
+  ctx.fillText(emoji, lx, ly);
   ctx.restore();
 }
 
@@ -248,7 +387,52 @@ function drawBallEmoji(x, y) {
   ctx.translate(x, y);
   ctx.font = '36px Segoe UI Emoji, Apple Color Emoji';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('🏐', 0, 0);
+  ctx.fillText('🔵', 0, 0);
+  ctx.restore();
+}
+
+function drawMatchUI() {
+  const elapsed = (Date.now() - stateStart) / 1000;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // ── 比分板（畫面上方）──
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
+  ctx.fillRect(W / 2 - 130, 8, 260, 48);
+  ctx.font = 'bold 28px Arial, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`🐈‍⬛  ${leftWins} : ${rightWins}  🐈`, W / 2, 33);
+
+  // ── 勝利標記（每勝一局顯示一顆星）──
+  ctx.font = '16px Arial';
+  for (let i = 0; i < leftWins;  i++) ctx.fillText('⭐', W / 2 - 110 + i * 22, 52);
+  for (let i = 0; i < rightWins; i++) ctx.fillText('⭐', W / 2 + 110 - i * 22, 52);
+
+  // ── 狀態提示文字（畫面中上，y≈160/195）──
+  const shadow = (text, x, y, font, color) => {
+    ctx.font = font;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillText(text, x + 2, y + 2);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  };
+
+  if (gameState === STATE.WAITING) {
+    const cd = Math.max(0, Math.ceil(3 - elapsed));
+    const server = serveRight ? '🐈 右貓發球' : '🐈‍⬛ 左貓發球';
+    shadow(cd > 0 ? String(cd) : 'GO!', W / 2, 155, 'bold 64px Arial, sans-serif', '#ffe066');
+    shadow(server, W / 2, 210, '22px Arial, sans-serif', '#fff');
+  } else if (gameState === STATE.SCORED) {
+    const cd = Math.max(0, Math.ceil(3 - elapsed));
+    const scorer = lastScorer === 'left' ? '🐈‍⬛ 黑貓得分！' : '🐈 橘貓得分！';
+    shadow(scorer, W / 2, 155, 'bold 36px Arial, sans-serif', '#ffe066');
+    shadow(`${cd} 秒後繼續`, W / 2, 200, '22px Arial, sans-serif', '#fff');
+  } else if (gameState === STATE.GAMEOVER) {
+    const winner = leftWins >= 3 ? '🐈‍⬛ 黑貓勝利！' : '🐈 橘貓勝利！';
+    shadow(winner, W / 2, 155, 'bold 42px Arial, sans-serif', '#ffe066');
+    shadow('按 R 重新開始', W / 2, 205, '24px Arial, sans-serif', '#fff');
+  }
+
   ctx.restore();
 }
 
@@ -256,11 +440,17 @@ function drawDebug() {
   ctx.save();
   ctx.lineWidth = 2;
 
-  // 貓
+  // 右貓
   ctx.strokeStyle = 'rgba(255,80,80,0.85)';
   ctx.beginPath(); ctx.arc(catBody.position.x, catBody.position.y, CAT_R, 0, Math.PI*2); ctx.stroke();
   ctx.fillStyle = 'rgba(255,80,80,0.85)';
   ctx.beginPath(); ctx.arc(catBody.position.x, catBody.position.y, 3, 0, Math.PI*2); ctx.fill();
+
+  // 左黑貓
+  ctx.strokeStyle = 'rgba(80,80,255,0.85)';
+  ctx.beginPath(); ctx.arc(blackCatBody.position.x, blackCatBody.position.y, CAT_R, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = 'rgba(80,80,255,0.85)';
+  ctx.beginPath(); ctx.arc(blackCatBody.position.x, blackCatBody.position.y, 3, 0, Math.PI*2); ctx.fill();
 
   // 球
   ctx.strokeStyle = 'rgba(80,160,255,0.85)';
@@ -270,17 +460,17 @@ function drawDebug() {
 
   // 下段實體牆
   ctx.strokeStyle = 'rgba(255,80,0,0.8)';
-  ctx.strokeRect(W/2 - WALL_W/2, GROUND_Y - NET_SOLID_H, WALL_W, NET_SOLID_H);
+  ctx.strokeRect(W/2 - WALL_W/2, GROUND_SURFACE - NET_SOLID_H, WALL_W, NET_SOLID_H);
 
   // 上段空氣牆（只擋貓）
   ctx.strokeStyle = 'rgba(180,100,255,0.6)';
   ctx.setLineDash([6, 4]);
-  ctx.strokeRect(W/2 - WALL_W/2, 0, WALL_W, GROUND_Y - NET_SOLID_H);
+  ctx.strokeRect(W/2 - WALL_W/2, 0, WALL_W, GROUND_SURFACE - NET_SOLID_H);
   ctx.setLineDash([]);
 
-  // 地板
-  ctx.strokeStyle = 'rgba(0,200,0,0.5)';
-  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
+  // 地板（碰撞體頂面 = GROUND_SURFACE）
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.beginPath(); ctx.moveTo(0, GROUND_SURFACE); ctx.lineTo(W, GROUND_SURFACE); ctx.stroke();
 
   ctx.restore();
 }
@@ -288,74 +478,102 @@ function drawDebug() {
 // ════════════════════════════════
 //  主循環
 // ════════════════════════════════
-function gameLoop() {
+function updateCat(body, anim, moveLeft, moveRight, jumpPressed, jumpHeld) {
+  // 跳鍵放開偵測
+  if (!jumpHeld) anim.jumpKeyReleased = true;
 
-  // ── 跳躍輸入偵測（用 justDown 避免連觸）──
-  const jumpPressed = Object.keys(justDown).some(isJump);
-  for (const k in justDown) delete justDown[k]; // 清除本幀 just-down
-
-  // ── 移動控制：只在地面上才能改變速度/方向 ──
+  // 移動（只在地面）
   let moving = false;
-  if (catAnim.onGround) {
-    if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-      Body.setVelocity(catBody, { x: -CAT_SPEED, y: catBody.velocity.y });
-      catAnim.facing = -1;
-      moving = true;
-    } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-      Body.setVelocity(catBody, { x: CAT_SPEED, y: catBody.velocity.y });
-      catAnim.facing = 1;
-      moving = true;
+  if (anim.onGround) {
+    if (moveLeft) {
+      Body.setVelocity(body, { x: -CAT_SPEED, y: body.velocity.y });
+      anim.facing = -1; moving = true;
+    } else if (moveRight) {
+      Body.setVelocity(body, { x: CAT_SPEED, y: body.velocity.y });
+      anim.facing = 1; moving = true;
     } else {
-      Body.setVelocity(catBody, { x: catBody.velocity.x * 0.7, y: catBody.velocity.y });
-    }
-  }
-  // 空中：完全不干涉水平速度（隨慣性）
-
-  // ── 跳鍵放開偵測（給二段跳隔離用）──
-  const jumpHeld = keys['ArrowUp'] || keys['w'] || keys['W'] || keys[' '];
-  if (!jumpHeld) catAnim.jumpKeyReleased = true;
-
-  // ── 一段跳 ──
-  if (jumpPressed && catAnim.onGround) {
-    Body.setVelocity(catBody, { x: catBody.velocity.x, y: JUMP_FORCE });
-    catAnim.onGround      = false;
-    catAnim.canDoubleJump  = true;
-    catAnim.doubleJumped   = false;
-    catAnim.jumpKeyReleased = false;  // 標記：尚未放開
-  }
-
-  // ── 二段跳：必須放開跳鍵後再按 ──
-  if (jumpPressed && !catAnim.onGround && catAnim.canDoubleJump && !catAnim.doubleJumped && catAnim.jumpKeyReleased) {
-    const addVy = JUMP_FORCE * 0.5;  // 追加量 = 原始起跳速度的一半
-    Body.setVelocity(catBody, { x: catBody.velocity.x, y: addVy });
-    catAnim.canDoubleJump = false;
-    catAnim.doubleJumped  = true;
-    catAnim.spinning      = true;
-    catAnim.spinAngle     = 0;
-    catAnim.spinDir       = catAnim.facing > 0 ? 1 : -1; // 面右順時針
-  }
-
-  // ── 旋轉動畫推進（一圈 = 2π，約 30 幀轉完）──
-  if (catAnim.spinning) {
-    catAnim.spinAngle += catAnim.spinDir * (Math.PI * 2 / 10);
-    if (Math.abs(catAnim.spinAngle) >= Math.PI * 2) {
-      catAnim.spinning  = false;
-      catAnim.spinAngle = 0;
+      Body.setVelocity(body, { x: body.velocity.x * 0.7, y: body.velocity.y });
     }
   }
 
-  // ── 走路動畫 ──
-  if (moving && catAnim.onGround) {
-    catAnim.walkTick++;
-    if (catAnim.walkTick >= WALK_SPEED) {
-      catAnim.walkTick  = 0;
-      catAnim.walkFrame = (catAnim.walkFrame + 1) % WALK_FRAMES;
-    }
-  } else if (catAnim.onGround) {
-    catAnim.walkFrame = 0; catAnim.walkTick = 0;
+  // 一段跳
+  if (jumpPressed && anim.onGround) {
+    Body.setVelocity(body, { x: body.velocity.x, y: JUMP_FORCE });
+    anim.onGround = false; anim.canDoubleJump = true;
+    anim.doubleJumped = false; anim.jumpKeyReleased = false;
   }
 
-  Engine.update(engine, 1000 / 60 * 0.8);
+  // 二段跳
+  if (jumpPressed && !anim.onGround && anim.canDoubleJump && !anim.doubleJumped && anim.jumpKeyReleased) {
+    Body.setVelocity(body, { x: body.velocity.x, y: JUMP_FORCE * 0.5 });
+    anim.canDoubleJump = false; anim.doubleJumped = true;
+    anim.spinning = true; anim.spinAngle = 0;
+    anim.spinDir = anim.facing > 0 ? 1 : -1;
+  }
+
+  // 旋轉動畫
+  if (anim.spinning) {
+    anim.spinAngle += anim.spinDir * (Math.PI * 2 / 10);
+    if (Math.abs(anim.spinAngle) >= Math.PI * 2) { anim.spinning = false; anim.spinAngle = 0; }
+  }
+
+  // 走路動畫
+  if (moving && anim.onGround) {
+    anim.walkTick++;
+    if (anim.walkTick >= WALK_SPEED) { anim.walkTick = 0; anim.walkFrame = (anim.walkFrame + 1) % WALK_FRAMES; }
+  } else if (anim.onGround) {
+    anim.walkFrame = 0; anim.walkTick = 0;
+  }
+}
+
+function gameLoop() {
+  const elapsed = (Date.now() - stateStart) / 1000;
+
+  // ── 狀態切換 ──
+  if (gameState === STATE.WAITING && elapsed >= 3) {
+    setState(STATE.PLAYING);
+  }
+  if (gameState === STATE.SCORED && elapsed >= 3) {
+    serveRight = !serveRight;   // 左右輪替發球
+    startServe();
+  }
+
+  // ── 輸入（GAMEOVER 時停止接受）──
+  const jumpPressedRight = Object.keys(justDown).some(isJumpRight);
+  const jumpPressedLeft  = Object.keys(justDown).some(isJumpLeft);
+  for (const k in justDown) delete justDown[k];
+
+  if (gameState !== STATE.GAMEOVER) {
+    updateCat(catBody, catAnim,
+      keys['ArrowLeft'], keys['ArrowRight'],
+      jumpPressedRight, keys['ArrowUp'] || keys[' ']);
+    // 黑貓：AI 腳本 or 人類鍵盤
+    if (blackCatAI !== null) {
+      const ai = computeAIInput(blackCatAI);
+      const jumpJust = ai.jump && !aiJumpWasDown; // 模擬 justDown
+      aiJumpWasDown  = ai.jump;
+      updateCat(blackCatBody, blackCatAnim, ai.moveLeft, ai.moveRight, jumpJust, false);
+    } else {
+      updateCat(blackCatBody, blackCatAnim,
+        keys['a'] || keys['A'], keys['d'] || keys['D'],
+        jumpPressedLeft, keys['w'] || keys['W']);
+    }
+    Engine.update(engine, 1000 / 60 * 0.8);
+
+    // Engine.update 結束後才安全地計分
+    if (pendingScore !== null) {
+      if (pendingScore === 'right') { rightWins++; lastScorer = 'right'; }
+      else                          { leftWins++;  lastScorer = 'left';  }
+      pendingScore = null;
+      if (leftWins >= 3 || rightWins >= 3) setState(STATE.GAMEOVER);
+      else setState(STATE.SCORED);
+    }
+    // WAITING 期間：每幀覆寫球的位置，不靠 setStatic
+    if (gameState === STATE.WAITING) {
+      Body.setPosition(ball, servePos);
+      Body.setVelocity(ball, { x: 0, y: 0 });
+    }
+  }
 
   // ── 繪製 ──
   ctx.clearRect(0, 0, W, H);
@@ -366,11 +584,14 @@ function gameLoop() {
 
   const ballH = Math.max(0, (GROUND_Y - ball.position.y) / GROUND_Y);
   drawShadow(catBody.position.x, CAT_R * 1.4, 0.3);
+  drawShadow(blackCatBody.position.x, CAT_R * 1.4, 0.3);
   drawShadow(ball.position.x, BALL_R * (1.2 - ballH * 0.5), 0.2 * (1 - ballH * 0.5));
 
-  drawCat(catBody.position.x, catBody.position.y, catAnim.facing, catAnim.walkFrame, catAnim.spinAngle);
+  drawCatEmoji(catBody.position.x, catBody.position.y, catAnim.facing, catAnim.walkFrame, catAnim.spinAngle, '🐈');
+  drawCatEmoji(blackCatBody.position.x, blackCatBody.position.y, blackCatAnim.facing, blackCatAnim.walkFrame, blackCatAnim.spinAngle, '🐈‍⬛');
   drawBallEmoji(ball.position.x, ball.position.y);
 
+  drawMatchUI();
   if (debugMode) drawDebug();
 
   requestAnimationFrame(gameLoop);
