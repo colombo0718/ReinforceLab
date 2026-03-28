@@ -1,66 +1,59 @@
 /***************************************************
- * 全局變數 (請確保這些變數在其他邏輯中也有適當更新)
+ * generalCharts.js — 通用訓練指標圖表
+ *
+ * 負責四張 Plotly 圖表的初始化與更新：
+ *   每秒 Reward 折線圖  (p1-second-reward)
+ *   每秒 Steps 折線圖   (p1-second-steps)
+ *   每回合 Reward 柱狀圖 (p1-episode-reward)
+ *   每回合 Steps 柱狀圖  (p1-episode-steps)
+ *
+ * 依賴 index.html [12] 提供的全局變數：
+ *   secondReward, secondSteps        — 每步累加，每秒歸零
+ *   rewardData/Labels, stepsData/Labels — 每秒圖表的資料緩衝
+ *   episodeCount, episodeReward, episodeSteps — 每回合結束時讀取
+ *   episodeIndex, episodeRewardData, episodeStepsData — 每回合圖表資料
+ *   startTime, isPaused, plotGeneralCharts
  ***************************************************/
-// let secondReward = 0;    // 每秒累計 Reward，其他邏輯中需要累加此值
-// let secondSteps  = 0;    // 每秒累計步數，其他邏輯中需要累加此值
-//
-// let rewardData   = [];
-// let rewardLabels = [];
-// let stepsData    = [];
-// let stepsLabels  = [];
-//
-// let startTime = Date.now();
-//
-// // 每回合數據（episode）相關變數
-// let episodeIndex      = [];  // 回合編號
-// let episodeRewardData = [];  // 每回合累積 Reward
-// let episodeStepsData  = [];  // 每回合累積步數
-//
-// // 假設這些變數在每回合結束時被更新：
-// let episodeCount = 1;    // 當前回合編號
-// let episodeReward = 0;   // 當前回合累積 Reward
-// let episodeSteps  = 0;   // 當前回合累積步數
+
+
 /***************************************************
- * 配色方案
+ * [A] 配色方案
+ * Reward 系列：藍綠色；Steps 系列：橙色
  ***************************************************/
-// Reward 相關統一使用藍綠色系
 const rewardLineColor   = 'rgba(75, 192, 192, 1)';
 const rewardMarkerColor = 'rgba(75, 192, 192, 0.7)';
 
-// Steps 相關統一使用橙色系
 const stepsLineColor    = 'rgba(255, 159, 64, 1)';
 const stepsMarkerColor  = 'rgba(255, 159, 64, 0.7)';
 
-console.log(stepsLineColor)
+
 /***************************************************
- * Second Charts (每秒數據圖表)
+ * [B] 每秒圖表（Second Charts）
+ * 以每秒為單位，顯示最近 60 秒的 Reward 與 Steps
+ *
+ * initSecondChart()
+ *   用空陣列初始化兩張折線圖（帶面積填色）
+ *
+ * updateSecondChart()
+ *   每秒由 setInterval 呼叫
+ *   暫停時：不記錄資料，改把 startTime 推後 1000ms，
+ *           讓時間軸不出現空缺（x 軸保持連續）
+ *   超過 60 筆後移除最舊資料（滑動視窗）
+ *   更新完後把 secondReward / secondSteps 歸零
  ***************************************************/
-
-// 初始化每秒數據的 Reward 與 Steps 圖表
 function initSecondChart() {
-  // Reward Flow 圖表
-  const rewardLayout = {
-    title: '每秒獲得獎勵',
-    xaxis: { title: '時間(秒)' },
-    yaxis: { title: '獎勵' },
-    margin: { t: 30, b: 40, l: 50, r: 20 }
-  };
-
   Plotly.newPlot('p1-second-reward', [{
     x: rewardLabels,
     y: rewardData,
     mode: 'lines',
     fill: 'tozeroy',
     line: { color: rewardLineColor }
-  }], rewardLayout);
-
-  // Steps Flow 圖表
-  const stepsLayout = {
-    title: '每秒輸出步數',
-    xaxis: { title: '時間 (秒)' },
-    yaxis: { title: '步數' },
+  }], {
+    title: '每秒獲得獎勵',
+    xaxis: { title: '時間(秒)' },
+    yaxis: { title: '獎勵' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  };
+  });
 
   Plotly.newPlot('p1-second-steps', [{
     x: stepsLabels,
@@ -68,97 +61,73 @@ function initSecondChart() {
     mode: 'lines',
     fill: 'tozeroy',
     line: { color: stepsLineColor }
-  }], stepsLayout);
+  }], {
+    title: '每秒輸出步數',
+    xaxis: { title: '時間 (秒)' },
+    yaxis: { title: '步數' },
+    margin: { t: 30, b: 40, l: 50, r: 20 }
+  });
 }
 
-// 更新每秒數據圖表（Reward 與 Steps）
 function updateSecondChart() {
-  // 按下暫停後圖表停止更新
-  // startTime向後延一秒
-  if(isPaused){startTime+=1000;return}
-  // 取得目前時間（秒）
-  const currentTime = ((Date.now() - startTime) / 1000).toFixed(1);
-  // console.log(currentTime)
+  // 暫停時不記資料，把 startTime 推後 1 秒讓時間軸保持連續
+  if (isPaused) { startTime += 1000; return; }
 
-  // 更新 Reward 資料
+  const currentTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
   rewardLabels.push(currentTime);
   rewardData.push(secondReward);
-  // console.log(rewardData)
-  if (rewardData.length > 60) {
-    rewardLabels.shift();
-    rewardData.shift();
-  }
-  Plotly.update('p1-second-reward', {
-    x: [rewardLabels],
-    y: [rewardData]
-  });
-  // 重置累計 Reward
+  if (rewardData.length > 60) { rewardLabels.shift(); rewardData.shift(); }
+  Plotly.update('p1-second-reward', { x: [rewardLabels], y: [rewardData] });
   secondReward = 0;
 
-  // 更新 Steps 資料
   stepsLabels.push(currentTime);
   stepsData.push(secondSteps);
-  if (stepsData.length > 60) {
-    stepsLabels.shift();
-    stepsData.shift();
-  }
-  Plotly.update('p1-second-steps', {
-    x: [stepsLabels],
-    y: [stepsData]
-  });
-  // 重置累計 Steps
+  if (stepsData.length > 60) { stepsLabels.shift(); stepsData.shift(); }
+  Plotly.update('p1-second-steps', { x: [stepsLabels], y: [stepsData] });
   secondSteps = 0;
 }
 
 
 /***************************************************
- * Episode Charts (每回合數據圖表)
+ * [C] 每回合圖表（Episode Charts）
+ * 以回合（episode）為單位，顯示最近 100 回合的 Reward 與 Steps
+ *
+ * initEpisodeChart()
+ *   用空陣列初始化兩張柱狀圖
+ *
+ * updateEpisodeChart()
+ *   由主迴圈在 done:true 時呼叫
+ *   讀取當前 episodeCount / episodeReward / episodeSteps，推入陣列
+ *   超過 100 筆後移除最舊資料（滑動視窗）
  ***************************************************/
-
-// 初始化每回合數據的圖表（Reward 與 Steps）
 function initEpisodeChart() {
-  // 每回合累積 Reward 柱狀圖
   Plotly.newPlot("p1-episode-reward", [{
     x: episodeIndex,
     y: episodeRewardData,
     type: 'bar',
     marker: { color: rewardMarkerColor }
   }], {
-    title: {
-      text: "每回合獲得獎勵",
-      font: { size: 18 },
-      yanchor: "top",
-      y: 0.95,
-      pad: { b: 0 }
-    },
+    title: { text: "每回合獲得獎勵", font: { size: 18 }, yanchor: "top", y: 0.95, pad: { b: 0 } },
     xaxis: { title: "回合數 (Episode)" },
     yaxis: { title: "獎勵" },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   });
 
-  // 每回合累積 Steps 柱狀圖
   Plotly.newPlot("p1-episode-steps", [{
     x: episodeIndex,
     y: episodeStepsData,
     type: 'bar',
     marker: { color: stepsMarkerColor }
   }], {
-    title: {
-      text: "每回合輸出步數",
-      font: { size: 18 },
-      yanchor: "top",
-      y: 0.95,
-      pad: { b: 0 }
-    },
+    title: { text: "每回合輸出步數", font: { size: 18 }, yanchor: "top", y: 0.95, pad: { b: 0 } },
     xaxis: { title: "回合數 (Episode)" },
     yaxis: { title: "步數 (Steps)" },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   });
 }
 
-// 更新每回合數據圖表
 function updateEpisodeChart() {
-  // 將本回合資料加入陣列（假設 episodeCount、episodeReward、episodeSteps 由其他邏輯更新）
   episodeIndex.push(episodeCount);
   episodeRewardData.push(episodeReward);
   episodeStepsData.push(episodeSteps);
@@ -169,59 +138,42 @@ function updateEpisodeChart() {
     episodeStepsData.shift();
   }
 
-  Plotly.update("p1-episode-reward", {
-    x: [episodeIndex],
-    y: [episodeRewardData]
-  });
-
-
-
-  Plotly.update("p1-episode-steps", {
-    x: [episodeIndex],
-    y: [episodeStepsData]
-  });
+  Plotly.update("p1-episode-reward", { x: [episodeIndex], y: [episodeRewardData] });
+  Plotly.update("p1-episode-steps",  { x: [episodeIndex], y: [episodeStepsData]  });
 }
 
 
 /***************************************************
- * 初始化與定時更新調用
+ * [D] 初始化與定時更新
+ * 頁面載入時立即初始化四張圖表
+ * setInterval 每秒呼叫 updateSecondChart（由 plotGeneralCharts 控制開關）
  ***************************************************/
-// 初始化每秒數據圖表
 initSecondChart();
-
-// 初始化每回合數據圖表
 initEpisodeChart();
 
-// 每秒更新一次 Reward 與 Steps 的數據圖表
 setInterval(() => {
-  if(plotGeneralCharts){updateSecondChart();}
-  // updateSecondChart();
+  if (plotGeneralCharts) updateSecondChart();
 }, 1000);
 
 
-
-
+/***************************************************
+ * [E] 重置（工具函數，目前未在主流程呼叫）
+ * 清空所有圖表資料陣列並重新初始化
+ * 可在換遊戲或手動重置訓練時呼叫
+ ***************************************************/
 function resetGeneralCharts() {
-  // 清空每秒資料陣列
-  rewardData = [];
-  rewardLabels = [];
-  stepsData = [];
-  stepsLabels = [];
+  rewardData = []; rewardLabels = [];
+  stepsData  = []; stepsLabels  = [];
 
-  // 清空每回合資料陣列
-  episodeIndex = [];
-  episodeRewardData = [];
-  episodeStepsData = [];
+  episodeIndex = []; episodeRewardData = []; episodeStepsData = [];
 
-  // 可選：重置 startTime 與其他累計數值
-  startTime = Date.now();
+  startTime    = Date.now();
   secondReward = 0;
-  secondSteps = 0;
-  episodeCount = 1;
+  secondSteps  = 0;
+  episodeCount  = 1;
   episodeReward = 0;
-  episodeSteps = 0;
+  episodeSteps  = 0;
 
-  // 重新初始化圖表
   initSecondChart();
   initEpisodeChart();
 
