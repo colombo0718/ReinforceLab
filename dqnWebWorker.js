@@ -135,7 +135,9 @@ async function DQNfitToQTable() {
   const targets = [];
   for (const [stateKey, qValues] of batch) {
     if (!Array.isArray(qValues) || qValues.length !== numActions) continue;
-    states.push(getStateFromKey(stateKey));
+    const stateVec = getStateFromKey(stateKey);
+    if (stateVec.length !== stateDim) continue;   // 維度不符（換遊戲時機競態）→ 跳過
+    states.push(stateVec);
     targets.push(qValues);
   }
 
