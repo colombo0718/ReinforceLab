@@ -164,6 +164,22 @@ Q-Table 把這個想像寫進了自己的記憶。
 熱力圖因此變成了雙向互學的觀測窗：
 不需要另外畫 DQN 的圖，Q-Table 的圖本身就記錄了 DQN 影響它的痕跡。
 
+### 經驗檔格式統一
+
+標準 DQN 若要儲存已學到的知識，需要序列化神經網路權重（TensorFlow SavedModel、ONNX 等），
+跨版本、跨框架都可能遇到相容問題，對初學者來說幾乎是黑盒。
+
+蒸餾式 DQN 的知識源頭始終是 Q-Table，因此：
+
+> **匯出的 JSON 對 Q-Table 模式與 DQN 模式完全共用。**
+
+- Q-Table 模式練出的經驗，可以直接載入後切換 DQN 模式繼續——
+  Worker 立即蒸餾，不需要額外轉換
+- 使用者不需要理解神經網路序列化，「存檔」和「載入」的行為對他們始終透明一致
+- Q-Table JSON 本身就是人類可讀的格式，可以手動檢視、比較、分享
+
+**這不是刻意設計出來的功能，而是「Q-Table 作為知識中介層」這個架構決策的自然結果。**
+
 ### 教育意義
 這個設計本身就在示範一個重要觀念：
 > **新方法不一定要完全推翻舊方法，
@@ -264,14 +280,16 @@ Web Worker 與主執行緒之間只能透過 `postMessage` 通訊，
 
 ---
 
-## 十、目前實作狀態（待完成）
+## 十、目前實作狀態
 
 - [x] Q-Table 學習主流程
-- [x] dqnWebWorker.js：`DQNfitToQTable()` 骨架
-- [ ] `evaluateQuality()` 根據模式切換 Q-Table / 神經網路推論
-- [ ] 定期觸發 fit（interval 或 episode 結束時）
-- [ ] 動態同步 inputShape 與輸出維度（目前 hardcode）
-- [ ] 訓練進度指標（loss 曲線、與 Q-Table 的誤差）
+- [x] dqnWebWorker.js：完整 TF.js 神經網路（動態 stateDim / actionCount）
+- [x] `evaluateQuality()` 根據模式切換 Q-Table / DQN predict（async，dqnFitted 暖機保護）
+- [x] 每回合結束觸發 fit（syncQTable → await fitDone → 再送下一局第一個 action）
+- [x] 動態同步 inputShape 與輸出維度（initModel 訊息）
+- [x] Bellman target 在 DQN 模式下改用 DQN 的 nextQArray
+- [x] Trace 機制傳遞 nextQArray（時間回溯 × 空間泛化 互補）
+- [ ] 訓練進度指標 UI（loss 曲線、dqnFitted 狀態顯示）——待實作
 
 ---
 
