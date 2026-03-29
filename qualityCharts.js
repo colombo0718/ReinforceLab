@@ -11,7 +11,7 @@
  *
  * 依賴 index.html 提供的全局變數：
  *   stateInfo, numBins, action_size
- *   evaluateQuality(), plotQualityCharts, nextState
+ *   getQArrayFromTable(), plotQualityCharts, nextState
  ***************************************************/
 
 
@@ -208,7 +208,7 @@ function generateWhiteOverlayMatrix() {
       const state = [...focusState];
       state[cutX]  = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
       state[cutY]  = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const sorted = evaluateQuality(state).slice().sort((a, b) => b - a);
+      const sorted = getQArrayFromTable(state).slice().sort((a, b) => b - a);
       const gap    = sorted[0] - (sorted[1] ?? sorted[0]);
       row.push(1 - Math.min(gap / gapMax, 1));
     }
@@ -247,7 +247,7 @@ function generateActionHeatmap() {
       const state    = [...focusState];
       state[cutX]    = xvals[i];
       state[cutY]    = yvals[j];
-      const qArr     = evaluateQuality(state);
+      const qArr     = getQArrayFromTable(state);
       const best     = qArr.indexOf(Math.max(...qArr));
       row.push(best);
       textRow.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Best action: ${best}`);
@@ -281,7 +281,7 @@ function generateMaxQHeatmap() {
       const state = [...focusState];
       state[cutX]  = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
       state[cutY]  = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const maxQ   = Math.max(...evaluateQuality(state));
+      const maxQ   = Math.max(...getQArrayFromTable(state));
       xvals.push(state[cutX]);
       yvals.push(state[cutY]);
       zvals.push(maxQ);
@@ -312,7 +312,7 @@ function generateMinQHeatmap() {
       const state = [...focusState];
       state[cutX]  = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
       state[cutY]  = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const minQ   = Math.min(...evaluateQuality(state));
+      const minQ   = Math.min(...getQArrayFromTable(state));
       xvals.push(state[cutX]);
       yvals.push(state[cutY]);
       zvals.push(minQ);
@@ -345,7 +345,7 @@ function generateQLineSlice() {
       const state = [...focusState];
       state[cutX]  = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
       xvals.push(state[cutX]);
-      yvals.push(evaluateQuality(state)[action]);
+      yvals.push(getQArrayFromTable(state)[action]);
     }
     data.push({
       x: xvals, y: yvals,
@@ -367,7 +367,7 @@ function generateQLineSlice() {
 
 // 當前狀態動作柱狀圖：focusState 的各動作 Q 值
 function generateQBarSlice() {
-  const qArr = evaluateQuality(focusState);
+  const qArr = getQArrayFromTable(focusState);
   if (!qArr) return;
 
   const actionColors = generateDiscreteColorscale(action_size).map(e => e[1]);
