@@ -70,13 +70,16 @@ function getQArrayFromTable(state) {
   return QTable[stateKey];
 }
 
-function qTableUpdate(prevS, prevA, reward, nextS, nextA) {
+function qTableUpdate(prevS, prevA, reward, nextS, nextA, nextQArray = null) {
   const prevQArray  = getQArrayFromTable(prevS);
-  const nextQArray  = getQArrayFromTable(nextS);
 
-  const maxQNext    = Math.max(...nextQArray);
-  const minQNext    = Math.min(...nextQArray);
-  const actualQNext = nextQArray[nextA];
+  // DQN 模式（dqnFitted 確保第一次 fit 前不使用未訓練的估值）
+  const useDQN = currentAlgorithm === 'DQN' && dqnFitted && nextQArray !== null;
+  const qNext  = useDQN ? nextQArray : getQArrayFromTable(nextS);
+
+  const maxQNext    = Math.max(...qNext);
+  const minQNext    = Math.min(...qNext);
+  const actualQNext = qNext[nextA];
 
   // Psi 混合公式（詳見上方說明）
   const targetQ = (1 - Math.abs(Psi)) * actualQNext +

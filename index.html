@@ -291,6 +291,7 @@
       togglePauseBtn.textContent = "⏸️暫停";
       resetGeneralCharts();                                    // 刷新四張通用圖表
       dqnWorker.postMessage({ type: 'resetQTable' });          // 清空 Worker 的 Q-Table 副本
+      dqnFitted = false;                                       // 重置 DQN 信任旗標
     }
 
     loadGameBtn.addEventListener("click", () => {
@@ -509,8 +510,8 @@
      * [8] 演算法管線：評估 → 策略 → 動作
      *
      * evaluateQuality(state) → qArray（各動作的估值）
-     *   目前只實作 Q-Table 查表（同步）
-     *   TODO：currentAlgorithm === 'DQN' 時改為 Worker predict（非同步）
+     *   Q-Table 模式：同步查表（getQArrayFromTable）
+     *   DQN 模式：非同步 Worker predict（dqnFitted 前仍走 Q-Table 作為暖機）
      *
      * planningStrategy(qArray) → strategy（各動作的機率分配）
      *   根據 currentStrategy 分流 ε-greedy 或 Softmax
@@ -522,14 +523,15 @@
     let nextAction, nextState;
     let reward;
 
-    function evaluateQuality(State) {
-      // TODO（DQN 模式）：currentAlgorithm === 'DQN' 時走 Worker predict 路徑
-      // if (currentAlgorithm === 'DQN') {
-      //   return new Promise((resolve) => {
-      //     pendingPredictResolve = resolve;
-      //     dqnWorker.postMessage({ type: 'predict', data: State });
-      //   });
-      // }
+    async function evaluateQuality(State) {
+      // DQN 模式：透過 Worker predict 取估值（非同步）
+      // dqnFitted 確保第一次訓練前不使用垃圾估值
+      if (currentAlgorithm === 'DQN' && dqnFitted) {
+        return new Promise((resolve) => {
+          pendingPredictResolve = resolve;
+          dqnWorker.postMessage({ type: 'predict', data: State });
+        });
+      }
       return getQArrayFromTable(State);
     }
 
@@ -538,9 +540,9 @@
       return eGreedyStrategy(qArray); // 預設 ε-greedy
     }
 
-    function learnOneStep(prevState, prevAction, reward, nextState, nextAction) {
+    function learnOneStep(prevState, prevAction, reward, nextState, nextAction, nextQArray = null) {
       if (Number.isInteger(prevAction)) {
-        qTableUpdate(prevState, prevAction, reward, nextState, nextAction);
+        qTableUpdate(prevState, prevAction, reward, nextState, nextAction, nextQArray);
       }
     }
 
@@ -558,15 +560,15 @@
     const traceLength = 5;
     let trace = [];
 
-    function recordStep(prevState, prevAction, reward, nextState, nextAction) {
-      trace.unshift([prevState, prevAction, reward, nextState, nextAction]);
+    function recordStep(prevState, prevAction, reward, nextState, nextAction, nextQArray = null) {
+      trace.unshift([prevState, prevAction, reward, nextState, nextAction, nextQArray]);
       if (trace.length > traceLength) trace.pop();
     }
 
     function learnFromTrace() {
       for (let i = 0; i < trace.length; i++) {
-        const [prevState, prevAction, reward, nextState, nextAction] = trace[i];
-        learnOneStep(prevState, prevAction, reward, nextState, nextAction);
+        const [prevState, prevAction, reward, nextState, nextAction, nextQArray] = trace[i];
+        learnOneStep(prevState, prevAction, reward, nextState, nextAction, nextQArray);
       }
     }
 
@@ -587,24 +589,26 @@
      ***************************************************/
     const dqnWorker = new Worker('dqnWebWorker.js');
 
-    let lastSyncedQTable = {};
+    let dqnFitted          = false;  // 第一次 fit 成功前不讓 DQN 估值污染 Q-Table
+    let pendingPredictResolve = null; // DQN predict Promise 暫存
+    let pendingFitResolve     = null; // DQN fit   Promise 暫存
 
+    // 全量同步 QTable → Worker（陣列比較參考相等性，增量 diff 無意義）
     function syncQTableToWorker() {
-      const updates = {};
-      for (let [key, value] of Object.entries(QTable)) {
-        if (lastSyncedQTable[key] !== value) updates[key] = value;
-      }
-      if (Object.keys(updates).length > 0) {
-        dqnWorker.postMessage({ type: 'updateQTable', data: updates });
-        lastSyncedQTable = { ...QTable };
-      }
+      dqnWorker.postMessage({ type: 'updateQTable', data: { ...QTable } });
     }
 
     function syncStateInfoToWorker() {
       dqnWorker.postMessage({ type: 'updateStateInfo', data: { stateRange, numBins } });
     }
 
-    let pendingPredictResolve = null;
+    // 等待 Worker 完成一次蒸餾訓練（回傳 Promise，resolve 在 fitDone 訊息觸發）
+    function requestFit() {
+      return new Promise((resolve) => {
+        pendingFitResolve = resolve;
+        dqnWorker.postMessage({ type: 'fit' });
+      });
+    }
 
     dqnWorker.onmessage = (event) => {
       if (event.data.type === 'log') {
@@ -615,7 +619,13 @@
           pendingPredictResolve = null;
         }
       } else if (event.data.type === 'fitDone') {
-        console.log("DQN 擬合完成");
+        dqnFitted = true;                                      // 第一次 fit 後開始信任 DQN
+        const loss = event.data.loss;
+        console.log(`[DQN] fit 完成，loss=${loss?.toFixed(4)}`);
+        if (pendingFitResolve) {
+          pendingFitResolve(loss);
+          pendingFitResolve = null;
+        }
       }
     };
 
@@ -633,7 +643,7 @@
      *   2. planningStrategy(qArray) → strategy → selectAction → nextAction
      *   3. recordStep；reward≠0 → learnFromTrace；否則 learnOneStep（單步更新）
      *   4. updateQtableStats（更新分析面板）
-     *   5. done:true → 更新回合圖表，重置計數
+     *   5. done:true → 更新回合圖表，重置計數；DQN 模式 → syncQTable → await fit
      *   6. setTimeout(送 action，delayTime ms)
      *
      * 同一個 listener 也處理：
@@ -646,11 +656,6 @@
       const message = event.data;
 
       if (message.type === "reward_state") {
-
-        // 定期同步 QTable 到 Worker（待 DQN 功能完成時啟用）
-        if (episodeSteps % 10 === 0) {
-          // await syncQTableToWorker();
-        }
 
         // 過濾過期的 sessionId（換遊戲後舊訊息不處理）
         if (!message.sessionId) return;
@@ -666,16 +671,16 @@
         console.log(reward, episodeReward);
 
         // 演算法管線
-        let qArray   = evaluateQuality(nextState);  // 1. 評估價值
-        let strategy = planningStrategy(qArray);    // 2. 擬定策略
-        nextAction   = selectAction(strategy);      // 3. 選擇動作
+        let qArray   = await evaluateQuality(nextState);  // 1. 評估價值（DQN 模式為非同步）
+        let strategy = planningStrategy(qArray);          // 2. 擬定策略
+        nextAction   = selectAction(strategy);            // 3. 選擇動作
 
-        // 學習
-        recordStep(prevState, prevAction, reward, nextState, nextAction);
+        // 學習（qArray 傳入，DQN 模式下 qTableUpdate 可用 DQN 估值做 Bellman target）
+        recordStep(prevState, prevAction, reward, nextState, nextAction, qArray);
         if (reward !== 0) {
           learnFromTrace();   // 非零 reward：整段 trace 回溯更新
         } else {
-          learnOneStep(prevState, prevAction, reward, nextState, nextAction);
+          learnOneStep(prevState, prevAction, reward, nextState, nextAction, qArray);
         }
 
         updateQtableStats();
@@ -690,6 +695,12 @@
           episodeCount  += 1;
           episodeReward  = 0;
           episodeSteps   = 0;
+
+          // DQN 模式：回合結束時同步 Q-Table → Worker，執行蒸餾訓練，等待完成再繼續
+          if (currentAlgorithm === 'DQN') {
+            syncQTableToWorker();
+            await requestFit();
+          }
         }
 
         // 送出下一步動作
