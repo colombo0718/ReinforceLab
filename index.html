@@ -168,38 +168,22 @@
         <div id="p1-ui2">
           <h4>圖表控制</h4>
 
-          <label for="x-axis">X 軸維度:</label>
-          <select id="x-axis">
-            <option value="0">維度 0</option>
-            <option value="1">維度 1</option>
-            <option value="2">維度 2</option>
-          </select>
+          <!-- X / Y 軸維度選擇（選項由 initChartControls 動態填入） -->
+          <label>X 軸：</label><select id="x-axis"></select>
+          &nbsp;&nbsp;
+          <label>Y 軸：</label><select id="y-axis"></select>
+          <br><br>
 
-          <label for="y-axis">Y 軸維度:</label>
-          <select id="y-axis">
-            <option value="0">維度 0</option>
-            <option value="1">維度 1</option>
-            <option value="2">維度 2</option>
-          </select>
+          <!-- 觀測基準點模式 -->
+          <input type="radio" id="tracking-live"   name="tracking" value="live" checked>
+          <label for="tracking-live">跟隨當下狀態</label>
+          &nbsp;&nbsp;
+          <input type="radio" id="tracking-slider" name="tracking" value="slider">
+          <label for="tracking-slider">跟隨滑桿指示</label>
+          <br><br>
 
-
-
-          
-          <input type="checkbox" id="tracking">
-          <label for="tracking">跟隨當下</label></br></br>
-
-          <label for="dim0">維度 0:</label>
-          <input type="range" id="dim0" min="0" max="19" value="0">
-          <span id="dim0-value">0</span><br>
-
-          <label for="dim1">維度 1:</label>
-          <input type="range" id="dim1" min="0" max="19" value="0">
-          <span id="dim1-value">0</span><br>
-
-          <label for="dim2">維度 2:</label>
-          <input type="range" id="dim2" min="0" max="19" value="0">
-          <span id="dim2-value">0</span><br>
-
+          <!-- 維度滑桿（由 initChartControls 依 stateInfo 動態生成） -->
+          <table id="dim-sliders-table" style="border-spacing: 4px 6px;"></table>
 
         </div>
         

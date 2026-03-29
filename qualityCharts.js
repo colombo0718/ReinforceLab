@@ -38,38 +38,81 @@ const gapMax = 10;
  *
  * initChartControls()
  *   收到 gameInfo 後由 index.html 呼叫
- *   動態填入 x-axis / y-axis select 的維度選項（含 stateInfo 名稱）
- *   更新 dim0/1/2 滑桿的 max（對應各維度的 numBins）
+ *   - 填入 x-axis / y-axis select 選項，格式「狀態N-name」
+ *   - 依 stateInfo 動態生成 dim 滑桿（幾個狀態就幾條）
+ *     每條滑桿初始位置在中間桶，顯示桶中心真實值與 (min~max) 範圍
+ *   - 初始化 focusState 為各維度中間桶的真實值
  *
  * x-axis / y-axis select change → 更新 cutX / cutY
- * dim sliders input → tracking 關閉時更新 focusState 對應維度
- *   滑桿值為桶編號，轉換公式：min + (idx + 0.5) * (max-min) / N（桶中心）
+ * dim 滑桿 input → 跟隨滑桿模式時更新 focusState 對應維度（值為桶中心真實值）
  ***************************************************/
+function bucketToReal(dim, bucketIdx) {
+  const { min, max } = stateInfo[dim];
+  return min + (bucketIdx + 0.5) * (max - min) / numBins[dim];
+}
+
 function initChartControls() {
-  // 填入 x-axis / y-axis select 選項（顯示維度名稱）
-  ['x-axis', 'y-axis'].forEach(id => {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-    sel.innerHTML = '';
-    stateInfo.forEach((info, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `dim${i}：${info.name ?? '維度 ' + i}`;
-      sel.appendChild(opt);
+  // 填入 x-axis / y-axis 選項，格式「狀態N-name」
+  const dimOptions = stateInfo.map((info, i) =>
+    `<option value="${i}">狀態${i + 1}-${info.name ?? '維度' + i}</option>`
+  ).join('');
+  document.getElementById('x-axis').innerHTML = dimOptions;
+  document.getElementById('y-axis').innerHTML = dimOptions;
+  document.getElementById('y-axis').value = stateInfo.length > 1 ? 1 : 0;
+  cutX = 0;
+  cutY = stateInfo.length > 1 ? 1 : 0;
+
+  // 動態生成 dim 滑桿 table（幾個狀態就幾行）
+  const table = document.getElementById('dim-sliders-table');
+  table.innerHTML = '';
+  focusState = [];
+
+  stateInfo.forEach((info, dim) => {
+    const midBucket = Math.floor(numBins[dim] / 2);
+    const initReal  = bucketToReal(dim, midBucket);
+    focusState.push(initReal);
+
+    const row = document.createElement('tr');
+
+    // 標籤欄
+    const tdLabel = document.createElement('td');
+    tdLabel.textContent = `狀態${dim + 1}-${info.name ?? '維度' + dim}`;
+    tdLabel.style.whiteSpace = 'nowrap';
+    tdLabel.style.paddingRight = '6px';
+
+    // 滑桿欄
+    const tdSlider = document.createElement('td');
+
+    const slider = document.createElement('input');
+    slider.type  = 'range';
+    slider.id    = `dim${dim}`;
+    slider.min   = 0;
+    slider.max   = numBins[dim] - 1;
+    slider.value = midBucket;
+    slider.style.width = '120px';
+
+    const valSpan = document.createElement('span');
+    valSpan.id          = `dim${dim}-value`;
+    valSpan.textContent = initReal.toFixed(2);
+    valSpan.style.margin = '0 4px';
+
+    const rangeSpan = document.createElement('span');
+    rangeSpan.textContent = `(${info.min}~${info.max})`;
+    rangeSpan.style.color    = '#888';
+    rangeSpan.style.fontSize = '0.82em';
+
+    slider.addEventListener('input', () => {
+      if (document.querySelector('input[name="tracking"]:checked')?.value === 'live') return;
+      const idx  = parseInt(slider.value);
+      const real = bucketToReal(dim, idx);
+      valSpan.textContent = real.toFixed(2);
+      if (focusState) focusState[dim] = real;
     });
+
+    tdSlider.append(slider, valSpan, rangeSpan);
+    row.append(tdLabel, tdSlider);
+    table.appendChild(row);
   });
-  // y-axis 預設選第 1 維（若只有 1 維則選 0）
-  const yAxisSel = document.getElementById('y-axis');
-  if (yAxisSel) yAxisSel.value = stateInfo.length > 1 ? 1 : 0;
-
-  // 更新各 dim 滑桿的 max（對應 numBins）
-  for (let dim = 0; dim < Math.min(stateInfo.length, 3); dim++) {
-    const slider = document.getElementById(`dim${dim}`);
-    if (slider) slider.max = numBins[dim] - 1;
-  }
-
-  // 重置 focusState 為各維度最小值
-  focusState = stateInfo.map(info => info.min);
 }
 
 // x-axis / y-axis select → 更新 cutX / cutY
@@ -79,20 +122,6 @@ document.getElementById('x-axis')?.addEventListener('change', (e) => {
 document.getElementById('y-axis')?.addEventListener('change', (e) => {
   cutY = parseInt(e.target.value);
 });
-
-// dim 滑桿 → tracking 關閉時更新 focusState 對應維度
-for (let dim = 0; dim < 3; dim++) {
-  document.getElementById(`dim${dim}`)?.addEventListener('input', (e) => {
-    if (document.getElementById('tracking')?.checked) return;
-    if (!stateInfo || !focusState) return;
-    const bucketIdx = parseInt(e.target.value);
-    document.getElementById(`dim${dim}-value`).textContent = bucketIdx;
-    if (stateInfo[dim]) {
-      const { min, max } = stateInfo[dim];
-      focusState[dim] = min + (bucketIdx + 0.5) * (max - min) / numBins[dim];
-    }
-  });
-}
 
 
 /***************************************************
@@ -373,7 +402,7 @@ setInterval(() => {
   if (!stateInfo || !plotQualityCharts) return;
 
   // 更新 focusState
-  if (document.getElementById('tracking')?.checked) {
+  if (document.querySelector('input[name="tracking"]:checked')?.value === 'live') {
     focusState = [...nextState];
   } else if (!focusState) {
     focusState = stateInfo.map(info => info.min); // 初次備援
