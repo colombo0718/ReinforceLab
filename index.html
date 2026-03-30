@@ -319,13 +319,28 @@
       if (!isPaused) {
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
         togglePauseBtn.textContent = "▶️繼續";
+        runPausedDistillation(); // 暫停時讓 NN 繼續向 Q-Table 學習
       } else {
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
         gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
         togglePauseBtn.textContent = "⏸️暫停";
+        // isPaused = false 後，runPausedDistillation 的 while 迴圈自然退出
       }
       isPaused = !isPaused;
     });
+
+    // 暫停期間自動蒸餾：讓 NN 持續向 Q-Table 學習，直到遊戲恢復
+    async function runPausedDistillation() {
+      while (isPaused) {
+        if (!fitInProgress) {
+          fitInProgress = true;
+          syncQTableToWorker();
+          await requestFit(); // fitDone handler 會重置 fitInProgress
+        } else {
+          await new Promise(r => setTimeout(r, 200)); // 等前一次 fit 結束
+        }
+      }
+    }
 
     let isAccel = false;
     toggleAccelBtn.addEventListener("click", () => {
