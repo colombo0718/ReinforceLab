@@ -114,14 +114,6 @@ function initChartControls() {
     table.appendChild(row);
   });
 
-  // 維度不足 2 時清空熱力圖，避免上一個遊戲的舊圖殘留
-  if (stateInfo.length < 2) {
-    const msg = '需要至少 2 個狀態維度才能顯示熱力圖';
-    ['p1-diff-value', 'p1-maxi-value', 'p1-mini-value'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { Plotly.purge(el); el.innerHTML = `<div style="padding:20px;color:#888;">${msg}</div>`; }
-    });
-  }
 }
 
 // x-axis / y-axis select → 更新 cutX / cutY
@@ -208,15 +200,17 @@ function hsvToRgb(h, s, v) {
 }
 
 function generateWhiteOverlayMatrix() {
-  const numBinsX = numBins[cutX];
-  const numBinsY = numBins[cutY];
+  const hasX     = stateInfo.length >= 1;
+  const hasY     = stateInfo.length >= 2;
+  const numBinsX = hasX ? numBins[cutX] : 1;
+  const numBinsY = hasY ? numBins[cutY] : 1;
   const overlay  = [];
   for (let j = 0; j < numBinsY; j++) {
     const row = [];
     for (let i = 0; i < numBinsX; i++) {
       const state = [...focusState];
-      state[cutX]  = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
-      state[cutY]  = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
+      if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
+      if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
       const sorted = getQArrayFromTable(state).slice().sort((a, b) => b - a);
       const gap    = sorted[0] - (sorted[1] ?? sorted[0]);
       row.push(1 - Math.min(gap / gapMax, 1));
@@ -238,26 +232,29 @@ function dimLabel(dim) {
  ***************************************************/
 
 // 動作選擇熱力圖：下層最佳動作色塊 + 上層確信度遮罩
+// 維度不足時退化：1D → 單列，0D → 單格
 function generateActionHeatmap() {
-  const numBinsX = numBins[cutX];
-  const numBinsY = numBins[cutY];
+  const hasX     = stateInfo.length >= 1;
+  const hasY     = stateInfo.length >= 2;
+  const numBinsX = hasX ? numBins[cutX] : 1;
+  const numBinsY = hasY ? numBins[cutY] : 1;
   const z = [], text = [], xvals = [], yvals = [];
 
   for (let i = 0; i < numBinsX; i++) {
-    xvals.push(stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX);
+    xvals.push(hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : 0);
   }
   for (let j = 0; j < numBinsY; j++) {
-    yvals.push(stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY);
+    yvals.push(hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : 0);
   }
 
   for (let j = 0; j < numBinsY; j++) {
     const row = [], textRow = [];
     for (let i = 0; i < numBinsX; i++) {
-      const state    = [...focusState];
-      state[cutX]    = xvals[i];
-      state[cutY]    = yvals[j];
-      const qArr     = getQArrayFromTable(state);
-      const best     = qArr.indexOf(Math.max(...qArr));
+      const state = [...focusState];
+      if (hasX) state[cutX] = xvals[i];
+      if (hasY) state[cutY] = yvals[j];
+      const qArr  = getQArrayFromTable(state);
+      const best  = qArr.indexOf(Math.max(...qArr));
       row.push(best);
       textRow.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Best action: ${best}`);
     }
@@ -273,26 +270,29 @@ function generateActionHeatmap() {
       zmin: 0, zmax: 1, showscale: false, hoverinfo: 'skip' }
   ], {
     title: '動作選擇熱力圖',
-    xaxis: { title: dimLabel(cutX) },
-    yaxis: { title: dimLabel(cutY) },
+    xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
+    yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   });
 }
 
 // 最大 Q 值熱力圖：青（負）→ 白（0）→ 橘（正）
+// 維度不足時退化：1D → 單列，0D → 單格
 function generateMaxQHeatmap() {
-  const numBinsX = numBins[cutX];
-  const numBinsY = numBins[cutY];
+  const hasX     = stateInfo.length >= 1;
+  const hasY     = stateInfo.length >= 2;
+  const numBinsX = hasX ? numBins[cutX] : 1;
+  const numBinsY = hasY ? numBins[cutY] : 1;
   const xvals = [], yvals = [], zvals = [], texts = [];
 
   for (let i = 0; i < numBinsX; i++) {
     for (let j = 0; j < numBinsY; j++) {
       const state = [...focusState];
-      state[cutX]  = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
-      state[cutY]  = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const maxQ   = Math.max(...getQArrayFromTable(state));
-      xvals.push(state[cutX]);
-      yvals.push(state[cutY]);
+      if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
+      if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
+      const maxQ = Math.max(...getQArrayFromTable(state));
+      xvals.push(hasX ? state[cutX] : 0);
+      yvals.push(hasY ? state[cutY] : 0);
       zvals.push(maxQ);
       texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Max Q: ${maxQ.toFixed(2)}`);
     }
@@ -304,26 +304,29 @@ function generateMaxQHeatmap() {
     zmid: 0, text: texts, hoverinfo: 'text'
   }], {
     title: '最大 Q 值熱力圖',
-    xaxis: { title: dimLabel(cutX) },
-    yaxis: { title: dimLabel(cutY) },
+    xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
+    yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   });
 }
 
 // 最小 Q 值熱力圖：藍（負）→ 白（0）→ 紅（正）
+// 維度不足時退化：1D → 單列，0D → 單格
 function generateMinQHeatmap() {
-  const numBinsX = numBins[cutX];
-  const numBinsY = numBins[cutY];
+  const hasX     = stateInfo.length >= 1;
+  const hasY     = stateInfo.length >= 2;
+  const numBinsX = hasX ? numBins[cutX] : 1;
+  const numBinsY = hasY ? numBins[cutY] : 1;
   const xvals = [], yvals = [], zvals = [], texts = [];
 
   for (let i = 0; i < numBinsX; i++) {
     for (let j = 0; j < numBinsY; j++) {
       const state = [...focusState];
-      state[cutX]  = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
-      state[cutY]  = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const minQ   = Math.min(...getQArrayFromTable(state));
-      xvals.push(state[cutX]);
-      yvals.push(state[cutY]);
+      if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
+      if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
+      const minQ = Math.min(...getQArrayFromTable(state));
+      xvals.push(hasX ? state[cutX] : 0);
+      yvals.push(hasY ? state[cutY] : 0);
       zvals.push(minQ);
       texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Min Q: ${minQ.toFixed(2)}`);
     }
@@ -335,8 +338,8 @@ function generateMinQHeatmap() {
     zmid: 0, text: texts, hoverinfo: 'text'
   }], {
     title: '最小 Q 值熱力圖',
-    xaxis: { title: dimLabel(cutX) },
-    yaxis: { title: dimLabel(cutY) },
+    xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
+    yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   });
 }
@@ -417,14 +420,9 @@ setInterval(() => {
     focusState = stateInfo.map(info => info.min); // 初次備援
   }
 
-  // 1D 圖表（任意維度數皆可）
   generateQBarSlice();
   generateQLineSlice();
-
-  // 2D 圖表（需要至少 2 個維度）
-  if (stateInfo.length >= 2) {
-    generateActionHeatmap();
-    generateMaxQHeatmap();
-    generateMinQHeatmap();
-  }
+  generateActionHeatmap();
+  generateMaxQHeatmap();
+  generateMinQHeatmap();
 }, 1000);
