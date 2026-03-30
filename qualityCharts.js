@@ -113,6 +113,15 @@ function initChartControls() {
     row.append(tdLabel, tdSlider);
     table.appendChild(row);
   });
+
+  // 維度不足 2 時清空熱力圖，避免上一個遊戲的舊圖殘留
+  if (stateInfo.length < 2) {
+    const msg = '需要至少 2 個狀態維度才能顯示熱力圖';
+    ['p1-diff-value', 'p1-maxi-value', 'p1-mini-value'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { Plotly.purge(el); el.innerHTML = `<div style="padding:20px;color:#888;">${msg}</div>`; }
+    });
+  }
 }
 
 // x-axis / y-axis select → 更新 cutX / cutY

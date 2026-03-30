@@ -176,10 +176,10 @@
 
           <!-- 觀測基準點模式 -->
           <input type="radio" id="tracking-live"   name="tracking" value="live" checked>
-          <label for="tracking-live">跟隨當下狀態</label>
+          <label for="tracking-live">跟隨當下</label>
           &nbsp;&nbsp;
           <input type="radio" id="tracking-slider" name="tracking" value="slider">
-          <label for="tracking-slider">跟隨滑桿指示</label>
+          <label for="tracking-slider">滑桿指示</label>
           <br><br>
 
           <!-- 維度滑桿（由 initChartControls 依 stateInfo 動態生成） -->
@@ -668,7 +668,6 @@
         secondSteps   += 1;
         episodeReward += reward;
         episodeSteps  += 1;
-        console.log(reward, episodeReward);
 
         // 演算法管線
         let qArray   = await evaluateQuality(nextState);  // 1. 評估價值（DQN 模式為非同步）
