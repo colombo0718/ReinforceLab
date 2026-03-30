@@ -168,22 +168,28 @@
         <div id="p1-ui2">
           <h4>圖表控制</h4>
 
-          <!-- X / Y 軸維度選擇（選項由 initChartControls 動態填入） -->
+          <!-- 展開狀態：選哪兩個維度鋪開成 X/Y 軸（選項由 initChartControls 動態填入） -->
+          <label>展開狀態：</label>
           <label>X 軸：</label><select id="x-axis"></select>
           &nbsp;&nbsp;
           <label>Y 軸：</label><select id="y-axis"></select>
           <br><br>
 
-          <!-- 觀測基準點模式 -->
-          <input type="radio" id="tracking-live"   name="tracking" value="live" checked>
+          <!-- 切片位置：其他維度要在哪個值截面觀察 -->
+          <label>切片位置：</label>
+          <input type="radio" id="tracking-live"   name="tracking" value="live" checked
+                 onchange="document.getElementById('sliders-detail').removeAttribute('open')">
           <label for="tracking-live">跟隨當下</label>
           &nbsp;&nbsp;
-          <input type="radio" id="tracking-slider" name="tracking" value="slider">
-          <label for="tracking-slider">滑桿指示</label>
-          <br><br>
+          <input type="radio" id="tracking-slider" name="tracking" value="slider"
+                 onchange="document.getElementById('sliders-detail').setAttribute('open','')">
+          <label for="tracking-slider">手動控制</label>
 
-          <!-- 維度滑桿（由 initChartControls 依 stateInfo 動態生成） -->
-          <table id="dim-sliders-table" style="border-spacing: 4px 6px;"></table>
+          <!-- 維度滑桿：跟隨當下時收起，手動控制時展開 -->
+          <details id="sliders-detail">
+            <summary style="cursor:pointer; color:#888; font-size:0.9em; margin-top:4px;">維度滑桿</summary>
+            <table id="dim-sliders-table" style="border-spacing: 4px 6px;"></table>
+          </details>
 
         </div>
         
