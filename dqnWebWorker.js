@@ -122,40 +122,51 @@ async function DQNfitToQTable() {
   const entries = Object.entries(QTable);
   if (entries.length === 0) { log("fit 跳過：Q-Table 為空"); return; }
 
-  const batchSize  = 32;
-  const sampleSize = Math.min(entries.length, batchSize);
-  // 隨機取樣（不排序整個陣列，效能較好）
-  const batch = entries
-    .map((e, i) => [i, e])
-    .sort(() => Math.random() - 0.5)
-    .slice(0, sampleSize)
-    .map(([, e]) => e);
-
+  // 全量資料（不再隨機取樣，確保網路學到整張表）
   const states  = [];
   const targets = [];
-  for (const [stateKey, qValues] of batch) {
+  for (const [stateKey, qValues] of entries) {
     if (!Array.isArray(qValues) || qValues.length !== numActions) continue;
     const stateVec = getStateFromKey(stateKey);
-    if (stateVec.length !== stateDim) continue;   // 維度不符（換遊戲時機競態）→ 跳過
+    if (stateVec.length !== stateDim) continue;
     states.push(stateVec);
     targets.push(qValues);
   }
 
   if (states.length === 0) { log("fit 跳過：無有效訓練資料"); return; }
 
-  const xs     = tf.tensor2d(states);
-  const ys     = tf.tensor2d(targets);
-  const result = await model.fit(xs, ys, {
-    epochs:    5,
-    batchSize: Math.min(states.length, 32),
-    verbose:   0
-  });
+  const xs        = tf.tensor2d(states);
+  const ys        = tf.tensor2d(targets);
+  const batchSize = Math.min(states.length, 32);
+
+  // 相對收斂停止：連續 patience 次 epoch 相對改善 < relThreshold → 停
+  // 上限 maxEpochs 防止極端情況跑太久
+  const maxEpochs    = 100;
+  const relThreshold = 0.01;  // 1% 相對改善門檻
+  const patience     = 3;     // 連續幾次低於門檻才停
+  let prevLoss    = Infinity;
+  let stableCount = 0;
+  let finalLoss   = 0;
+
+  for (let epoch = 0; epoch < maxEpochs; epoch++) {
+    const result = await model.fit(xs, ys, { epochs: 1, batchSize, verbose: 0 });
+    finalLoss = result.history.loss[0];
+
+    const relImprovement = (prevLoss - finalLoss) / (prevLoss + 1e-8);
+    if (relImprovement < relThreshold) {
+      stableCount++;
+      if (stableCount >= patience) break;
+    } else {
+      stableCount = 0;
+    }
+    prevLoss = finalLoss;
+  }
+
   xs.dispose();
   ys.dispose();
 
-  const loss = result.history.loss.at(-1);
-  log(`fit 完成，loss=${loss?.toFixed(4)}`);
-  self.postMessage({ type: 'fitDone', loss });
+  log(`fit 完成，loss=${finalLoss?.toFixed(4)}，訓練筆數=${states.length}`);
+  self.postMessage({ type: 'fitDone', loss: finalLoss });
 }
 
 

@@ -306,7 +306,8 @@
       togglePauseBtn.textContent = "⏸️暫停";
       resetGeneralCharts();                                    // 刷新四張通用圖表
       dqnWorker.postMessage({ type: 'resetQTable' });          // 清空 Worker 的 Q-Table 副本
-      dqnFitted = false;                                       // 重置 DQN 信任旗標
+      dqnFitted     = false;                                   // 重置 DQN 信任旗標
+      fitInProgress = false;                                   // 重置 fit 鎖
     }
 
     loadGameBtn.addEventListener("click", () => {
@@ -607,6 +608,7 @@
     let dqnFitted             = false;  // 第一次 fit 成功前不讓 DQN 估值污染 Q-Table
     let pendingPredictResolve = null;   // DQN predict Promise 暫存
     let pendingFitResolve     = null;   // DQN fit   Promise 暫存
+    let fitInProgress         = false;  // 防止 Q-Table 模式下 fire-and-forget fit 重疊
     let chartDataSource       = 'qtable'; // 圖表繪製資料來源（'qtable' | 'dqn'）
     let dqnPreviewTable       = {};     // DQN 對各 Q-Table 格子的批量預測快取
 
@@ -657,7 +659,8 @@
           pendingPredictResolve = null;
         }
       } else if (event.data.type === 'fitDone') {
-        dqnFitted = true;                                      // 第一次 fit 後開始信任 DQN
+        dqnFitted     = true;                                  // 第一次 fit 後開始信任 DQN
+        fitInProgress = false;                                 // 解鎖 fire-and-forget
         const loss = event.data.loss;
         console.log(`[DQN] fit 完成，loss=${loss?.toFixed(4)}`);
         if (pendingFitResolve) {
@@ -736,10 +739,16 @@
           episodeReward  = 0;
           episodeSteps   = 0;
 
-          // DQN 模式：回合結束時同步 Q-Table → Worker，執行蒸餾訓練，等待完成再繼續
+          // 回合結束：同步 Q-Table → Worker，觸發蒸餾訓練
+          // DQN 模式：await（下一局動作需要 DQN 估值，必須等 fit 完）
+          // Q-Table 模式：fire-and-forget（Worker 背景學習，不阻塞遊戲）
+          syncQTableToWorker();
           if (currentAlgorithm === 'DQN') {
-            syncQTableToWorker();
+            fitInProgress = true;
             await requestFit();
+          } else if (!fitInProgress) {
+            fitInProgress = true;
+            requestFit(); // 不 await
           }
         }
 
