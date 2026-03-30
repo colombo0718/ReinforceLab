@@ -202,18 +202,24 @@ function hsvToRgb(h, s, v) {
 function generateWhiteOverlayMatrix() {
   const hasX     = stateInfo.length >= 1;
   const hasY     = stateInfo.length >= 2;
-  const numBinsX = hasX ? numBins[cutX] : 1;
-  const numBinsY = hasY ? numBins[cutY] : 1;
+  const numBinsX = hasX ? numBins[cutX] : 10;
+  const numBinsY = hasY ? numBins[cutY] : 10;
   const overlay  = [];
   for (let j = 0; j < numBinsY; j++) {
     const row = [];
+    const activeY = hasY ? true : (j === 0);
     for (let i = 0; i < numBinsX; i++) {
-      const state = [...focusState];
-      if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
-      if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const sorted = getQArrayFromTable(state).slice().sort((a, b) => b - a);
-      const gap    = sorted[0] - (sorted[1] ?? sorted[0]);
-      row.push(1 - Math.min(gap / gapMax, 1));
+      const activeX = hasX ? true : (i === 0);
+      if (activeX && activeY) {
+        const state = [...focusState];
+        if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
+        if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
+        const sorted = getQArrayFromTable(state).slice().sort((a, b) => b - a);
+        const gap    = sorted[0] - (sorted[1] ?? sorted[0]);
+        row.push(1 - Math.min(gap / gapMax, 1));
+      } else {
+        row.push(NaN); // 非有效維度格子：留白不渲染
+      }
     }
     overlay.push(row);
   }
@@ -232,31 +238,39 @@ function dimLabel(dim) {
  ***************************************************/
 
 // 動作選擇熱力圖：下層最佳動作色塊 + 上層確信度遮罩
-// 維度不足時退化：1D → 單列，0D → 單格
+// 維度不足時退化：固定 numBins×numBins 格子，有效維度才填色，其餘 NaN 留白
+//   0D → 僅左下角 1 格有色；1D → 僅最下列有色；2D+ → 正常填滿
 function generateActionHeatmap() {
   const hasX     = stateInfo.length >= 1;
   const hasY     = stateInfo.length >= 2;
-  const numBinsX = hasX ? numBins[cutX] : 1;
-  const numBinsY = hasY ? numBins[cutY] : 1;
+  const numBinsX = hasX ? numBins[cutX] : 10;
+  const numBinsY = hasY ? numBins[cutY] : 10;
   const z = [], text = [], xvals = [], yvals = [];
 
   for (let i = 0; i < numBinsX; i++) {
-    xvals.push(hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : 0);
+    xvals.push(hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : i);
   }
   for (let j = 0; j < numBinsY; j++) {
-    yvals.push(hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : 0);
+    yvals.push(hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : j);
   }
 
   for (let j = 0; j < numBinsY; j++) {
     const row = [], textRow = [];
+    const activeY = hasY ? true : (j === 0);
     for (let i = 0; i < numBinsX; i++) {
-      const state = [...focusState];
-      if (hasX) state[cutX] = xvals[i];
-      if (hasY) state[cutY] = yvals[j];
-      const qArr  = getQArrayFromTable(state);
-      const best  = qArr.indexOf(Math.max(...qArr));
-      row.push(best);
-      textRow.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Best action: ${best}`);
+      const activeX = hasX ? true : (i === 0);
+      if (activeX && activeY) {
+        const state = [...focusState];
+        if (hasX) state[cutX] = xvals[i];
+        if (hasY) state[cutY] = yvals[j];
+        const qArr = getQArrayFromTable(state);
+        const best = qArr.indexOf(Math.max(...qArr));
+        row.push(best);
+        textRow.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Best action: ${best}`);
+      } else {
+        row.push(NaN);
+        textRow.push('');
+      }
     }
     z.push(row);
     text.push(textRow);
@@ -277,24 +291,33 @@ function generateActionHeatmap() {
 }
 
 // 最大 Q 值熱力圖：青（負）→ 白（0）→ 橘（正）
-// 維度不足時退化：1D → 單列，0D → 單格
+// 維度不足時退化：固定格子尺寸，有效格填值，其餘 NaN 留白
 function generateMaxQHeatmap() {
   const hasX     = stateInfo.length >= 1;
   const hasY     = stateInfo.length >= 2;
-  const numBinsX = hasX ? numBins[cutX] : 1;
-  const numBinsY = hasY ? numBins[cutY] : 1;
+  const numBinsX = hasX ? numBins[cutX] : 10;
+  const numBinsY = hasY ? numBins[cutY] : 10;
   const xvals = [], yvals = [], zvals = [], texts = [];
 
   for (let i = 0; i < numBinsX; i++) {
+    const xv = hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : i;
     for (let j = 0; j < numBinsY; j++) {
-      const state = [...focusState];
-      if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
-      if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const maxQ = Math.max(...getQArrayFromTable(state));
-      xvals.push(hasX ? state[cutX] : 0);
-      yvals.push(hasY ? state[cutY] : 0);
-      zvals.push(maxQ);
-      texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Max Q: ${maxQ.toFixed(2)}`);
+      const yv      = hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : j;
+      const activeX = hasX ? true : (i === 0);
+      const activeY = hasY ? true : (j === 0);
+      xvals.push(xv);
+      yvals.push(yv);
+      if (activeX && activeY) {
+        const state = [...focusState];
+        if (hasX) state[cutX] = xv;
+        if (hasY) state[cutY] = yv;
+        const maxQ = Math.max(...getQArrayFromTable(state));
+        zvals.push(maxQ);
+        texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Max Q: ${maxQ.toFixed(2)}`);
+      } else {
+        zvals.push(NaN);
+        texts.push('');
+      }
     }
   }
 
@@ -311,24 +334,33 @@ function generateMaxQHeatmap() {
 }
 
 // 最小 Q 值熱力圖：藍（負）→ 白（0）→ 紅（正）
-// 維度不足時退化：1D → 單列，0D → 單格
+// 維度不足時退化：固定格子尺寸，有效格填值，其餘 NaN 留白
 function generateMinQHeatmap() {
   const hasX     = stateInfo.length >= 1;
   const hasY     = stateInfo.length >= 2;
-  const numBinsX = hasX ? numBins[cutX] : 1;
-  const numBinsY = hasY ? numBins[cutY] : 1;
+  const numBinsX = hasX ? numBins[cutX] : 10;
+  const numBinsY = hasY ? numBins[cutY] : 10;
   const xvals = [], yvals = [], zvals = [], texts = [];
 
   for (let i = 0; i < numBinsX; i++) {
+    const xv = hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : i;
     for (let j = 0; j < numBinsY; j++) {
-      const state = [...focusState];
-      if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
-      if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
-      const minQ = Math.min(...getQArrayFromTable(state));
-      xvals.push(hasX ? state[cutX] : 0);
-      yvals.push(hasY ? state[cutY] : 0);
-      zvals.push(minQ);
-      texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Min Q: ${minQ.toFixed(2)}`);
+      const yv      = hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : j;
+      const activeX = hasX ? true : (i === 0);
+      const activeY = hasY ? true : (j === 0);
+      xvals.push(xv);
+      yvals.push(yv);
+      if (activeX && activeY) {
+        const state = [...focusState];
+        if (hasX) state[cutX] = xv;
+        if (hasY) state[cutY] = yv;
+        const minQ = Math.min(...getQArrayFromTable(state));
+        zvals.push(minQ);
+        texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Min Q: ${minQ.toFixed(2)}`);
+      } else {
+        zvals.push(NaN);
+        texts.push('');
+      }
     }
   }
 

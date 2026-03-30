@@ -496,7 +496,7 @@
       numBins    = [];
       stateInfo.forEach((info) => {
         stateRange.push({ min: info.min, max: info.max });
-        numBins.push(info.bin ?? 20); // 遊戲未宣告 bin 時預設 20 桶
+        numBins.push(info.bin ?? 10); // 遊戲未宣告 bin 時預設 10 桶
       });
 
       syncStateInfoToWorker();
