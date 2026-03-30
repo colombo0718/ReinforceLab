@@ -168,15 +168,24 @@
         <div id="p1-ui2">
           <h4>圖表控制</h4>
 
+          <!-- 繪製資料：選 Q-Table 或 DQN 網路的估值來源（與訓練模式無關） -->
+          <label>繪製資料：</label><br>
+          <input type="radio" id="chart-src-qtable" name="chart-source" value="qtable" checked onchange="handleChartSourceSelection()">
+          <label for="chart-src-qtable">價值表格（Q-Table）</label>
+          &nbsp;&nbsp;
+          <input type="radio" id="chart-src-dqn" name="chart-source" value="dqn" onchange="handleChartSourceSelection()">
+          <label for="chart-src-dqn">價值網路（DQN）</label>
+          <br><br>
+
           <!-- 展開狀態：選哪兩個維度鋪開成 X/Y 軸（選項由 initChartControls 動態填入） -->
-          <label>展開狀態：</label>
+          <label>展開狀態：</label><br>
           <label>X 軸：</label><select id="x-axis"></select>
           &nbsp;&nbsp;
           <label>Y 軸：</label><select id="y-axis"></select>
           <br><br>
 
           <!-- 切片位置：其他維度要在哪個值截面觀察 -->
-          <label>切片位置：</label>
+          <label>切片位置：</label><br>
           <input type="radio" id="tracking-live"   name="tracking" value="live" checked
                  onchange="document.getElementById('sliders-detail').removeAttribute('open')">
           <label for="tracking-live">跟隨當下</label>
@@ -590,14 +599,16 @@
      * pendingPredictResolve   — DQN 模式下等待 predictResult 的 Promise resolve 暫存
      *
      * Worker 訊息協定（完整規格見「Q表蒸餾式DQN：實作規格.md」）：
-     *   主→Worker：updateQTable / updateStateInfo / fit / predict / resetQTable / initModel
-     *   Worker→主：log / ready / predictResult / fitDone
+     *   主→Worker：updateQTable / updateStateInfo / fit / predict / batchPredict / resetQTable / initModel
+     *   Worker→主：log / ready / predictResult / fitDone / batchPredictResult
      ***************************************************/
     const dqnWorker = new Worker('dqnWebWorker.js');
 
-    let dqnFitted          = false;  // 第一次 fit 成功前不讓 DQN 估值污染 Q-Table
-    let pendingPredictResolve = null; // DQN predict Promise 暫存
-    let pendingFitResolve     = null; // DQN fit   Promise 暫存
+    let dqnFitted             = false;  // 第一次 fit 成功前不讓 DQN 估值污染 Q-Table
+    let pendingPredictResolve = null;   // DQN predict Promise 暫存
+    let pendingFitResolve     = null;   // DQN fit   Promise 暫存
+    let chartDataSource       = 'qtable'; // 圖表繪製資料來源（'qtable' | 'dqn'）
+    let dqnPreviewTable       = {};     // DQN 對各 Q-Table 格子的批量預測快取
 
     // 全量同步 QTable → Worker（陣列比較參考相等性，增量 diff 無意義）
     function syncQTableToWorker() {
@@ -616,6 +627,27 @@
       });
     }
 
+    // 請 Worker 對所有已知 Q-Table 格子做一次批量推論，刷新 dqnPreviewTable
+    function requestBatchPredict() {
+      if (!dqnFitted) return;
+      dqnWorker.postMessage({ type: 'batchPredict', keys: Object.keys(QTable) });
+    }
+
+    // 圖表資料來源切換（由 HTML radio onchange 呼叫）
+    function handleChartSourceSelection() {
+      chartDataSource = document.querySelector('input[name="chart-source"]:checked')?.value ?? 'qtable';
+      if (chartDataSource === 'dqn') requestBatchPredict(); // 立即刷新一次
+    }
+
+    // 供 qualityCharts.js 呼叫：根據 chartDataSource 決定用哪張表
+    function getQArrayForChart(state) {
+      if (chartDataSource === 'dqn' && dqnFitted) {
+        const key = getStateKey(state);
+        return dqnPreviewTable[key] ?? Array(action_size).fill(0);
+      }
+      return getQArrayFromTable(state);
+    }
+
     dqnWorker.onmessage = (event) => {
       if (event.data.type === 'log') {
         console.log("[Worker Log]:", event.data.message);
@@ -632,6 +664,9 @@
           pendingFitResolve(loss);
           pendingFitResolve = null;
         }
+        if (chartDataSource === 'dqn') requestBatchPredict(); // 每次 fit 後自動刷新預覽
+      } else if (event.data.type === 'batchPredictResult') {
+        dqnPreviewTable = event.data.results;                  // 整張表一次更新
       }
     };
 

@@ -208,6 +208,24 @@ self.onmessage = async (event) => {
       self.postMessage({ type: 'predictResult', qValues: Array.from(qValues) });
       break;
 
+    case 'batchPredict': {
+      // 對主執行緒傳來的所有 Q-Table key 做一次批量推論，供圖表視覺化使用
+      if (!model) { self.postMessage({ type: 'batchPredictResult', results: {} }); break; }
+      const keys      = event.data.keys.filter(k => getStateFromKey(k).length === stateDim);
+      const results   = {};
+      if (keys.length > 0) {
+        const stateVecs = keys.map(k => getStateFromKey(k));
+        const batchIn   = tf.tensor2d(stateVecs);
+        const batchOut  = model.predict(batchIn);
+        const allQ      = batchOut.arraySync();
+        batchIn.dispose();
+        batchOut.dispose();
+        keys.forEach((k, i) => { results[k] = allQ[i]; });
+      }
+      self.postMessage({ type: 'batchPredictResult', results });
+      break;
+    }
+
     default:
       log(`未知訊息 type：${type}`);
   }
