@@ -278,7 +278,8 @@ function generateActionHeatmap() {
 
   Plotly.newPlot('p1-diff-value', [
     { x: xvals, y: yvals, z, type: 'heatmap',
-      colorscale: generateDiscreteColorscale(action_size), hoverinfo: 'text', text },
+      colorscale: generateDiscreteColorscale(action_size), hoverinfo: 'text', text,
+      zmin: 0, zmax: action_size - 1 },   // 固定範圍：避免資料集中時 colorscale 失效
     { x: xvals, y: yvals, z: generateWhiteOverlayMatrix(), type: 'heatmap',
       colorscale: [[0, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,1)']],
       zmin: 0, zmax: 1, showscale: false, hoverinfo: 'skip' }
@@ -442,8 +443,16 @@ function generateQBarSlice() {
  *
  * 2D 圖表（熱力圖）需要至少 2 個狀態維度才能繪製
  ***************************************************/
+let _batchPredictTick = 0;
 setInterval(() => {
   if (!stateInfo || !plotQualityCharts) return;
+
+  // DQN 繪製模式：每 5 秒請 Worker 刷新一次批量預測快取
+  _batchPredictTick++;
+  if (typeof chartDataSource !== 'undefined' && chartDataSource === 'dqn' &&
+      typeof requestBatchPredict === 'function' && _batchPredictTick % 5 === 0) {
+    requestBatchPredict();
+  }
 
   // 更新 focusState
   if (document.querySelector('input[name="tracking"]:checked')?.value === 'live') {
