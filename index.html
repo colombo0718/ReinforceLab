@@ -297,7 +297,18 @@
 
     let currentSessionId = 1;
 
+    // 主動取消任何掛住的 requestFit() Promise，不等 Worker 回應
+    // 必須在 loadGame() 最先執行，切斷迴圈對 Worker 的依賴
+    function cancelPendingFit() {
+      if (pendingFitResolve) {
+        pendingFitResolve(null);
+        pendingFitResolve = null;
+      }
+      fitInProgress = false;
+    }
+
     function loadGame(url) {
+      cancelPendingFit();                                      // 主動解開任何 pending requestFit()
       currentSessionId += 1;
       console.log(currentSessionId);
       gameUrlInput.value = url;
@@ -307,7 +318,6 @@
       resetGeneralCharts();                                    // 刷新四張通用圖表
       dqnWorker.postMessage({ type: 'resetQTable' });          // 清空 Worker 的 Q-Table 副本
       dqnFitted     = false;                                   // 重置 DQN 信任旗標
-      fitInProgress = false;                                   // 重置 fit 鎖
     }
 
     loadGameBtn.addEventListener("click", () => {
