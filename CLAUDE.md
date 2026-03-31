@@ -104,8 +104,3 @@ DQN 目前選項存在 UI 但邏輯未完成，不要去動它。
 - DQN 功能標示為開發中，論文截圖時注意不要誤導
 - Agent 2 UI 已暫時隱藏（HTML 中保留註解）
 
----
-
-## TODO（v2.0）
-
-- **多玩家 Agent 自動建立**：根據 `gameInfo` 宣告的 `players` 陣列長度，動態生成對應數量的 Agent Tab（儀錶 + 分析），每個 Agent 各自維護獨立的 QTable、DQN Worker、圖表。目前 Agent 2 UI 已預留但整合邏輯尚未實作。
