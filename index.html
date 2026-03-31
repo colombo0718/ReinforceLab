@@ -879,13 +879,20 @@
       reader.onload = function(e) {
         try {
           QTable = JSON.parse(e.target.result);
-          console.log("QTable imported successfully:", QTable);
+          dqnFitted     = false;
+          fitInProgress = false;
+          dqnPreviewTable = {};
+          document.getElementById('stat-sync').textContent = '神經網路建立中';
+          syncQTableToWorker();   // 讓 Worker 副本與載入的 QTable 一致
           updateQtableStats();
+          console.log("QTable imported successfully:", Object.keys(QTable).length, "entries");
         } catch (error) {
           console.error("Error parsing QTable file", error);
         }
       };
       reader.readAsText(file, "utf-8");
+      // 清空 input value，讓同一個檔案下次仍能觸發 onchange
+      evt.target.value = '';
     }
 
 
