@@ -285,10 +285,13 @@ Web Worker 與主執行緒之間只能透過 `postMessage` 通訊，
 - [x] Q-Table 學習主流程
 - [x] dqnWebWorker.js：完整 TF.js 神經網路（動態 stateDim / actionCount）
 - [x] `evaluateQuality()` 根據模式切換 Q-Table / DQN predict（async，dqnFitted 暖機保護）
-- [x] 每回合結束觸發 fit（syncQTable → await fitDone → 再送下一局第一個 action）
-- [x] 動態同步 inputShape 與輸出維度（initModel 訊息）
 - [x] Bellman target 在 DQN 模式下改用 DQN 的 nextQArray
 - [x] Trace 機制傳遞 nextQArray（時間回溯 × 空間泛化 互補）
+- [x] Qt 模式：背景持續蒸餾迴圈，不受遊戲暫停影響
+- [x] DQN 模式：每回合末 await fit（復盤語義），暫停時自動追趕蒸餾
+- [x] 全量資料蒸餾 + 相對收斂停止（patience=3, relThreshold=1%, maxEpochs=100）
+- [x] batchPredict：對整個狀態空間批量推論，供熱力圖可視化 NN 泛化效果
+- [x] 繪製資料獨立切換（Q-Table / DQN），與演算法無關
 - [ ] 訓練進度指標 UI（loss 曲線、dqnFitted 狀態顯示）——待實作
 
 ---

@@ -91,9 +91,10 @@ function bucketToNorm(bucketIndex, numBins) {
 | `initModel` | `{ stateDim, actionCount }` | 收到 `gameInfo` 後 | 動態建立神經網路 |
 | `updateStateInfo` | `{ stateRange, numBins }` | 收到 `gameInfo` 後 | 同步狀態空間定義 |
 | `resetQTable` | — | `loadGame()` 換遊戲時 | 清空 Worker 的 Q-Table 副本 |
-| `updateQTable` | `{ key: value, ... }` | 每 N 步或 episode 結束 | 增量同步 Q-Table 變動 |
-| `fit` | — | 每 M 個 episode 結束 | 觸發一次蒸餾訓練 |
-| `predict` | `{ state: number[] }` | DQN 模式每步 | 傳入原始物理值，Worker 內部負責正規化 |
+| `updateQTable` | `{ key: value, ... }` | fit 前全量同步 | 全量同步（非增量；陣列參考比較無意義） |
+| `fit` | — | Qt 背景迴圈 / DQN 每回合末 | 觸發一次蒸餾訓練 |
+| `predict` | `number[]`（原始物理值） | DQN 模式每步 | 傳入原始物理值，Worker 內部負責正規化 |
+| `batchPredict` | `{ keys: string[] }` | 切換 DQN 繪製資料 / 每秒 / fitDone 後 | 對完整狀態空間做批量推論，供圖表用 |
 
 ### Worker → 主執行緒
 
@@ -102,7 +103,8 @@ function bucketToNorm(bucketIndex, numBins) {
 | `log` | `{ message }` | 任何時候 | debug 用 |
 | `ready` | — | `initModel` 完成後 | 模型就緒通知 |
 | `predictResult` | `{ qValues: number[] }` | 回應 `predict` | 各動作 Q 值 |
-| `fitDone` | `{ loss }` | 一次 fit 完成後 | 附上 loss 供 UI 顯示 |
+| `fitDone` | `{ loss }` | 一次 fit 完成後（含 skip） | 附上 loss；skip 時 loss=null；必定送出以 resolve Promise |
+| `batchPredictResult` | `{ results: { key: number[] } }` | 回應 `batchPredict` | 整個狀態空間的 Q 值預測，存入 `dqnPreviewTable` |
 
 ---
 
@@ -168,7 +170,17 @@ UI 切換的是**價值評估來源**（產出 qArray），動作選擇永遠是
 | 動作選擇 | qArray → planningStrategy → action | 同左，不變 |
 | Q-Table Bellman 更新的 `max Q(s')` | Q-Table 自己查 | 用已取得的 `qArray` |
 | Trace 回放的 `max Q(s')` | Q-Table 自己查 | 同樣呼叫 `evaluateQuality`（與當前模式一致） |
-| 熱力圖資料來源 | Q-Table 的格值 | 同左，永遠用 Q-Table |
+| **NN fit 時機** | 背景持續迴圈（不阻塞遊戲） | 每回合結束 `await fit`（復盤） |
+| **遊戲暫停時 NN** | 背景迴圈繼續，不受影響 | 啟動追趕蒸餾，直到恢復 |
+
+**熱力圖繪製資料** 是**獨立於演算法的選擇**（分析頁的「繪製資料」radio）：
+
+| 繪製資料選項 | 說明 |
+|------------|------|
+| 價值表格（Q-Table） | 直接查 `QTable`，只有探索過的格子有值 |
+| 價值網路（DQN） | 查 `dqnPreviewTable`（batchPredict 快取），覆蓋整個狀態空間 |
+
+兩個選項與演算法無關，可以任意組合。
 
 Trace 回放在 DQN 模式下對每個 nextState 各自呼叫 `evaluateQuality`，因為 trace 觸發時 Worker 沒有在 fit（fit 只在局間），可以快速處理多次 predict。
 
@@ -222,66 +234,76 @@ qTableUpdate(prevState, prevAction, reward, nextState, nextAction, qArray);
 
 `dqnFitted` 在 `loadGame()` 時連同 `QTable`、`dqnWorker resetQTable` 一起重置。
 
-### 5-5. Fit 觸發時機：每局結束後一次，等 fitDone 再送 action
+### 5-5. Fit 觸發時機
 
-Fit 固定在每個 episode 結束後觸發一次，RR 等 Worker 完成後再送出下一局的第一個 action。
+兩種演算法的 fit 策略完全不同：
+
+#### Qt 模式：背景持續迴圈
+
+啟動後永遠在跑，不受遊戲暫停影響，fit 完馬上下一輪：
 
 ```javascript
-// done: true 的結算區塊
-if (message.done === true) {
-  updateEpisodeChart();
-  episodeCount += 1;
-  episodeReward = 0;
-  episodeSteps = 0;
-
-  // DQN 模式：復盤（等 Worker fit 完再開下一局）
-  if (currentAlgorithm === 'DQN') {
-    syncQTableToWorker();
-    await new Promise(resolve => {
-      pendingFitResolve = resolve;
-      dqnWorker.postMessage({ type: 'fit' });
-    });
+async function runQtDistillationLoop() {
+  while (true) {
+    if (currentAlgorithm !== 'DQN' && !fitInProgress && Object.keys(QTable).length > 0) {
+      fitInProgress = true;
+      syncQTableToWorker();
+      await requestFit();  // fitDone handler 會重置 fitInProgress
+    } else {
+      await new Promise(r => setTimeout(r, 200));
+    }
   }
-  // 送出第一個 action，遊戲收到後才開始新回合
 }
-// （原本的 setTimeout sendAction 照常執行）
+runQtDistillationLoop();  // 頁面載入後立即啟動
 ```
 
-Worker 回傳 `fitDone` 時 resolve：
+#### DQN 模式：每回合末復盤
+
+回合結束後 `await fit`，fit 完才送下一局第一個 action（確保下一局的 predict 用的是最新的 NN）：
+
 ```javascript
-} else if (event.data.type === 'fitDone') {
-  if (pendingFitResolve) {
-    pendingFitResolve();
-    pendingFitResolve = null;
-  }
+if (currentAlgorithm === 'DQN') {
+  syncQTableToWorker();
+  fitInProgress = true;
+  await requestFit();
 }
 ```
 
-**為什麼這樣設計：**
-- Fit 和 Predict 天然不重疊（fit 在局間，predict 在局中），不再有 Worker 被卡住的問題
-- 語義清晰：「打完一局 → 復盤消化 → 開始下一局」
-- 不需要 `FIT_INTERVAL` 超參數
+#### 暫停期間
 
-**遊戲端不需要修改**：heli 和 CartPole 已經是「gameOver=true 停住，收到 action 才 reset 並開跑」的設計。
+- **Qt 模式**：背景迴圈本來就不理暫停，自動持續
+- **DQN 模式**：暫停時啟動 `runPausedDistillation()`，一輪接一輪直到恢復
+
+**重要：`fitDone` 必定送出**（含 skip 情況），否則 `await requestFit()` 永遠 pending。
+Worker 的所有 early return 路徑都補上 `postMessage({ type: 'fitDone', loss: null })`。
 
 ---
 
-## 六、待完成清單
+## 六、實作狀態
 
 **Worker 端**
-- [ ] 實作 `initModel(stateDim, actionCount)`，取代 hardcode 模型
-- [ ] 實作 `normalizeState(rawState)`，predict 收到原始值後在內部正規化
-- [ ] 加入 `bucketToNorm(i, N)`，簡化 `getStateFromKey`
-- [ ] 修正 `DQNfitToQTable` 的 key 解析（`slice(0, stateDim)` 而非 hardcode 5）
-- [ ] 修正 `Array(4).fill(0)` 改用 `Array(numActions).fill(0)`
+- [x] `initModel(stateDim, actionCount)`：動態建立三層 FC 網路，換遊戲時 dispose 重建
+- [x] `normalizeState(rawState)`：原始值 → [-1,1]，predict 用
+- [x] `bucketToNorm(i, N)` + `getStateFromKey(key)`：Q-Table key → 訓練輸入
+- [x] `DQNfitToQTable()`：全量資料（非取樣），相對收斂停止（patience=3, relThreshold=1%, maxEpochs=100）
+- [x] 所有 early return 路徑補送 `fitDone`，防止主執行緒 Promise 永遠 pending
+- [x] `batchPredict`：對所有傳入 key 做批量推論，一次 forward pass 回傳整張結果
 
 **主執行緒**
-- [ ] `loadGame()` 時重置 `dqnFitted = false`、`QTable = {}`、`lastSyncedQTable = {}`，並發 `resetQTable` + `initModel` + `updateStateInfo` 給 Worker
-- [ ] `evaluateQuality()` 改為 async，加入 DQN 分流
-- [ ] 主迴圈加 `await evaluateQuality()`，並把 `qArray` 傳給 `qTableUpdate`
-- [ ] `qTableUpdate` 新增 `nextQArray` 參數，DQN 模式下用它的 max 做 Bellman 更新
-- [ ] episode 結束後：`syncQTableToWorker` → `await fit`（fitDone resolve）→ 再送第一個 action
-- [ ] `planningStrategy()` 接上 UI 的策略選擇（ε-greedy / Softmax）
+- [x] `loadGame()` 重置 `dqnFitted = false`、`fitInProgress = false`，發 `resetQTable` + `initModel` + `updateStateInfo`
+- [x] `evaluateQuality()` async，DQN 模式走 Worker predict，dqnFitted 前退回 Q-Table
+- [x] 主迴圈 `await evaluateQuality()`，qArray 傳入 `qTableUpdate` 和 `learnFromTrace`
+- [x] `qTableUpdate` 接受 `nextQArray`，DQN 模式 + dqnFitted → 用 max(nextQArray) 做 Bellman
+- [x] Qt 模式背景持續蒸餾迴圈（不阻塞遊戲，不因暫停停止）
+- [x] DQN 模式每回合末 `await requestFit()`（復盤語義）
+- [x] 暫停時 DQN 模式自動追趕蒸餾
 
-**UI**
-- [ ] 顯示 fit loss 曲線（`fitDone` 回傳的 loss，每局一個點）
+**繪製資料（分析頁）**
+- [x] `chartDataSource` 獨立切換（'qtable' / 'dqn'），與演算法無關
+- [x] `getQArrayForChart()` 根據 chartDataSource 決定來源
+- [x] `requestBatchPredict()` 傳完整狀態空間 key（笛卡兒積），非只有已探索格子
+- [x] DQN 繪製模式每秒觸發 batchPredict，fitDone 後也立即刷新
+
+**待實作**
+- [ ] fit loss 曲線 UI（fitDone 回傳的 loss 逐輪記錄並顯示）
+- [ ] dqnFitted 狀態顯示（讓使用者知道 NN 是否已可信任）
