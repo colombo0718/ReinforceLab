@@ -156,6 +156,8 @@
             <input type="file" id="importQtableInput" accept=".json,.txt"
                   onchange="importQtable(event)" hidden>
           </label>
+
+          <button class="q-btn" onclick="clearQtable()">🧹 清空</button>
           <div class="q-stats">
             <div>狀態池化　<span id="stat-bins">[10×10]</span></div>
             <div>動作數量　<span id="stat-actions">[5]</span></div>
@@ -857,6 +859,17 @@
       link.download = "Qtable.json";
       link.click();
       URL.revokeObjectURL(url);
+    }
+
+    function clearQtable() {
+      QTable = {};
+      dqnFitted     = false;
+      fitInProgress = false;
+      dqnPreviewTable = {};
+      dqnWorker.postMessage({ type: 'resetQTable' });
+      dqnWorker.postMessage({ type: 'initModel', stateDim: stateInfo?.length ?? 1, actionCount: action_size ?? 1 });
+      document.getElementById('stat-sync').textContent = '神經網路建立中';
+      updateQtableStats();
     }
 
     function importQtable(evt) {
