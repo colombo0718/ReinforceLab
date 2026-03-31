@@ -288,7 +288,7 @@ function generateActionHeatmap() {
     xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
     yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 }
 
 // 最大 Q 值熱力圖：青（負）→ 白（0）→ 橘（正）
@@ -331,7 +331,7 @@ function generateMaxQHeatmap() {
     xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
     yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 }
 
 // 最小 Q 值熱力圖：藍（負）→ 白（0）→ 紅（正）
@@ -374,7 +374,7 @@ function generateMinQHeatmap() {
     xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
     yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 }
 
 // 1D Q 值折線圖：沿 cutX 掃描，各動作一條線
@@ -407,7 +407,7 @@ function generateQLineSlice() {
     yaxis: { title: '評估價值' },
     showlegend: false,
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 }
 
 // 當前狀態動作柱狀圖：focusState 的各動作 Q 值
@@ -428,7 +428,7 @@ function generateQBarSlice() {
     yaxis: { title: '評估價值' },
     barmode: 'group', showlegend: false,
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 }
 
 

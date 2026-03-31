@@ -53,7 +53,7 @@ function initSecondChart() {
     xaxis: { title: '時間(秒)' },
     yaxis: { title: '獎勵' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 
   Plotly.newPlot('p1-second-steps', [{
     x: stepsLabels,
@@ -66,7 +66,7 @@ function initSecondChart() {
     xaxis: { title: '時間 (秒)' },
     yaxis: { title: '步數' },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 }
 
 function updateSecondChart() {
@@ -112,7 +112,7 @@ function initEpisodeChart() {
     xaxis: { title: "回合數 (Episode)" },
     yaxis: { title: "獎勵" },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 
   Plotly.newPlot("p1-episode-steps", [{
     x: episodeIndex,
@@ -124,7 +124,7 @@ function initEpisodeChart() {
     xaxis: { title: "回合數 (Episode)" },
     yaxis: { title: "步數 (Steps)" },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  });
+  }, { displayModeBar: false });
 }
 
 function updateEpisodeChart() {
