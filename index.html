@@ -162,6 +162,7 @@
             <div>動作數量　<span id="stat-actions">[5]</span></div>
             <div>資料總數　<span id="stat-total">102 / 500</span></div>
             <div>經驗覆蓋　<span id="stat-cover">20.4%</span></div>
+            <div>知識蒸餾　<span id="stat-sync">—</span></div>
           </div>
         </div>
         
@@ -305,6 +306,7 @@
         pendingFitResolve = null;
       }
       fitInProgress = false;
+      document.getElementById('stat-sync').textContent = '—';
     }
 
     function loadGame(url) {
@@ -687,7 +689,11 @@
         dqnFitted     = true;                                  // 第一次 fit 後開始信任 DQN
         fitInProgress = false;                                 // 解鎖 fire-and-forget
         const loss = event.data.loss;
+        const syncRate = event.data.syncRate;
         console.log(`[DQN] fit 完成，loss=${loss?.toFixed(4)}`);
+        if (syncRate != null) {
+          document.getElementById('stat-sync').textContent = `${(syncRate * 100).toFixed(1)}%`;
+        }
         if (pendingFitResolve) {
           pendingFitResolve(loss);
           pendingFitResolve = null;

@@ -165,8 +165,15 @@ async function DQNfitToQTable() {
   xs.dispose();
   ys.dispose();
 
-  log(`fit 完成，loss=${finalLoss?.toFixed(4)}，訓練筆數=${states.length}`);
-  self.postMessage({ type: 'fitDone', loss: finalLoss });
+  // R²：同步率 = 1 - MSE / Q值變異數
+  // 分母是 Q-Table 本身的複雜度，自我校準，不需要歷史基準
+  const allQ   = targets.flat();
+  const meanQ  = allQ.reduce((a, b) => a + b, 0) / allQ.length;
+  const varQ   = allQ.reduce((a, b) => a + (b - meanQ) ** 2, 0);
+  const syncRate = varQ > 0 ? Math.max(0, 1 - (finalLoss * states.length * numActions) / varQ) : null;
+
+  log(`fit 完成，loss=${finalLoss?.toFixed(4)}，同步率=${syncRate != null ? (syncRate*100).toFixed(1)+'%' : 'N/A'}，訓練筆數=${states.length}`);
+  self.postMessage({ type: 'fitDone', loss: finalLoss, syncRate });
 }
 
 
