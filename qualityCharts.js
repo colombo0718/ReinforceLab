@@ -443,14 +443,12 @@ function generateQBarSlice() {
  *
  * 2D 圖表（熱力圖）需要至少 2 個狀態維度才能繪製
  ***************************************************/
-let _batchPredictTick = 0;
 setInterval(() => {
   if (!stateInfo || !plotQualityCharts) return;
 
-  // DQN 繪製模式：每 5 秒請 Worker 刷新一次批量預測快取
-  _batchPredictTick++;
+  // DQN 繪製模式：每秒請 Worker 刷新一次批量預測快取
   if (typeof chartDataSource !== 'undefined' && chartDataSource === 'dqn' &&
-      typeof requestBatchPredict === 'function' && _batchPredictTick % 5 === 0) {
+      typeof requestBatchPredict === 'function') {
     requestBatchPredict();
   }
 

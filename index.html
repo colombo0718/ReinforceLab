@@ -692,6 +692,21 @@
       console.error("Web Worker 錯誤:", error);
     };
 
+    // Qt 模式專用：持續背景蒸餾迴圈，不受遊戲暫停影響
+    // DQN 模式的 fit 在 episode 結束時 await 觸發，不走這裡
+    async function runQtDistillationLoop() {
+      while (true) {
+        if (currentAlgorithm !== 'DQN' && !fitInProgress && Object.keys(QTable).length > 0) {
+          fitInProgress = true;
+          syncQTableToWorker();
+          await requestFit();
+        } else {
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+    }
+    runQtDistillationLoop();
+
 
     /***************************************************
      * [11] postMessage 通訊 Part B：reward_state 主訓練迴圈
@@ -754,16 +769,12 @@
           episodeReward  = 0;
           episodeSteps   = 0;
 
-          // 回合結束：同步 Q-Table → Worker，觸發蒸餾訓練
-          // DQN 模式：await（下一局動作需要 DQN 估值，必須等 fit 完）
-          // Q-Table 模式：fire-and-forget（Worker 背景學習，不阻塞遊戲）
-          syncQTableToWorker();
+          // 回合結束：DQN 模式需 await fit（下一局動作需要 DQN 估值）
+          // Qt 模式由 runQtDistillationLoop 背景持續處理，此處不再觸發
           if (currentAlgorithm === 'DQN') {
+            syncQTableToWorker();
             fitInProgress = true;
             await requestFit();
-          } else if (!fitInProgress) {
-            fitInProgress = true;
-            requestFit(); // 不 await
           }
         }
 
