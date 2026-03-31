@@ -117,10 +117,10 @@ function initModel(sDim, aCount) {
  *   value = 長度為 numActions 的 Q 值陣列
  ***************************************************/
 async function DQNfitToQTable() {
-  if (!model) { log("fit 跳過：模型尚未初始化"); return; }
+  if (!model) { log("fit 跳過：模型尚未初始化"); self.postMessage({ type: 'fitDone', loss: null }); return; }
 
   const entries = Object.entries(QTable);
-  if (entries.length === 0) { log("fit 跳過：Q-Table 為空"); return; }
+  if (entries.length === 0) { log("fit 跳過：Q-Table 為空"); self.postMessage({ type: 'fitDone', loss: null }); return; }
 
   // 全量資料（不再隨機取樣，確保網路學到整張表）
   const states  = [];
@@ -133,7 +133,7 @@ async function DQNfitToQTable() {
     targets.push(qValues);
   }
 
-  if (states.length === 0) { log("fit 跳過：無有效訓練資料"); return; }
+  if (states.length === 0) { log("fit 跳過：無有效訓練資料"); self.postMessage({ type: 'fitDone', loss: null }); return; }
 
   const xs        = tf.tensor2d(states);
   const ys        = tf.tensor2d(targets);
@@ -203,7 +203,14 @@ self.onmessage = async (event) => {
 
     case 'fit':
       // 執行一次蒸餾訓練（主執行緒在 episode 結束後呼叫，await fitDone 再開下一局）
-      await DQNfitToQTable();
+      // try-catch 保底：initModel 在 fit await 期間可能 dispose 舊 model 導致例外，
+      // 若不補送 fitDone，主執行緒的 requestFit() Promise 會永遠 pending
+      try {
+        await DQNfitToQTable();
+      } catch (e) {
+        log(`fit 異常中止：${e.message}`);
+        self.postMessage({ type: 'fitDone', loss: null });
+      }
       break;
 
     case 'predict':
