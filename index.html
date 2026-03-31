@@ -57,12 +57,11 @@
       <!-- <button class="sub-tab-link" data-subtab="p1-blocks">🧩程式</button> -->
 
 
-      <!-- Agent2 -->
+      <!-- Agent2 UI — 暫時隱藏，待實作多玩家自動建立後啟用
       <span class="agent-label">Agent 2:</span>
       <button class="sub-tab-link" data-subtab="p2-config">📊儀錶</button>
       <button class="sub-tab-link" data-subtab="p2-qtable">🔬分析</button>
-      <!-- <button class="sub-tab-link" data-subtab="p2-replay">📽️錄放</button> -->
-      <!-- <button class="sub-tab-link" data-subtab="p2-blocks">🧩程式</button> -->
+      -->
       <span class="rr-version">RR Platform v1.0.0</span>
     </div>
 
@@ -162,7 +161,7 @@
             <div>動作數量　<span id="stat-actions">[5]</span></div>
             <div>資料總數　<span id="stat-total">102 / 500</span></div>
             <div>經驗覆蓋　<span id="stat-cover">20.4%</span></div>
-            <div>知識蒸餾　<span id="stat-sync">—</span></div>
+            <div>知識同步　<span id="stat-sync">神經網路建立中</span></div>
           </div>
         </div>
         
@@ -306,7 +305,7 @@
         pendingFitResolve = null;
       }
       fitInProgress = false;
-      document.getElementById('stat-sync').textContent = '—';
+      document.getElementById('stat-sync').textContent = '神經網路建立中';
     }
 
     function loadGame(url) {
