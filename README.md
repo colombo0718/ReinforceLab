@@ -1,19 +1,19 @@
-# 🤖 Rein Room — 瀏覽器強化學習實驗平台
+# 🤖 Rein Room — 瀏覽器強化學習教學平台
 
-Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforcement Learning）互動實驗平台。
-無需安裝任何軟體，開啟網頁即可讓 AI Agent 在各種遊戲環境中從零開始學習，並即時觀察訓練過程與數據分析。
+Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforcement Learning）互動教學平台。
+無需安裝任何軟體，開啟網頁即可讓 AI 智能體在各種遊戲環境中從零開始學習，並即時觀察訓練過程與數據分析。
 
 ---
 
 ## 功能特色
 
 - **零安裝**：純前端架構，所有計算在瀏覽器本地執行
-- **多演算法支援**：Q-Table（表格型）；DQN（神經網路型）開發中
+- **多演算法支援**：Q-Table（表格型）與 Q-Table 蒸餾式 DQN（神經網路型）雙向互學
 - **多探索策略**：ε-greedy 與 Softmax
-- **雙 Agent 並行**：可同時訓練兩個 Agent，方便對照比較
-- **即時視覺化**：Reward 曲線、Steps 統計、Q-Table 熱力圖等多種圖表
+- **即時視覺化**：Reward 曲線、Steps 統計、Q-Table 熱力圖、價值網路預測圖等多種圖表
+- **知識同步率**：以 R² 即時顯示神經網路與 Q-Table 的對齊程度
 - **遊戲環境可替換**：透過 iframe + postMessage 協定，任何符合規格的遊戲頁面都能接入
-- **Q-Table 匯入/匯出**：可儲存訓練成果，下次繼續沿用
+- **Q-Table 匯入/匯出/清空**：儲存、還原或重置智能體的學習記憶
 
 ---
 
@@ -26,9 +26,9 @@ Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforceme
 | 🕹️ 全屏 / 🧪 半屏 | 切換遊戲區是否佔滿整個畫面 |
 | 網址輸入框 | 輸入遊戲頁面的 URL |
 | ♻️ 載入 | 將輸入的網址載入到遊戲 iframe |
-| ⏸️ 暫停 / ▶️ 繼續 | 暫停或繼續 Agent 的動作輸出 |
+| ⏸️ 暫停 / ▶️ 繼續 | 暫停或繼續智能體的動作輸出 |
 | 🚀 加速 / 🐢 正常 | 切換訓練速度（遊戲端加速約 4 倍） |
-| 動作按鈕列 | 顯示遊戲支援的動作，Agent 執行時對應按鈕會閃亮 |
+| 動作按鈕列 | 顯示遊戲支援的動作，智能體執行時對應按鈕會閃亮 |
 
 ### 右側：控制面板（Tabs）
 
@@ -46,10 +46,10 @@ Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforceme
 #### ℹ️ 關於
 平台介紹、隱私政策與聯絡資訊。
 
-#### 📊 儀錶（Agent 1 / Agent 2）
+#### 📊 儀錶（智能體 1）
 
 **演算法選擇**
-- 學習方式：`Q-Table` 或 `DQN`（DQN 開發中）
+- 學習方式：`Q-Table` 或 `DQN`
 - 抉擇策略：`ε-greedy` 或 `Softmax`
 
 **超參數設置**（拉桿調整，即時生效）
@@ -60,7 +60,7 @@ Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforceme
 | 回朔率 | γ | 對未來獎勵的重視程度 | 0.95 |
 | 探索率 | ε | 隨機探索的機率 | 0.2 |
 | 樂觀值 | ψ | 正值偏向樂觀估計，負值偏向悲觀 | 0 |
-| 延遲量 | ms | Agent 每步動作之間的等待時間 | 50ms |
+| 延遲量 | ms | 智能體每步動作之間的等待時間 | 50ms |
 
 **即時圖表**
 - 每秒獲得獎勵（折線圖）
@@ -68,16 +68,21 @@ Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforceme
 - 每回合獲得獎勵（柱狀圖）
 - 每回合輸出步數（柱狀圖）
 
-#### 🔬 分析（Agent 1 / Agent 2）
+#### 🔬 分析（智能體 1）
 
 **價值表概況**
-- 顯示狀態池化維度、動作數量、已探索格數與覆蓋率
+- 顯示狀態池化維度、動作數量、已探索格數、覆蓋率、知識同步率
 - 💾 **導出**：將目前 Q-Table 下載為 `.json` 檔案
-- 📂 **載入**：從 `.json` 檔案載入先前儲存的 Q-Table
+- 📂 **載入**：從 `.json` 檔案還原先前儲存的 Q-Table
+- 🧹 **清空**：清除 Q-Table 與神經網路記憶，遊戲環境不中斷
+
+**繪製資料切換**
+- **價值表格（Q-Table）**：顯示智能體實際探索過的格子
+- **價值網路（DQN）**：顯示神經網路對整個狀態空間的預測（含未探索區域）
 
 **Q-Table 視覺化**
 - 選擇 X / Y 軸對應的狀態維度
-- 勾選「跟隨當下」自動追蹤 Agent 目前所在狀態
+- 勾選「跟隨當下」自動追蹤智能體目前所在狀態
 - 維度切片滑桿：手動瀏覽多維狀態空間的截面
 
 ---
@@ -92,7 +97,7 @@ Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforceme
 | 訊息類型 | 說明 |
 |----------|------|
 | `{ type: "questInfo", sessionId }` | 請求遊戲的狀態/動作空間資訊 |
-| `{ type: "action", action: Number }` | 傳送 Agent 選擇的動作索引 |
+| `{ type: "action", action: Number }` | 傳送智能體選擇的動作索引 |
 | `{ type: "pause" }` | 切換暫停/繼續 |
 | `{ type: "accel" }` | 切換加速/正常 |
 
@@ -121,11 +126,11 @@ Rein Room (RR) 是一個完全在瀏覽器中運行的強化學習（Reinforceme
 
 ```
 ReinforceLab/
-├── index.html              # 主平台頁面（含 Q-Learning 邏輯）
+├── index.html              # 主平台頁面（含 Q-Learning 邏輯與 DQN 橋接）
 ├── reinforceEngine.js      # Q-Learning 核心引擎
-├── dqnWebWorker.js         # DQN 神經網路（Web Worker，開發中）
+├── dqnWebWorker.js         # Q-Table 蒸餾式 DQN（TensorFlow.js，Web Worker）
 ├── generalCharts.js        # Reward / Steps 即時圖表
-├── qualityCharts.js        # Q-Table 分析圖表
+├── qualityCharts.js        # Q-Table 分析圖表與價值網路視覺化
 ├── style.css               # 樣式
 ├── docs/
 │   ├── tutorial.html       # 強化學習教學文章

@@ -18,7 +18,7 @@
 ```
 index.html          主平台，包含所有 Q-Learning 邏輯、UI、圖表控制
 reinforceEngine.js  Q-Table 核心（getBucketIndex、updateQ、策略函數）
-dqnWebWorker.js     DQN（TensorFlow.js，Web Worker）— 目前尚未完成
+dqnWebWorker.js     Q-Table 蒸餾式 DQN（TensorFlow.js，Web Worker）
 generalCharts.js    每秒/每回合 Reward & Steps 折線/柱狀圖
 qualityCharts.js    Q-Table 熱力圖、動作分布、Q 值分析
 style.css           全站樣式
@@ -78,13 +78,13 @@ games/ 下還有其他遊戲（heli、dinasour、magic 等），部分是舊協�
 
 `index.html` 內依區塊有 JSDoc 式分段標記，關鍵位置：
 
-- **訊息接收**（`window.addEventListener("message")`）：約 653 行附近
+- **訊息接收**（`window.addEventListener("message")`）：`reward_state` 處理區塊
   - 收到 `reward_state` → 學習更新 → 送出下一個 `action`
   - `done: true` → 結算回合統計、重置計數
 - **loadGame()**：每次呼叫 `currentSessionId += 1`，接著設定 iframe src
 - **getBucketIndex()**：在 `reinforceEngine.js`，等距離散化
 
-DQN 目前選項存在 UI 但邏輯未完成，不要去動它。
+DQN 為 Q-Table 蒸餾式架構，已完整實作。設計細節見 `Q表蒸餾式DQN：設計心法.md`。
 
 ---
 
@@ -101,6 +101,5 @@ DQN 目前選項存在 UI 但邏輯未完成，不要去動它。
 
 - `docs/gamelist.html` 是動態載入進 index.html 的，不是獨立頁面
 - CartPole.html 裡有個 typo：`CANVAS_H \ 2`（反斜線），是 Matter.js 靜態邊界計算，目前不影響功能
-- DQN 功能標示為開發中，論文截圖時注意不要誤導
-- Agent 2 UI 已暫時隱藏（HTML 中保留註解）
+- 智能體 2 UI 已暫時隱藏（HTML 中保留註解），待多智能體自動建立後啟用
 
