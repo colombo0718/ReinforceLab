@@ -11,6 +11,7 @@
 
   <a class="back-link" href="javascript:history.back()">← 返回指南</a>
 
+  <img src="img/illus-exploration.png" class="article-img" alt="只去熟悉的餐廳，永遠不知道有更好的選擇">
   <div class="article-label">策略選擇</div>
   <h1>探索 vs 利用 — ε-greedy 與 Softmax 的差異</h1>
   <div class="article-sub">AI 如何決定「試新的」還是「做已知最好的」</div>
@@ -85,7 +86,7 @@
     這模擬了「先廣泛嘗試、後逐漸收斂」的學習過程。
   </p>
 
-  <div class="img-placeholder">📸 需要截圖：RR 控制面板中的 ε 設定區塊，顯示 ε 值、衰減率與 cold-start 開關</div>
+  <img src="img/exp-epsilon-slider.png" class="article-img" alt="ε 設定區塊">
 
   <div class="callout">
     <strong>適合 ε-greedy 的場景：</strong>
@@ -197,7 +198,7 @@
     </div>
   </div>
 
-  <div class="img-placeholder">📸 需要截圖：三種策略（ε=0.1 / ε=0.5 / Softmax）的 Reward 曲線對比，在同一張圖或並排顯示</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:20px 0"><div><img src="img/exp-reward-low-eps.png" class="article-img" alt="ε=0.05"><p class="article-img-caption">ε=0.05：快速收斂但易陷局部最佳</p></div><div><img src="img/exp-reward-default.png" class="article-img" alt="ε=0.2"><p class="article-img-caption">ε=0.2（預設）：穩定收斂</p></div><div><img src="img/exp-reward-high-eps.png" class="article-img" alt="ε=0.5"><p class="article-img-caption">ε=0.5：持續探索，收斂慢</p></div></div>
 
   <!-- ── 常見誤解 ── -->
   <h2>常見誤解：「把 ε 設成 0，讓 AI 專心學習」</h2>

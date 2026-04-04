@@ -62,7 +62,7 @@
     <li>亮點散亂無規律——可能 α 太大，Q 值更新不穩定</li>
   </ul>
 
-  <div class="img-placeholder">📸 需要截圖：Maze2D 訓練 300 回合後的 Q-Table 熱力圖，終點附近明顯高亮，路徑上有漸層色帶</div>
+  <img src="img/viz-heatmap.png" class="article-img" alt="Q-Table 熱力圖"><p class="article-img-caption">收斂後的 Q-Table 熱力圖：終點附近高亮，路徑上形成漸層色帶</p>
 
   <!-- ── 動作熱圖 ── -->
   <h2>動作熱圖（Action Heatmap）</h2>
@@ -78,7 +78,7 @@
     <li>整張圖朝向終點方向——Agent 學到了「往終點走」的基本策略</li>
   </ul>
 
-  <div class="img-placeholder">📸 需要截圖：Maze2D 收斂後的動作熱圖，顯示整體顏色分區指向終點方向</div>
+  <img src="img/viz-action-heatmap.png" class="article-img" alt="動作熱圖"><p class="article-img-caption">動作熱圖：每格顏色代表 Agent 最傾向的移動方向，整體指向終點</p>
 
   <!-- ── 信心遮罩 ── -->
   <h2>信心遮罩（Confidence Mask）</h2>
@@ -124,7 +124,7 @@
     </div>
   </div>
 
-  <div class="img-placeholder">📸 需要截圖：點擊 Maze2D 某個路徑格後，右側顯示動作分布 bar 圖，其中一個方向的 Q 值明顯最高</div>
+  <img src="img/viz-bar-slice.png" class="article-img" alt="動作分布 bar 圖"><p class="article-img-caption">動作分布圖：點擊熱力圖某格後，顯示該狀態各動作的 Q 值比較</p>
 
   <!-- ── max Q / min Q 圖 ── -->
   <h2>max Q 圖與 min Q 圖</h2>
@@ -180,7 +180,7 @@
 
   <p>R² 同步率和 Reward 曲線一起看最有意義：如果 Reward 曲線已收斂但 R² 還很低，代表神經網路需要更多蒸餾時間；如果兩者都高，代表 DQN 已成功從 Q-Table 汲取知識。</p>
 
-  <div class="img-placeholder">📸 需要截圖：DQN 模式訓練中，分析面板右上角顯示 R² 同步率百分比數字（例如 87%）</div>
+  <img src="img/viz-r2-stat.png" class="article-img" alt="R² 同步率"><p class="article-img-caption">DQN 模式的分析面板：R² 同步率顯示神經網路對 Q-Table 的擬合程度</p>
 
   <div class="success-callout">
     <strong>讀懂這些圖之後，你能做什麼？</strong><br>
