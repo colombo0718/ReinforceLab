@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>選哪個遊戲？ | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="javascript:history.back()">← 返回指南</a>
+
+  <div class="article-label">環境選擇</div>
+  <h1>選哪個遊戲？</h1>
+  <div class="article-sub">各環境難度與學習特性比較——根據你的目標選對環境，少走彎路</div>
+
+  <!-- ── 為什麼環境選擇很重要 ── -->
+  <h2>為什麼環境選擇很重要</h2>
+
+  <p>
+    強化學習的學習曲線本來就陡。如果又選了一個對初學者來說太難的環境，Agent 要跑幾千個回合才能看到一點收斂的跡象——這會讓學生誤以為自己哪裡設錯了，或覺得 RL 根本沒有效果。
+  </p>
+  <p>
+    相反地，選對環境，幾十個回合就能看到 Q-Table 從一片空白到出現明顯的學習軌跡，這種「眼見為憑」的成就感，才是讓學生真正理解 RL 的關鍵時刻。
+  </p>
+
+  <div class="callout">
+    不同環境的訓練難度差距可以達到數十倍以上。初次使用 RR 平台，強烈建議從 Maze1D 或 Maze2D 開始。
+  </div>
+
+  <!-- ── 五個環境特性表格 ── -->
+  <h2>五個環境特性一覽</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>環境</th>
+        <th>狀態類型</th>
+        <th>狀態維度</th>
+        <th>動作數</th>
+        <th>收斂速度</th>
+        <th>視覺化可讀性</th>
+        <th>推薦情境</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Maze1D</strong></td>
+        <td>離散</td>
+        <td>1D</td>
+        <td>2</td>
+        <td>極快（&lt;100 回合）</td>
+        <td>中</td>
+        <td>RL 入門、第一次體驗</td>
+      </tr>
+      <tr>
+        <td><strong>MAB</strong></td>
+        <td>無狀態</td>
+        <td>—</td>
+        <td>可調</td>
+        <td>極快</td>
+        <td>低</td>
+        <td>理解探索/利用取捨</td>
+      </tr>
+      <tr>
+        <td><strong>Maze2D</strong></td>
+        <td>離散</td>
+        <td>2D</td>
+        <td>4</td>
+        <td>快（100–500 回合）</td>
+        <td>極高（熱力圖）</td>
+        <td>教學示範、展示 Q-Table</td>
+      </tr>
+      <tr>
+        <td><strong>heli</strong></td>
+        <td>連續（離散化）</td>
+        <td>3D</td>
+        <td>2</td>
+        <td>慢（500+ 回合）</td>
+        <td>中</td>
+        <td>連續決策、即時制挑戰</td>
+      </tr>
+      <tr>
+        <td><strong>CartPole</strong></td>
+        <td>連續（離散化）</td>
+        <td>4D</td>
+        <td>2</td>
+        <td>很慢（需 DQN）</td>
+        <td>中</td>
+        <td>高維狀態、DQN 驗證</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 各環境詳細說明 ── -->
+  <h2>各環境詳細說明</h2>
+
+  <h3>Maze1D — 最適合入門</h3>
+  <div class="img-placeholder">📸 需要截圖：Maze1D 遊戲畫面</div>
+  <p>
+    一維迷宮是 RR 平台最簡單的環境。Agent 在一條直線上左右移動，目標是找到終點。狀態只有一個整數（位置），Q-Table 非常小，幾十個回合就能看到完整的學習過程。
+  </p>
+  <p>
+    如果你是第一次接觸強化學習，或者你的學生從來沒看過 RL 在跑，從 Maze1D 開始。它的速度夠快，讓你可以在課堂上即時示範「從不會到會」的完整訓練過程。
+  </p>
+
+  <h3>MAB — 最適合理解探索/利用</h3>
+  <div class="img-placeholder">📸 需要截圖：MAB 遊戲畫面</div>
+  <p>
+    多臂拉霸機（Multi-Armed Bandit）是一個沒有狀態轉移的問題。Agent 只需要決定每次要拉哪個臂，沒有「上一步的後果影響下一步」的概念。這讓它成為理解探索/利用取捨最純粹的場景：你可以清楚看到當 ε 很低時，Agent 很快鎖定某個臂但可能錯過更好的選擇；當 ε 很高時，它不斷嘗試但也遲遲無法穩定。
+  </p>
+  <p>
+    MAB 支援多種獎勵模式，適合設計對照實驗。
+  </p>
+
+  <h3>Maze2D — 教學示範首選</h3>
+  <div class="img-placeholder">📸 需要截圖：Maze2D 遊戲畫面與 Q-Table 熱力圖</div>
+  <p>
+    二維迷宮是 RR 平台視覺化效果最佳的環境。Agent 在一個二維格子地圖上移動，Q-Table 熱力圖可以直接顯示每一格的「價值」——學得越久，熱力圖的顏色分布就越清楚地指向正確路徑。這個視覺化對於讓學生「看見」Q-Learning 的學習過程非常有效。
+  </p>
+  <p>
+    Maze2D 提供 6 個難度等級，從最簡單的開放地圖到有障礙物的複雜迷宮，可以根據課程需求調整挑戰程度。如果你只能選一個環境做教學示範，選 Maze2D。
+  </p>
+
+  <h3>heli — 即時制連續決策</h3>
+  <div class="img-placeholder">📸 需要截圖：heli 遊戲畫面</div>
+  <p>
+    直升機環境是即時制的，Agent 需要持續決定向上還是向下，避開障礙物。狀態是 3D 的，包含直升機位置、速度與距離資訊。這個環境的挑戰在於每一秒都在做決定，訓練需要更多回合才能收斂。
+  </p>
+  <p>
+    heli 適合已經理解基本 RL 流程之後，想進一步挑戰連續決策場景的學習者。
+  </p>
+
+  <h3>CartPole — 最有挑戰性</h3>
+  <div class="img-placeholder">📸 需要截圖：CartPole 遊戲畫面</div>
+  <p>
+    平衡桿是強化學習的經典 benchmark。Agent 需要控制一台小車左右移動，讓桿子保持直立。狀態是 4D 的連續值（小車位置、速度、桿子角度、角速度），用 Q-Table 離散化後有 1296 格以上，純 Q-Learning 的收斂速度很慢。
+  </p>
+  <p>
+    CartPole 最適合用來驗證 DQN 的效果——先用 Q-Table 跑，看到收斂困難之後切換 DQN，對比兩者的訓練曲線。這個對比本身就是很好的教學材料。
+  </p>
+
+  <!-- ── 學習目標對應推薦 ── -->
+  <h2>根據你的目標選擇</h2>
+
+  <div class="qa-block">
+    <div class="qa-q">「第一次理解 RL 是什麼」</div>
+    <div class="qa-a">推薦 <strong>Maze1D</strong> 或 <strong>Maze2D</strong>。Maze1D 最快見效，Maze2D 視覺化更豐富。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">「要展示給別人看 AI 在學習」</div>
+    <div class="qa-a">推薦 <strong>Maze2D</strong>。Q-Table 熱力圖是最直觀的學習過程視覺化，即使對完全沒有 RL 背景的觀眾也容易理解。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">「想深入理解探索/利用的取捨」</div>
+    <div class="qa-a">推薦 <strong>MAB</strong>。沒有狀態轉移的干擾，ε 的效果看得最清楚。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">「想挑戰連續狀態空間」</div>
+    <div class="qa-a">推薦 <strong>CartPole</strong>。感受 Q-Table 的局限，也是切換 DQN 的最佳時機。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">「想測試 DQN 的效果」</div>
+    <div class="qa-a">推薦 <strong>CartPole</strong> 或 <strong>heli</strong>。高維連續狀態讓 DQN 的優勢最明顯。</div>
+  </div>
+
+  <div class="bottom-nav">
+    <a href="qtable-viz.html">← 上一篇：讀懂 Q-Table 視覺化</a>
+    <a href="tuning.html">下一篇：調參數的心法 →</a>
+  </div>
+
+</div>
+</body>
+</html>

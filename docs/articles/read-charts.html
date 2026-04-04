@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>讀懂訓練圖表 — Reward 曲線與 Steps 曲線 | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="javascript:history.back()">← 返回指南</a>
+
+  <div class="article-label">視覺化</div>
+  <h1>讀懂訓練圖表 — Reward 曲線與 Steps 曲線</h1>
+  <div class="article-sub">訓練圖表不是裝飾——它是 AI 學習狀況的即時心電圖</div>
+
+  <!-- ── 為什麼需要訓練圖表 ── -->
+  <h2>為什麼需要訓練圖表</h2>
+
+  <p>強化學習的訓練過程發生在數百、數千個回合裡，單看遊戲畫面只能看到「現在這一刻」——Agent 往左走還是往右走，但你無法判斷它是在進步還是停滯。</p>
+
+  <p>訓練圖表的存在，是為了把時間維度攤開來看。Reward 曲線告訴你 Agent 每一段時間的「表現分數」，Steps 曲線告訴你它完成任務的「效率」。兩者合起來，就像心電圖一樣，讓「學習」這件原本看不見的事情變得可以觀察、可以診斷。</p>
+
+  <div class="callout">
+    <strong>一個直覺的比喻：</strong><br>
+    把 Agent 想像成一個剛入職的新人。Reward 曲線是他的月考成績，Steps 曲線是他完成一項任務所花的時間。成績上升、時間縮短——這才叫真正在學習。
+  </div>
+
+  <!-- ── 兩種時間尺度 ── -->
+  <h2>兩種時間尺度：每秒圖 vs 每回合圖</h2>
+
+  <p>RR 平台提供兩種不同時間解析度的圖表，各自回答不同問題：</p>
+
+  <table>
+    <thead>
+      <tr><th>圖表類型</th><th>時間單位</th><th>滑動視窗</th><th>適合觀察</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>每秒圖（second chart）</strong></td>
+        <td>實際秒數</td>
+        <td>最近 60 秒</td>
+        <td>即時訓練速度、短期波動</td>
+      </tr>
+      <tr>
+        <td><strong>每回合圖（episode chart）</strong></td>
+        <td>回合數</td>
+        <td>最近 100 回合</td>
+        <td>學習趨勢、是否真正在進步</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><strong>滑動視窗</strong>的意義：圖表不是顯示所有歷史，而是只顯示「最近一段時間」的平均值。這樣做的好處是：單一回合的隨機雜訊不會干擾大趨勢，讓你看到的是平滑後的學習走向。</p>
+
+  <div class="callout">
+    <strong>每秒圖 vs 每回合圖，選哪個？</strong><br>
+    判斷「正在學嗎」用每回合圖——X 軸代表學習經驗量，趨勢更有意義。<br>
+    想知道「現在跑多快」用每秒圖——加速模式下每秒可以跑很多回合，每秒圖反映的是吞吐量。
+  </div>
+
+  <!-- ── Reward 曲線怎麼讀 ── -->
+  <h2>Reward 曲線怎麼讀</h2>
+
+  <p>Reward 曲線是最重要的訓練指標。它顯示 Agent 在最近 N 回合（或 N 秒）內，平均每回合拿到多少分。</p>
+
+  <table>
+    <thead>
+      <tr><th>曲線形狀</th><th>意思</th><th>建議動作</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>穩定上升</td>
+        <td>Agent 持續學到新東西，學習有效</td>
+        <td>繼續訓練，觀察何時趨於平穩</td>
+      </tr>
+      <tr>
+        <td>長時間平坦</td>
+        <td>學習停滯，Agent 卡在某個策略</td>
+        <td>嘗試調高 ε 增加探索，或調整 α</td>
+      </tr>
+      <tr>
+        <td>劇烈震盪</td>
+        <td>ε 太高（太多隨機）或 α 太大（更新太激進）</td>
+        <td>降低 ε 或 α，讓學習更穩定</td>
+      </tr>
+      <tr>
+        <td>先升後明顯下降</td>
+        <td>可能過訓練，或遊戲參數設定問題</td>
+        <td>試著降低 α，或重置 Q-Table 從頭來</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="img-placeholder">📸 需要截圖：Maze2D 訓練約 200 回合後，Reward 曲線顯示穩定上升後趨於平穩的收斂形狀</div>
+
+  <div class="callout">
+    <strong>Reward 的絕對值不重要，趨勢才重要。</strong><br>
+    不同遊戲的 Reward 範圍完全不同：MAB 的 Reward 通常在 0~1，CartPole 可能累積到數百。不要拿不同遊戲的數字互相比較——觀察的是「它有沒有在往上走」。
+  </div>
+
+  <!-- ── Steps 曲線怎麼讀 ── -->
+  <h2>Steps 曲線怎麼讀</h2>
+
+  <p>Steps 曲線顯示 Agent 平均每回合走了多少步，或每秒走了多少步。「步數」的「好」方向依遊戲設計而定，解讀前要先了解這個遊戲的目標。</p>
+
+  <table>
+    <thead>
+      <tr><th>曲線趨勢</th><th>可能意思</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>步數<strong>下降</strong></td>
+        <td>Agent 找到更短路徑，效率提升（迷宮類遊戲的好跡象）</td>
+      </tr>
+      <tr>
+        <td>步數<strong>上升</strong></td>
+        <td>Agent 在遊戲中活得更久（CartPole 的好跡象）；或 Agent 迷路了（迷宮類的壞跡象）</td>
+      </tr>
+      <tr>
+        <td>步數極端穩定</td>
+        <td>Agent 可能收斂到一個固定策略（好或壞，要搭配 Reward 判斷）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="img-placeholder">📸 需要截圖：Maze2D Steps 曲線，顯示訓練過程中平均步數由高逐漸下降並收斂</div>
+
+  <div class="warning-callout">
+    <strong>注意：不同遊戲的「好」方向不同</strong><br>
+    MAB（多臂拉霸）每回合固定只有 1 步，Steps 曲線無意義，只看 Reward 即可。<br>
+    CartPole 目標是讓桿子盡量不倒，Steps 越多越好——曲線上升才是進步。<br>
+    Maze2D / Maze1D 目標是盡快到達終點，Steps 越少越好——曲線下降才是進步。
+  </div>
+
+  <!-- ── 四種常見失敗形狀 ── -->
+  <h2>四種常見失敗形狀</h2>
+
+  <div class="step-block">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <strong>Reward 一直是 0 或極端固定值</strong>
+      <p>訊號根本沒進來。可能是遊戲沒有正確載入、通訊協定出錯，或 Reward 設計讓 Agent 永遠拿不到正分。檢查遊戲是否成功載入，或重新按「載入」按鈕。</p>
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <strong>快速收斂但數值很低</strong>
+      <p>ε 太低，Agent 過早停止探索，陷入局部最佳解。它找到了「某個還能活的策略」就不再嘗試更好的方法。試著提高 ε（例如從 0.05 調到 0.2）並重新訓練。</p>
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <strong>劇烈震盪，看不出任何趨勢</strong>
+      <p>最常見原因是 α（學習率）太大，每次更新都把 Q 值衝過頭，導致學了又忘。建議把 α 降到 0.1 以下，讓每次更新比較保守。</p>
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <strong>先升後降（倒 U 形）</strong>
+      <p>Agent 學到一半開始「過訓練」，也就是過度依賴某個特定模式而喪失泛化能力。嘗試降低 α，或適當提高 γ（折扣率），讓 Agent 更重視長期報酬，避免局部短視。</p>
+    </div>
+  </div>
+
+  <!-- ── 實驗指引 ── -->
+  <h2>動手實驗：用 Maze2D 觀察收斂曲線</h2>
+
+  <p>建議步驟：</p>
+
+  <div class="step-block">
+    <div class="step-num">1</div>
+    <div class="step-content">載入 Maze2D，保持預設參數（ε ≈ 0.1、α ≈ 0.3、γ ≈ 0.95）</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">2</div>
+    <div class="step-content">開啟加速模式，等訓練跑到約 300 回合</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">3</div>
+    <div class="step-content">觀察 Reward 曲線：初期震盪 → 中期上升 → 後期趨於平穩，這是正常的收斂形狀</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">4</div>
+    <div class="step-content">截圖收斂曲線，和「劇烈震盪（α=0.9）」、「早期停滯（ε=0.01）」兩個對照組比較</div>
+  </div>
+
+  <div class="success-callout">
+    <strong>看到這個就代表成功：</strong><br>
+    Reward 曲線在 200 回合後趨於平穩，Steps 曲線同時穩定下降至一個低點。兩條曲線「一升一降、雙雙收斂」是 Agent 學習成功的最佳信號。
+  </div>
+
+  <div class="bottom-nav">
+    <a href="exploration.html">← 上一篇：探索與利用</a>
+    <a href="qtable-viz.html">下一篇：讀懂 Q-Table 視覺化 →</a>
+  </div>
+
+</div>
+</body>
+</html>

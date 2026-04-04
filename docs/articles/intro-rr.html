@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rein Room 是什麼？— 平台 1.0 功能全覽 | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="javascript:history.back()">← 返回指南</a>
+
+  <div class="article-label">有什麼</div>
+  <h1>Rein Room 是什麼？— 平台 1.0 功能全覽</h1>
+  <div class="article-sub">一個在瀏覽器裡訓練 AI Agent 的強化學習平台，免安裝、即開即用</div>
+
+  <!-- ── RR 是什麼 ── -->
+  <h2>一句話定位</h2>
+
+  <p>
+    Rein Room（RR）是一個純前端的強化學習教育平台：你只需要開啟瀏覽器，就能讓一個 AI Agent
+    從零開始學習玩遊戲——看它一開始亂試、撞牆、失敗，再看它逐漸找到策略、穩定得分。
+    整個過程不需要安裝任何軟體、不需要寫一行程式碼，所有計算都在你的電腦本地執行。
+  </p>
+
+  <div class="callout">
+    <strong>平台網址：</strong>
+    <a href="https://reinroom.leaflune.org" target="_blank">reinroom.leaflune.org</a>
+    — 直接開啟即可使用，免登入、免安裝。
+  </div>
+
+  <!-- ── 核心功能概覽 ── -->
+  <h2>核心功能概覽</h2>
+
+  <table>
+    <thead>
+      <tr><th>功能類別</th><th>具體內容</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>演算法</strong></td>
+        <td>Q-Learning（Q-Table 離散化）、Q-Table 蒸餾式 DQN（神經網路，TensorFlow.js）</td>
+      </tr>
+      <tr>
+        <td><strong>遊戲環境</strong></td>
+        <td>5 個內建遊戲，從最簡單的多臂拉霸到物理模擬的 CartPole，難度梯度分明</td>
+      </tr>
+      <tr>
+        <td><strong>訓練視覺化</strong></td>
+        <td>即時 Reward 折線圖、Steps 柱狀圖、Q-Table 熱力圖、動作分布圖、動作熱圖</td>
+      </tr>
+      <tr>
+        <td><strong>超參數調整</strong></td>
+        <td>學習率（α）、折扣因子（γ）、探索率（ε）可即時修改，調完立刻看效果</td>
+      </tr>
+      <tr>
+        <td><strong>訓練控制</strong></td>
+        <td>暫停 / 繼續、加速模式、清空記憶重新訓練、匯入 / 匯出 Q-Table</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 介面布局說明 ── -->
+  <h2>介面布局說明</h2>
+
+  <p>
+    RR 的主介面分為左右兩個區域：
+  </p>
+
+  <div class="step-block">
+    <div class="step-num">左</div>
+    <div class="step-content">
+      <strong>遊戲畫面區</strong><br>
+      以 iframe 嵌入的遊戲環境，你可以即時觀察 Agent 正在做什麼。
+      每一步動作、每一次碰壁、每一個得分都在這裡發生。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">右</div>
+    <div class="step-content">
+      <strong>控制面板與圖表區</strong><br>
+      上方是遊戲選擇、演算法切換、超參數設定與訓練控制按鈕；
+      下方是即時更新的訓練圖表，包含 Reward 曲線、Steps 趨勢、Q-Table 熱力圖等。
+    </div>
+  </div>
+
+  <div class="img-placeholder">📸 需要截圖：RR 主介面全覽，左側遊戲 iframe + 右側控制面板與圖表區</div>
+
+  <!-- ── 五個遊戲環境 ── -->
+  <h2>五個遊戲環境</h2>
+
+  <table>
+    <thead>
+      <tr><th>遊戲</th><th>簡介</th><th>適合學習主題</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>多臂拉霸（MAB）</strong></td>
+        <td>最簡單的情境：Agent 只能選哪台機器拉，沒有狀態轉移，純粹是探索 vs 利用的取捨。</td>
+        <td>ε-greedy、探索策略入門</td>
+      </tr>
+      <tr>
+        <td><strong>一維迷宮（Maze1D）</strong></td>
+        <td>Agent 在一條直線上向左或向右走，找到出口即結束回合。</td>
+        <td>Q-Table 基礎、狀態-動作映射</td>
+      </tr>
+      <tr>
+        <td><strong>二維迷宮（Maze2D）</strong></td>
+        <td>格狀地圖上的迷宮導航，以 emoji 顯示地圖，狀態空間明顯增大。</td>
+        <td>狀態空間維度感、Q-Table 熱力圖解讀</td>
+      </tr>
+      <tr>
+        <td><strong>直升機（heli）</strong></td>
+        <td>即時制飛行遊戲，Agent 要連續控制直升機上下飛行穿越障礙。</td>
+        <td>連續動作時序、即時制 vs 回合制</td>
+      </tr>
+      <tr>
+        <td><strong>CartPole</strong></td>
+        <td>經典物理模擬：在移動小車上保持桿子不倒，4 維連續狀態空間（位置、速度、角度、角速度）。</td>
+        <td>連續狀態離散化、DQN 的必要性</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>難度梯度設計：</strong>
+    從 MAB → Maze1D → Maze2D → heli → CartPole，狀態空間和決策複雜度逐步遞增，
+    適合課程循序引導，也讓學生自然感受到「為什麼需要 DQN」。
+  </div>
+
+  <!-- ── 跟傳統工具的差異 ── -->
+  <h2>跟傳統 RL 工具的差異</h2>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h3>傳統工具（如 OpenAI Gym）</h3>
+      <ul>
+        <li>需要安裝 Python 環境</li>
+        <li>需要撰寫訓練程式碼</li>
+        <li>數值輸出，可視化需額外處理</li>
+        <li>適合已有程式基礎的學習者</li>
+        <li>彈性高，可深度客製化</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <h3>Rein Room</h3>
+      <ul>
+        <li>開啟瀏覽器即可使用</li>
+        <li>不需要寫程式</li>
+        <li>訓練過程即時視覺化</li>
+        <li>適合教學與初學者</li>
+        <li>聚焦在概念理解與觀察</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>
+    RR 不是要取代 Gym，而是填補了一個缺口：
+    讓沒有程式背景的學生，或剛接觸 RL 的學習者，
+    能先建立直觀和概念，再決定是否要深入實作。
+  </p>
+
+  <!-- ── 適合誰用 ── -->
+  <h2>適合誰用？</h2>
+
+  <div class="step-block">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <strong>教師與講師</strong><br>
+      想在課堂上展示 RL 概念，不想花半節課安裝環境。RR 可以直接投影，邊操作邊解說。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <strong>學生與自學者</strong><br>
+      想理解 Q-Learning 是怎麼運作的，不只是背公式。RR 讓你看到 Q-Table 如何更新、
+      策略如何從隨機逐漸收斂。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <strong>對 AI 感興趣的任何人</strong><br>
+      不需要數學背景，只需要好奇心。看著 Agent 慢慢學會，本身就是一件有趣的事。
+    </div>
+  </div>
+
+  <div class="success-callout">
+    <strong>準備好了嗎？</strong>
+    打開 <a href="https://reinroom.leaflune.org" target="_blank">reinroom.leaflune.org</a>，
+    選一個遊戲，按下開始，看看 Agent 需要多少回合才能學會——這是最好的入門方式。
+  </div>
+
+  <!-- ── 底部導覽 ── -->
+  <div class="bottom-nav">
+    <span></span>
+    <a href="rl-in-llm-era.html">下一篇：LLM 當道，學生還需要學 RL 嗎？→</a>
+  </div>
+
+</div>
+</body>
+</html>
