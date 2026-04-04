@@ -7,8 +7,8 @@
 
 ## 線上網址
 
-- 目前部署：`https://reinforcelab.vercel.app`（Vercel，暫時）
-- 正式目標：`reinroom.leaflune.org`（Cloudflare，`leaflune.org` 是開發者自有網域）
+- 正式部署：`https://reinroom.leaflune.org`（Cloudflare Pages，push master 自動更新）
+- 舊網址：`https://reinforcelab.vercel.app`（Vercel，已棄用）
 - GitHub：`https://github.com/colombo0718/ReinforceLab`
 
 ---
