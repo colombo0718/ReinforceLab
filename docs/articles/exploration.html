@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>探索 vs 利用 — ε-greedy 與 Softmax 的差異 | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="/">← 返回 Rein Room</a>
+
+  <img src="img/illus-exploration.png" class="article-img" alt="只去熟悉的餐廳，永遠不知道有更好的選擇">
+  <div class="article-label">策略選擇</div>
+  <h1>探索 vs 利用 — ε-greedy 與 Softmax 的差異</h1>
+  <div class="article-sub">AI 如何決定「試新的」還是「做已知最好的」</div>
+
+  <!-- ── 問題設定 ── -->
+  <h2>如果只選「當前最好的」，會怎樣？</h2>
+
+  <p>
+    想像你在一個陌生城市找餐廳。第一天隨機走進一家拉麵店，還不錯，評個 7 分。
+    第二天你又去同一家——因為這是你目前「已知最好的」。
+    第三天、第四天，還是同一家。
+  </p>
+  <p>
+    結果是：你永遠不會知道隔壁那家義大利麵其實是 9 分。
+    你的「最佳選擇」被鎖死在第一次的不完整資訊裡了。
+  </p>
+
+  <p>
+    這就是強化學習裡的 <strong>探索與利用的取捨（Exploration vs Exploitation）</strong>：
+  </p>
+
+  <ul>
+    <li><strong>利用（Exploitation）</strong>：選當前 Q 值最高的動作，最大化已知收益。</li>
+    <li><strong>探索（Exploration）</strong>：隨機嘗試其他動作，蒐集新資訊，可能發現更好的策略。</li>
+  </ul>
+
+  <div class="warning-callout">
+    <strong>只利用不探索的代價：</strong>
+    如果 Agent 一開始碰巧學到一個還過得去但非最優的策略，
+    它就會一直重複這個策略，永遠不會去嘗試更好的路徑。
+    Q-Table 的大部分格子甚至永遠不會被更新到。
+  </div>
+
+  <!-- ── ε-greedy ── -->
+  <h2>ε-greedy：設一個探索機率</h2>
+
+  <p>
+    最常見的解法是 <strong>ε-greedy</strong>（ε 念作 epsilon-greedy）：
+  </p>
+
+  <div class="step-block">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      每一步，先擲一個骰子（0 到 1 之間的隨機數）。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      若隨機數 &lt; ε → <strong>隨機選一個動作</strong>（探索）。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      若隨機數 ≥ ε → <strong>選 Q 值最高的動作</strong>（利用）。
+    </div>
+  </div>
+
+  <p>
+    ε 越高，探索越多；ε 越低，越傾向利用已知。
+    兩個極端：ε = 1 是完全隨機，ε = 0 是完全貪婪（greedy）。
+  </p>
+
+  <h3>RR 的 Cold-Start 機制</h3>
+
+  <p>
+    RR 預設啟用 <strong>Cold-Start</strong>：訓練開始時 ε 很高（大量探索），
+    隨著訓練回合推進，ε 按衰減率逐漸降低，Agent 慢慢轉向利用已學到的策略。
+    這模擬了「先廣泛嘗試、後逐漸收斂」的學習過程。
+  </p>
+
+  <img src="img/exp-epsilon-slider.png" class="article-img" alt="ε 設定區塊">
+
+  <div class="callout">
+    <strong>適合 ε-greedy 的場景：</strong>
+    狀態空間清楚離散、每個狀態都有明確的「最好動作」可言。
+    Maze1D、Maze2D 這類格狀環境非常適合用 ε-greedy。
+  </div>
+
+  <!-- ── Softmax ── -->
+  <h2>Softmax：依 Q 值比例決定機率</h2>
+
+  <p>
+    ε-greedy 的問題是：它不管 Q 值的差距大小——
+    不管第一名領先第二名是 0.01 分還是 100 分，它都是用同一個 ε 決定要不要隨機。
+  </p>
+
+  <p>
+    <strong>Softmax 策略</strong> 更細膩：它把所有動作的 Q 值轉換成機率分布，
+    Q 值越高的動作被選到的機率越高，但不是 100%。
+    如果幾個動作的 Q 值很接近，每個都有不低的機率被選到（保持探索）；
+    如果某個動作明顯最好，它被選的機率就接近 1（近似貪婪）。
+  </p>
+
+  <h3>溫度參數（Temperature）</h3>
+
+  <p>Softmax 有一個「溫度」參數控制分布的集中程度：</p>
+
+  <ul>
+    <li><strong>高溫</strong>：所有動作的機率趨近均勻，接近純隨機探索。</li>
+    <li><strong>低溫</strong>：機率集中在 Q 值最高的動作，接近 greedy。</li>
+    <li><strong>溫度 → 0</strong>：等同於完全貪婪。</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Softmax 的優點：</strong>
+    探索行為「智慧地」和 Q 值差距掛鉤。
+    Q-Table 還很混亂的早期，各動作被選機率相近（探索充分）；
+    學習收斂後，策略自然集中，不需要手動調 ε。
+  </div>
+
+  <!-- ── 對比表格 ── -->
+  <h2>兩者對比</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>ε-greedy</th>
+        <th>Softmax</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>探索方式</strong></td>
+        <td>固定機率 ε 隨機選動作</td>
+        <td>依 Q 值比例選動作</td>
+      </tr>
+      <tr>
+        <td><strong>Q 值差距的影響</strong></td>
+        <td>不影響探索機率</td>
+        <td>差距大時自動減少探索</td>
+      </tr>
+      <tr>
+        <td><strong>調整方式</strong></td>
+        <td>調 ε 值與衰減率</td>
+        <td>調溫度參數</td>
+      </tr>
+      <tr>
+        <td><strong>適合場景</strong></td>
+        <td>離散、清楚的狀態空間</td>
+        <td>Q 值分布不均勻時更有優勢</td>
+      </tr>
+      <tr>
+        <td><strong>RR 建議起點</strong></td>
+        <td>Maze1D / Maze2D，ε 從 0.3–0.5 開始</td>
+        <td>MAB / heli，觀察自動收斂行為</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 實驗建議 ── -->
+  <h2>動手實驗：Maze2D 三組對比</h2>
+
+  <p>
+    以下是一個很有說服力的對比實驗，可以在 RR 上直接做：
+    用 Maze2D，其他參數不變，只改探索策略。
+  </p>
+
+  <div class="step-block">
+    <div class="step-num">A</div>
+    <div class="step-content">
+      <strong>ε = 0.1（幾乎不探索）</strong><br>
+      Agent 很快固定下來，但可能卡在次優路徑，最終 Reward 偏低、不穩定。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">B</div>
+    <div class="step-content">
+      <strong>ε = 0.5（大量探索）</strong><br>
+      早期進步較慢，但探索充分，最終通常能找到更好的路徑，Reward 較高且穩定。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">C</div>
+    <div class="step-content">
+      <strong>Softmax（自動調節）</strong><br>
+      早期探索充分，後期自動收斂；若溫度設得好，通常能兼顧探索品質與收斂速度。
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:20px 0"><div><img src="img/exp-reward-low-eps.png" class="article-img" alt="ε=0.05"><p class="article-img-caption">ε=0.05：快速收斂但易陷局部最佳</p></div><div><img src="img/exp-reward-default.png" class="article-img" alt="ε=0.2"><p class="article-img-caption">ε=0.2（預設）：穩定收斂</p></div><div><img src="img/exp-reward-high-eps.png" class="article-img" alt="ε=0.5"><p class="article-img-caption">ε=0.5：持續探索，收斂慢</p></div></div>
+
+  <!-- ── 常見誤解 ── -->
+  <h2>常見誤解：「把 ε 設成 0，讓 AI 專心學習」</h2>
+
+  <div class="qa-block">
+    <div class="qa-q">「ε 設成 0，Agent 就不會亂來，不是學得更快嗎？」</div>
+    <div class="qa-a">
+      <p>
+        這是初學者非常常見的直覺，但結果恰恰相反。
+      </p>
+      <p>
+        ε = 0 代表 Agent 從頭到尾都只選「目前 Q 值最高的動作」。
+        但訓練剛開始，Q-Table 都是 0（或隨機初始值），
+        根本沒有足夠資訊知道哪個動作真的比較好——
+        「最高 Q 值」只是隨機初始化帶來的假象。
+      </p>
+      <p>
+        這樣的 Agent 會很快鎖死在第一個碰巧 Q 值稍高的動作，
+        從此一直重複，其他動作的 Q 值永遠沒機會被更新，
+        整個 Q-Table 學不起來。
+      </p>
+      <p>
+        <strong>正確做法：</strong>讓訓練初期有足夠探索（ε 較高或使用 cold-start），
+        確保各狀態-動作組合都被嘗試到，才能讓 Bellman 更新有意義。
+      </p>
+    </div>
+  </div>
+
+  <div class="success-callout">
+    <strong>探索是學習的前提，不是干擾：</strong>
+    只有當 Agent 嘗試過足夠多的動作，Q-Table 才能反映真實的好壞差異。
+    過度「專心利用」只是在加速收斂到一個差的局部最優解。
+  </div>
+
+  <!-- ── 底部導覽 ── -->
+  <div class="bottom-nav">
+    <a href="qlearning.html">← 上一篇：Q-Learning — 決策價值怎麼學起來的</a>
+    <a href="read-charts.html">下一篇：如何讀懂訓練圖表 →</a>
+  </div>
+
+</div>
+</body>
+</html>

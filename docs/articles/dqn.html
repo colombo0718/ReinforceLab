@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DQN 是什麼？ | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="/">← 返回 Rein Room</a>
+
+  <div class="article-label">進階演算法</div>
+  <h1>DQN 是什麼？</h1>
+  <div class="article-sub">從 Q-Table 到神經網路的橋樑——以及 RR 特有的蒸餾式設計</div>
+
+  <!-- ── Q-Table 的天花板 ── -->
+  <h2>Q-Table 的天花板：狀態空間爆炸</h2>
+
+  <p>
+    Q-Table 的核心假設是：每一個狀態都有一個對應的「格子」，我們把每個動作的 Q 值存在裡面。這個想法在狀態空間小的時候非常有效——Maze1D 只有幾十個格子，幾十回合就能學完。
+  </p>
+  <p>
+    但一旦狀態空間變大，Q-Table 就遇到了根本性的困難。以 CartPole 為例：狀態是 4 個連續數值，如果每個維度離散化成 6 格，總格子數是 6 × 6 × 6 × 6 = 1296 格。聽起來還好，但連續值其實是無限細的——你離散化得越粗，精度越差；離散化得越細，格子數爆炸，Agent 根本沒辦法在有限回合內把每個格子都造訪到。
+  </p>
+
+  <div class="callout">
+    這就是「維度詛咒」：狀態維度每增加一個，狀態空間的大小就指數級膨脹。Q-Table 對高維連續狀態力不從心。
+  </div>
+
+  <!-- ── DQN 的核心思路 ── -->
+  <h2>DQN 的核心思路：用神經網路近似 Q 函數</h2>
+
+  <p>
+    Deep Q-Network（DQN）的核心想法是：不存表，改用函數來估算。把 Q 函數看成一個「輸入 state，輸出每個 action 的 Q 值」的函數，用神經網路來近似這個函數。
+  </p>
+  <p>
+    神經網路的優勢在於泛化能力。就算某個狀態在訓練時從來沒見過，神經網路也能根據相近的狀態做出估算。這讓它可以處理連續狀態空間，而不需要把每個狀態都顯式地造訪一遍。
+  </p>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <strong>Q-Table</strong>
+      <ul>
+        <li>把每個狀態的 Q 值存在格子裡</li>
+        <li>需要造訪所有格子才能學完</li>
+        <li>狀態空間小時速度快、可解釋</li>
+        <li>高維連續狀態時格子數爆炸</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <strong>DQN（神經網路）</strong>
+      <ul>
+        <li>用函數近似 Q 值，不存格子</li>
+        <li>沒見過的狀態也能泛化估算</li>
+        <li>高維連續狀態也能處理</li>
+        <li>訓練較複雜，可解釋性較低</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 傳統 DQN 的複雜性 ── -->
+  <h2>傳統 DQN 的複雜性</h2>
+
+  <p>
+    標準的 DQN 實作需要幾個額外的機制來讓訓練穩定：
+  </p>
+  <ul>
+    <li><strong>Replay Buffer（經驗回放）</strong>：把過去的 (state, action, reward, next_state) 存起來，訓練時隨機抽取，打破樣本之間的時序相關性。</li>
+    <li><strong>Target Network（目標網路）</strong>：用一個延遲更新的網路來計算 Bellman 目標，避免訓練目標一直在動導致不穩定。</li>
+    <li><strong>Batch Training</strong>：每次從 buffer 取一批樣本做梯度下降，而不是每一步都更新。</li>
+  </ul>
+  <p>
+    這些機制讓傳統 DQN 的實作複雜度大幅提升。對教學場景來說，這種複雜性會掩蓋掉 RL 的核心概念。
+  </p>
+
+  <!-- ── RR 的蒸餾式 DQN ── -->
+  <h2>RR 的 Q-Table 蒸餾式 DQN</h2>
+
+  <p>
+    RR 平台採用了一種不同的設計：不讓神經網路直接從環境的 reward 訊號學習，而是讓 Q-Table 和神經網路互相合作。
+  </p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 600 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+      <!-- 背景分區 -->
+      <rect x="10" y="10" width="250" height="180" rx="12" fill="#e8f4fb" stroke="#0078d7" stroke-width="1.5"/>
+      <rect x="340" y="10" width="250" height="180" rx="12" fill="#f0f0f0" stroke="#555" stroke-width="1.5"/>
+
+      <!-- Q-Table 標題 -->
+      <text x="135" y="36" text-anchor="middle" fill="#0078d7" font-size="14" font-weight="bold">Q-Table</text>
+      <text x="135" y="52" text-anchor="middle" fill="#0078d7" font-size="11">（老師）</text>
+
+      <!-- Q-Table 格子示意 -->
+      <rect x="40" y="62" width="30" height="24" rx="3" fill="#fff" stroke="#0078d7" stroke-width="1"/>
+      <rect x="74" y="62" width="30" height="24" rx="3" fill="#b3d9f5" stroke="#0078d7" stroke-width="1"/>
+      <rect x="108" y="62" width="30" height="24" rx="3" fill="#fff" stroke="#0078d7" stroke-width="1"/>
+      <rect x="142" y="62" width="30" height="24" rx="3" fill="#5bb0e8" stroke="#0078d7" stroke-width="1"/>
+      <rect x="176" y="62" width="30" height="24" rx="3" fill="#fff" stroke="#0078d7" stroke-width="1"/>
+      <rect x="210" y="62" width="30" height="24" rx="3" fill="#b3d9f5" stroke="#0078d7" stroke-width="1"/>
+      <rect x="40" y="90" width="30" height="24" rx="3" fill="#5bb0e8" stroke="#0078d7" stroke-width="1"/>
+      <rect x="74" y="90" width="30" height="24" rx="3" fill="#fff" stroke="#0078d7" stroke-width="1"/>
+      <rect x="108" y="90" width="30" height="24" rx="3" fill="#b3d9f5" stroke="#0078d7" stroke-width="1"/>
+      <rect x="142" y="90" width="30" height="24" rx="3" fill="#fff" stroke="#0078d7" stroke-width="1"/>
+      <rect x="176" y="90" width="30" height="24" rx="3" fill="#0078d7" stroke="#0078d7" stroke-width="1"/>
+      <rect x="210" y="90" width="30" height="24" rx="3" fill="#fff" stroke="#0078d7" stroke-width="1"/>
+
+      <!-- Q-Table Bellman 標示 -->
+      <text x="135" y="136" text-anchor="middle" fill="#0078d7" font-size="11">Bellman 方程式更新</text>
+      <text x="135" y="151" text-anchor="middle" fill="#555" font-size="10">（有理論保證）</text>
+
+      <!-- 神經網路標題 -->
+      <text x="465" y="36" text-anchor="middle" fill="#333" font-size="14" font-weight="bold">神經網路</text>
+      <text x="465" y="52" text-anchor="middle" fill="#555" font-size="11">（學生）</text>
+
+      <!-- 神經網路節點層 -->
+      <!-- 輸入層 -->
+      <circle cx="370" cy="80" r="11" fill="#ddd" stroke="#555" stroke-width="1.5"/>
+      <circle cx="370" cy="110" r="11" fill="#ddd" stroke="#555" stroke-width="1.5"/>
+      <circle cx="370" cy="140" r="11" fill="#ddd" stroke="#555" stroke-width="1.5"/>
+      <!-- 隱藏層 -->
+      <circle cx="430" cy="70" r="11" fill="#bbb" stroke="#555" stroke-width="1.5"/>
+      <circle cx="430" cy="95" r="11" fill="#bbb" stroke="#555" stroke-width="1.5"/>
+      <circle cx="430" cy="120" r="11" fill="#bbb" stroke="#555" stroke-width="1.5"/>
+      <circle cx="430" cy="145" r="11" fill="#bbb" stroke="#555" stroke-width="1.5"/>
+      <!-- 輸出層 -->
+      <circle cx="490" cy="90" r="11" fill="#0078d7" stroke="#005a9e" stroke-width="1.5"/>
+      <circle cx="490" cy="120" r="11" fill="#0078d7" stroke="#005a9e" stroke-width="1.5"/>
+      <!-- 連線（輸入→隱藏） -->
+      <line x1="381" y1="80" x2="419" y2="70" stroke="#aaa" stroke-width="1"/>
+      <line x1="381" y1="80" x2="419" y2="95" stroke="#aaa" stroke-width="1"/>
+      <line x1="381" y1="110" x2="419" y2="95" stroke="#aaa" stroke-width="1"/>
+      <line x1="381" y1="110" x2="419" y2="120" stroke="#aaa" stroke-width="1"/>
+      <line x1="381" y1="140" x2="419" y2="120" stroke="#aaa" stroke-width="1"/>
+      <line x1="381" y1="140" x2="419" y2="145" stroke="#aaa" stroke-width="1"/>
+      <!-- 連線（隱藏→輸出） -->
+      <line x1="441" y1="70" x2="479" y2="90" stroke="#aaa" stroke-width="1"/>
+      <line x1="441" y1="95" x2="479" y2="90" stroke="#aaa" stroke-width="1"/>
+      <line x1="441" y1="120" x2="479" y2="120" stroke="#aaa" stroke-width="1"/>
+      <line x1="441" y1="145" x2="479" y2="120" stroke="#aaa" stroke-width="1"/>
+      <!-- 輸出標示 -->
+      <text x="508" y="93" fill="#0078d7" font-size="10">Q(a₁)</text>
+      <text x="508" y="123" fill="#0078d7" font-size="10">Q(a₂)</text>
+
+      <!-- 箭頭 1：Q-Table → NN（蒸餾，從上方繞） -->
+      <defs>
+        <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#0078d7"/>
+        </marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#107c10"/>
+        </marker>
+      </defs>
+      <path d="M 260,60 C 295,20 310,20 340,60" fill="none" stroke="#0078d7" stroke-width="2" marker-end="url(#arr-blue)"/>
+      <text x="300" y="16" text-anchor="middle" fill="#0078d7" font-size="11" font-weight="bold">NN 擬合 Q-Table 輸出（蒸餾）</text>
+
+      <!-- 箭頭 2：NN → Q-Table（互學，從下方繞） -->
+      <path d="M 340,155 C 310,200 295,200 260,155" fill="none" stroke="#107c10" stroke-width="2" marker-end="url(#arr-green)"/>
+      <text x="300" y="218" text-anchor="middle" fill="#107c10" font-size="11" font-weight="bold">NN 估算 unseen state（互學）</text>
+
+      <!-- 環境輸入 / 輸出 -->
+      <rect x="215" y="250" width="170" height="44" rx="10" fill="#333"/>
+      <text x="300" y="268" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">環境</text>
+      <text x="300" y="285" text-anchor="middle" fill="#ccc" font-size="10">輸入 state → 輸出 action</text>
+
+      <!-- 環境到兩個模型的箭頭 -->
+      <line x1="250" y1="250" x2="170" y2="195" stroke="#888" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+      <line x1="350" y1="250" x2="430" y2="195" stroke="#888" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+    </svg>
+  </div>
+
+  <h3>Q-Table 是老師</h3>
+  <p>
+    Q-Table 用 Bellman 方程式更新，這是有嚴謹數學理論保證的方法。它的更新是精確的：每一個（狀態, 動作）格子都存著一個可信的 Q 值估算。但它只能更新「曾經造訪過的格子」。
+  </p>
+
+  <h3>神經網路是學生</h3>
+  <p>
+    神經網路的任務是「擬合 Q-Table 的輸出」——也就是學習 Q-Table 已知的 Q 值。這個過程就像知識蒸餾：老師（Q-Table）把它學到的知識傳遞給學生（NN）。神經網路從中學到 Q 函數的形狀，可以對任意連續狀態做出 Q 值估算。
+  </p>
+
+  <h3>雙向互學：NN 反饋給 Q-Table</h3>
+  <p>
+    這是 RR 設計最獨特的地方。當 Q-Table 遇到一個它從來沒見過的狀態（unseen state）時，無法用 Bellman 方程式更新——因為沒有 Q 值可以參考。這時候，訓練好的神經網路可以估算這個 unseen state 的 Q 值，把估算值回饋給 Q-Table 做 Bellman 更新。
+  </p>
+  <p>
+    老師和學生互相幫助：Q-Table 教 NN 學精確的 Q 值，NN 幫 Q-Table 填補沒造訪過的格子。
+  </p>
+
+  <!-- ── 好處 ── -->
+  <div class="success-callout">
+    <strong>蒸餾式 DQN 的優勢：</strong><br>
+    不需要 Replay Buffer（不用存一大堆歷史資料）、不需要 Target Network（訓練架構簡單）、Q-Table 保留完整（隨時可解釋），以及 R² 量化兩者的同步程度。
+  </div>
+
+  <!-- ── R² 同步率 ── -->
+  <h2>R² 同步率的意義</h2>
+
+  <p>
+    RR 平台會即時顯示一個叫做 R² 的指標。它衡量的是「神經網路輸出的 Q 值」和「Q-Table 儲存的 Q 值」之間的相關程度。
+  </p>
+  <ul>
+    <li><strong>R² = 1</strong>：完全同步。NN 對每一個狀態的估算，和 Q-Table 完全一致。</li>
+    <li><strong>R² = 0</strong>：毫無關聯。NN 還沒學到 Q-Table 的知識。</li>
+    <li><strong>R² 接近 1 但還沒到</strong>：NN 在泛化，對 Q-Table 沒見過的狀態也有估算，但和 Q-Table 的已知格子仍然對齊。</li>
+  </ul>
+  <p>
+    R² 讓「知識轉移」這件原本抽象的事情變得可量化，是蒸餾式設計特有的可觀測指標。
+  </p>
+
+  <!-- ── 什麼時候用 DQN ── -->
+  <h2>什麼時候應該切換到 DQN？</h2>
+
+  <div class="qa-block">
+    <div class="qa-q">狀態空間大、格子數多</div>
+    <div class="qa-a">Q-Table 需要太多回合才能覆蓋所有格子，神經網路可以泛化填補空白。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">連續狀態值</div>
+    <div class="qa-a">離散化的精度有上限，神經網路直接處理連續值不需要離散化。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">Q-Table 收斂速度慢，但有上升趨勢</div>
+    <div class="qa-a">Q-Table 已建立了基礎知識，這時候切換 DQN，讓 NN 在 Q-Table 的基礎上加速泛化。</div>
+  </div>
+
+  <div class="warning-callout">
+    不建議一開始就直接用 DQN，而跳過 Q-Table 階段。Q-Table 的學習過程對於理解 RL 原理非常重要；DQN 的效果也建立在 Q-Table 已經累積了一定知識的前提上。
+  </div>
+
+  <!-- ── 實驗建議 ── -->
+  <h2>實驗建議：CartPole 對比實驗</h2>
+
+  <div class="step-block">
+    <div class="step-num">1</div>
+    <div class="step-content">選擇 CartPole 環境，使用純 Q-Table 模式，跑 500 回合。記錄最終的平均 Reward 與收斂狀態。</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">2</div>
+    <div class="step-content">不清空 Q-Table，切換到 DQN 模式，繼續跑 500 回合。讓 NN 在 Q-Table 的基礎上開始學習。</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">3</div>
+    <div class="step-content">對比前 500 回合（純 Q-Table）和後 500 回合（DQN）的 Reward 曲線。你應該能看到切換 DQN 之後收斂明顯加速。</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">4</div>
+    <div class="step-content">觀察 R² 同步率的變化。R² 從低到高的過程，對應的是神經網路「學習 Q-Table 知識」的過程。</div>
+  </div>
+
+  <div class="bottom-nav">
+    <a href="tuning.html">← 上一篇：調參數的心法</a>
+    <a href="for-teachers.html">下一篇：給教師的指引 →</a>
+  </div>
+
+</div>
+</body>
+</html>

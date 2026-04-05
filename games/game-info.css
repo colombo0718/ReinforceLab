@@ -1,0 +1,81 @@
+/* game-info.css — 遊戲說明區共用樣式 */
+
+#info {
+  max-width: 600px;
+  margin: 16px auto 24px;
+  font-family: Arial, "Noto Sans TC", sans-serif;
+  color: #111827;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+#info h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: #111827;
+}
+
+#info p {
+  margin: 0 0 10px;
+}
+
+#info details {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin: 6px 0;
+}
+
+#info details summary {
+  cursor: pointer;
+  padding: 9px 14px;
+  font-weight: 600;
+  user-select: none;
+  list-style: none;
+}
+
+#info details summary::-webkit-details-marker { display: none; }
+
+#info details[open] summary {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+#info details > *:not(summary) {
+  padding: 8px 16px;
+}
+
+#info ul {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+#info li { margin: 3px 0; }
+
+#info code {
+  background: #f3f3f3;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+
+.param-grid {
+  display: flex;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+.param-col {
+  flex: 1;
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.param-col h4 {
+  margin: 0 0 5px;
+  font-size: 0.85em;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.param-col ul { margin: 0; }

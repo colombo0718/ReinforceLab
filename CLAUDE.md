@@ -1,105 +1,105 @@
-# CLAUDE.md — Rein Room 專案快速指引
+# CLAUDE.md — 通用工作規範
 
-## 這個專案是什麼
+> 這份文件是跨專案通用的 AI 協作規範。
+> 專案本身的架構、協定、技術細節寫在 `PROJECT.md`。
 
-**Rein Room (RR)** 是一個純前端的強化學習教育平台，讓使用者在瀏覽器中訓練 AI Agent 玩各種遊戲。
-開發者（colombo0718）是碩士生，論文研究主題就是 RR 平台在 RL 教學的成效。
-
-## 線上網址
-
-- 目前部署：`https://reinforcelab.vercel.app`（Vercel，暫時）
-- 正式目標：`reinroom.leaflune.org`（Cloudflare，`leaflune.org` 是開發者自有網域）
-- GitHub：`https://github.com/colombo0718/ReinforceLab`
+@PROJECT.md
 
 ---
 
-## 架構概覽
+## 檔案系統規範
+
+每個專案應維護以下檔案，各司其職：
+
+| 檔案 | 對象 | 寫什麼 |
+|------|------|--------|
+| `CLAUDE.md` | Claude（AI） | 通用工作規範（本檔）+ @PROJECT.md |
+| `PROJECT.md` | Claude（AI） | 這個專案的架構、協定、已知坑、專案特有開發習慣 |
+| `README.md` | 陌生人 | 專案介紹、安裝、使用方式 |
+| `TODO.md` | 開發者 | 待辦、擱置功能、未來想法 |
+| `CHANGELOG.md` | 開發者/使用者 | 重大改動里程碑、架構決策紀錄 |
+
+### PROJECT.md 寫什麼
+- 這個專案是什麼（一段話定位）
+- 線上網址、部署方式
+- 架構概覽（目錄結構、關鍵檔案）
+- 通訊協定或 API 規格（不顯而易見的部分）
+- 已知 bug / quirk / 例外處理
+- 開發規範（commit 語言、避免大改的理由）
+- 專案特有開發習慣（命名規則、工具使用偏好、格式慣例等）
+
+### TODO.md 格式規則
+- `[ ]` 待辦，`[x]` 完成
+- 條目後附說明（why + 設計考量）
+- 有依賴關係的加 `> 需等 xxx 完成`
+- 用主題區段分組，不用時間順序
+- 擱置的功能附擱置原因
+
+### CHANGELOG.md 寫什麼
+- 功能完整上線的里程碑（不是每個 commit）
+- 架構層級的重大決策（換部署平台、協定改版）
+- 破壞性變更（舊介面不相容）
+- 重要會議或決策結果
+- **不寫**：小 bug fix、文字調整（那是 git log 的事）
+
+---
+
+## Sub-agent 工具規範
+
+本專案環境下可調用兩個 AI 小弟：
+
+### Gemini（`gemini -p "..."`)
+```bash
+gemini -p "你的 prompt"                                    # 基本用法
+gemini --include-directories "C:/path/outside" -p "..."   # 讀取 workspace 外的目錄
+gemini --yolo -p "..."                                     # 自動批准所有工具調用
+gemini -p "..." --output-format json                       # 結構化輸出，方便 Claude 解析
+timeout 60 gemini -p "..."                                 # 加 timeout 保護，避免等太久
+```
+
+**適合交給 Gemini 的任務：**
+- 需要 web search 的研究（查競品、查 API 文件、查最新規範）
+- 批量生成相似內容（多篇文章、多個說明卡片）
+- 讀取 workspace 外的目錄（用 `--include-directories`）
+- 翻譯、改寫、潤稿
+
+**不適合：**
+- 需要深度理解本專案架構的改動（它沒有這段對話的 context）
+- 需要跟使用者來回確認的決策性工作
+
+### Codex（`codex exec "..."`)
+```bash
+codex exec "你的 prompt"    # 非互動模式
+codex review                # code review 模式
+```
+
+**適合交給 Codex 的任務：**
+- Code review（用 `codex review`）
+- 分析某段程式的邏輯或潛在問題
+- 生成符合現有 codebase 風格的程式碼片段
+
+**注意：**
+- 預設 sandbox 是 read-only，執行 shell 命令會被擋
+- 模型為 gpt-5.4
+
+### 分工原則
+```
+批量生成相似內容             → gemini（並行或順序）
+需要 web search 的研究       → gemini
+讀取 workspace 外目錄        → gemini --include-directories
+Code review / 程式分析       → codex review
+需要跟使用者確認的決策       → 不委派，自己處理
+需要理解本專案 context 的改動 → 自己做
+```
+
+---
+
+## Branch / 部署策略
 
 ```
-index.html          主平台，包含所有 Q-Learning 邏輯、UI、圖表控制
-reinforceEngine.js  Q-Table 核心（getBucketIndex、updateQ、策略函數）
-dqnWebWorker.js     Q-Table 蒸餾式 DQN（TensorFlow.js，Web Worker）
-generalCharts.js    每秒/每回合 Reward & Steps 折線/柱狀圖
-qualityCharts.js    Q-Table 熱力圖、動作分布、Q 值分析
-style.css           全站樣式
-docs/               教學文章、遊戲清單、關於頁（動態 fetch 載入進 index.html）
-games/              各遊戲 HTML 環境
+功能開發    → dev 分支（或 feature/xxx）
+            → Cloudflare Pages 預覽 URL 即時可看
+穩定版本    → merge to master
+            → 正式網址自動更新（push 後約 1 分鐘）
 ```
-
----
-
-## 通訊協定（重要）
-
-平台透過 `postMessage` 與 iframe 遊戲雙向通訊。
-
-### RR → 遊戲
-| type | 說明 |
-|------|------|
-| `questInfo` | `{ type, sessionId }` 請求環境宣告 |
-| `action` | `{ type, action }` 傳送動作索引 |
-| `pause` | toggle 暫停 |
-| `accel` | toggle 加速 |
-
-### 遊戲 → RR
-| type | 說明 |
-|------|------|
-| `gameInfo` | `{ type, players: [{ stateInfo, actionInfo }] }` |
-| `reward_state` | `{ type, reward, state, done, sessionId }` |
-
-**關鍵設計：**
-- `done: true/false` 在 `reward_state` 裡，**不再用獨立的 `endEpisode`**
-- `done: true` 時 `reward` 必須已包含終局懲罰
-- `sessionId` 從 `questInfo` 取得，每次 `loadGame()` 遞增，遊戲需原封不動帶回
-- 舊的 `endEpisode` 在 index.html 還保留（向後相容），但新遊戲不應依賴它
-
-完整規格：`RR平台可控遊戲環境宣告與通訊協定.md`
-
----
-
-## 官方遊戲現況
-
-| 檔案 | 協定版本 | 備註 |
-|------|----------|------|
-| MAB.html | 新（done 欄位） | 多臂拉霸 |
-| Maze1D.html | 新 | 一維迷宮 |
-| Maze2D_emoji.html | 新 | 二維迷宮，emoji 渲染 |
-| heli.html | 新 | 直升機，p5.js，即時制 |
-| CartPole.html | 新 | Matter.js 物理，4D state |
-
-CartPole 額外特性：
-- State 直接送原始物理值，無任何前處理（歸一化交由平台處理）
-- stateInfo 宣告真實物理範圍：cartX [0,600]、cartVelX [-10,10]、poleAngle [-1.57,1.57]、poleAngularVel [-6,6]
-
-games/ 下還有其他遊戲（heli、dinasour、magic 等），部分是舊協定或 neocities 備份，未必全部更新。
-
----
-
-## Q-Learning 實作位置
-
-`index.html` 內依區塊有 JSDoc 式分段標記，關鍵位置：
-
-- **訊息接收**（`window.addEventListener("message")`）：`reward_state` 處理區塊
-  - 收到 `reward_state` → 學習更新 → 送出下一個 `action`
-  - `done: true` → 結算回合統計、重置計數
-- **loadGame()**：每次呼叫 `currentSessionId += 1`，接著設定 iframe src
-- **getBucketIndex()**：在 `reinforceEngine.js`，等距離散化
-
-DQN 為 Q-Table 蒸餾式架構，已完整實作。設計細節見 `Q表蒸餾式DQN：設計心法.md`。
-
----
-
-## 開發規範
-
-- 這個平台短期（1.0 版）以截圖和論文用途為主，**避免大幅改動**
-- 遊戲自己負責 state 表示（前處理在遊戲端，不在平台端）
-- 提交訊息用中文或英文都可以，但要清楚說明改了什麼
-- Push 之後 Vercel 會自動部署，若卡住可用 empty commit 觸發
-
----
-
-## 注意事項
-
-- `docs/gamelist.html` 是動態載入進 index.html 的，不是獨立頁面
-- CartPole.html 裡有個 typo：`CANVAS_H \ 2`（反斜線），是 Matter.js 靜態邊界計算，目前不影響功能
-- 智能體 2 UI 已暫時隱藏（HTML 中保留註解），待多智能體自動建立後啟用
 

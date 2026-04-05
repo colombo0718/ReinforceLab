@@ -301,25 +301,31 @@ function generateMaxQHeatmap() {
   const xvals = [], yvals = [], zvals = [], texts = [];
 
   for (let i = 0; i < numBinsX; i++) {
-    const xv = hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : i;
-    for (let j = 0; j < numBinsY; j++) {
-      const yv      = hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : j;
+    xvals.push(hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : i);
+  }
+  for (let j = 0; j < numBinsY; j++) {
+    yvals.push(hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : j);
+  }
+
+  for (let j = 0; j < numBinsY; j++) {
+    const row = [], textRow = [];
+    const activeY = hasY ? true : (j === 0);
+    for (let i = 0; i < numBinsX; i++) {
       const activeX = hasX ? true : (i === 0);
-      const activeY = hasY ? true : (j === 0);
-      xvals.push(xv);
-      yvals.push(yv);
       if (activeX && activeY) {
         const state = [...focusState];
-        if (hasX) state[cutX] = xv;
-        if (hasY) state[cutY] = yv;
+        if (hasX) state[cutX] = xvals[i];
+        if (hasY) state[cutY] = yvals[j];
         const maxQ = Math.max(...getQArrayForChart(state));
-        zvals.push(maxQ);
-        texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Max Q: ${maxQ.toFixed(2)}`);
+        row.push(maxQ);
+        textRow.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Max Q: ${maxQ.toFixed(2)}`);
       } else {
-        zvals.push(NaN);
-        texts.push('');
+        row.push(NaN);
+        textRow.push('');
       }
     }
+    zvals.push(row);
+    texts.push(textRow);
   }
 
   Plotly.newPlot('p1-maxi-value', [{
@@ -344,25 +350,31 @@ function generateMinQHeatmap() {
   const xvals = [], yvals = [], zvals = [], texts = [];
 
   for (let i = 0; i < numBinsX; i++) {
-    const xv = hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : i;
-    for (let j = 0; j < numBinsY; j++) {
-      const yv      = hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : j;
+    xvals.push(hasX ? stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX : i);
+  }
+  for (let j = 0; j < numBinsY; j++) {
+    yvals.push(hasY ? stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY : j);
+  }
+
+  for (let j = 0; j < numBinsY; j++) {
+    const row = [], textRow = [];
+    const activeY = hasY ? true : (j === 0);
+    for (let i = 0; i < numBinsX; i++) {
       const activeX = hasX ? true : (i === 0);
-      const activeY = hasY ? true : (j === 0);
-      xvals.push(xv);
-      yvals.push(yv);
       if (activeX && activeY) {
         const state = [...focusState];
-        if (hasX) state[cutX] = xv;
-        if (hasY) state[cutY] = yv;
+        if (hasX) state[cutX] = xvals[i];
+        if (hasY) state[cutY] = yvals[j];
         const minQ = Math.min(...getQArrayForChart(state));
-        zvals.push(minQ);
-        texts.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Min Q: ${minQ.toFixed(2)}`);
+        row.push(minQ);
+        textRow.push(`State [${state.map(v => v.toFixed(2)).join(', ')}]<br>Min Q: ${minQ.toFixed(2)}`);
       } else {
-        zvals.push(NaN);
-        texts.push('');
+        row.push(NaN);
+        textRow.push('');
       }
     }
+    zvals.push(row);
+    texts.push(textRow);
   }
 
   Plotly.newPlot('p1-mini-value', [{
@@ -454,7 +466,7 @@ setInterval(() => {
 
   // 更新 focusState
   if (document.querySelector('input[name="tracking"]:checked')?.value === 'live') {
-    focusState = [...nextState];
+    if (nextState) focusState = [...nextState];
   } else if (!focusState) {
     focusState = stateInfo.map(info => info.min); // 初次備援
   }

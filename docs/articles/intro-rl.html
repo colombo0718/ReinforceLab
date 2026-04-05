@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>強化學習是什麼？ | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="/">← 返回 Rein Room</a>
+
+  <img src="img/illus-bicycle.png" class="article-img" alt="強化學習就像學騎腳踏車：沒有老師，靠試錯摸索">
+  <div class="article-label">核心概念</div>
+  <h1>強化學習是什麼？</h1>
+  <div class="article-sub">試錯、獎勵、策略——AI 如何靠反覆嘗試學會做決定</div>
+
+  <!-- ── 破題比喻 ── -->
+  <h2>從學騎腳踏車說起</h2>
+
+  <p>
+    想一想，你是怎麼學會騎腳踏車的？
+  </p>
+  <p>
+    沒有人告訴你「左腳施力 40%、右腳 35%、上半身前傾 12 度」。你坐上去，搖晃，差點摔倒，下意識把重心移回來，稍微成功一點點——然後再試，再調整。
+    幾十次之後，你突然就「會了」。
+  </p>
+  <p>
+    沒有課本，沒有標準答案，只有一次次嘗試帶來的回饋：摔倒（懲罰）或保持平衡（獎勵）。這個學習過程，就是強化學習的核心邏輯。
+  </p>
+
+  <div class="callout">
+    強化學習不給 AI 標準答案。它讓 AI 自己嘗試、觀察結果、從回饋中調整行為——就像你學騎腳踏車一樣。
+  </div>
+
+  <!-- ── 四個核心角色 ── -->
+  <h2>四個核心角色</h2>
+
+  <p>強化學習由四個要素組成，它們構成一個持續循環的互動過程：</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:560px;display:block;margin:0 auto;">
+      <!-- Agent 矩形 -->
+      <rect x="30" y="90" width="140" height="70" rx="10" fill="#0078d7" />
+      <text x="100" y="121" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">Agent</text>
+      <text x="100" y="141" text-anchor="middle" fill="#cce4ff" font-size="11">（行動者）</text>
+
+      <!-- Environment 矩形 -->
+      <rect x="390" y="90" width="140" height="70" rx="10" fill="#333" />
+      <text x="460" y="121" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">Environment</text>
+      <text x="460" y="141" text-anchor="middle" fill="#ccc" font-size="11">（環境）</text>
+
+      <!-- 上方箭頭：Action（Agent → Environment） -->
+      <line x1="170" y1="108" x2="390" y2="108" stroke="#0078d7" stroke-width="2" marker-end="url(#arrow-blue)" />
+      <text x="280" y="98" text-anchor="middle" fill="#0078d7" font-size="12" font-weight="bold">Action（動作）</text>
+
+      <!-- 下方箭頭：Reward（Environment → Agent） -->
+      <line x1="390" y1="148" x2="170" y2="148" stroke="#e07b00" stroke-width="2" marker-end="url(#arrow-orange)" />
+      <text x="280" y="168" text-anchor="middle" fill="#e07b00" font-size="12" font-weight="bold">Reward（獎勵）</text>
+
+      <!-- 左側向下弧：State 進入 Agent（從 Environment 到 Agent，底部弧） -->
+      <path d="M 460 160 Q 460 220 280 220 Q 100 220 100 160" fill="none" stroke="#27ae60" stroke-width="2" marker-end="url(#arrow-green)" />
+      <text x="280" y="238" text-anchor="middle" fill="#27ae60" font-size="12" font-weight="bold">State（當前狀態）</text>
+
+      <!-- 頂部弧標：Next State 標注 -->
+      <text x="280" y="52" text-anchor="middle" fill="#888" font-size="11">→ 環境回傳新狀態，循環繼續</text>
+
+      <!-- 箭頭 marker 定義 -->
+      <defs>
+        <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#0078d7" />
+        </marker>
+        <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#e07b00" />
+        </marker>
+        <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#27ae60" />
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>角色</th><th>說明</th><th>騎腳踏車的比喻</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Agent</strong>（行動者）</td>
+        <td>做決策、採取行動的主體</td>
+        <td>正在學騎車的你</td>
+      </tr>
+      <tr>
+        <td><strong>Environment</strong>（環境）</td>
+        <td>Agent 所在的世界，接受動作並給予回應</td>
+        <td>腳踏車、地面、重力</td>
+      </tr>
+      <tr>
+        <td><strong>State</strong>（狀態）</td>
+        <td>Agent 觀察到的當前情況</td>
+        <td>身體目前的傾斜角度與速度</td>
+      </tr>
+      <tr>
+        <td><strong>Reward</strong>（獎勵）</td>
+        <td>環境給 Agent 的回饋訊號，正值是獎勵，負值是懲罰</td>
+        <td>保持平衡（+）或摔倒（−）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>這個循環不斷重複：<strong>Agent 觀察 State → 選擇 Action → Environment 回傳 Reward 和新 State → 重複</strong>。每一輪循環，Agent 都在從結果中累積經驗，慢慢調整自己的策略。</p>
+
+  <!-- ── 與其他 AI 的差異 ── -->
+  <h2>RL 跟其他 AI 方法有什麼不同？</h2>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h3>監督式學習</h3>
+      <p>給 AI 大量「輸入 + 正確答案」的配對資料，讓它學習對應規律。</p>
+      <p><strong>例子：</strong>圖片辨識——輸入貓的照片，正確答案是「貓」</p>
+      <p><strong>特點：</strong>需要人工標注大量資料，不適合「答案難以定義」的任務</p>
+    </div>
+    <div class="compare-col">
+      <h3>非監督式學習</h3>
+      <p>給 AI 大量資料，讓它自己找出資料中的規律或結構，沒有預設答案。</p>
+      <p><strong>例子：</strong>顧客分群——找出消費行為相似的族群</p>
+      <p><strong>特點：</strong>探索資料結構，但不知道「對不對」</p>
+    </div>
+    <div class="compare-col">
+      <h3>強化學習</h3>
+      <p>讓 AI 在環境中互動，靠 Reward 訊號自己摸索出好的行為策略。</p>
+      <p><strong>例子：</strong>學下棋——靠贏棋（正 Reward）與輸棋（負 Reward）來學習</p>
+      <p><strong>特點：</strong>不需要標注答案，但需要定義 Reward 規則</p>
+    </div>
+  </div>
+
+  <!-- ── MDP ── -->
+  <h2>馬可夫決策過程（MDP）——一句話版本</h2>
+
+  <p>
+    強化學習的數學基礎叫「馬可夫決策過程」（Markov Decision Process，MDP）。
+    它有一個重要假設，用一句話說：
+  </p>
+
+  <div class="callout">
+    <strong>Agent 的下一個決定，只取決於當前狀態，不用記住所有歷史。</strong><br>
+    現在在哪裡、現在的速度是多少——這就夠了，不需要知道「我是怎麼走到這一步的」。
+  </div>
+
+  <p>
+    這個假設讓計算變得可行。如果 Agent 每次決策都要回顧所有歷史，計算量會爆炸。
+    MDP 的假設幫助我們把複雜問題簡化成「當下狀態 → 行動 → 新狀態」的反覆迭代。
+  </p>
+
+  <!-- ── RR 平台對應 ── -->
+  <h2>在 Rein Room 裡，這四個角色各是什麼？</h2>
+
+  <p>以 Maze2D（二維迷宮）為例，把抽象概念對應到你在平台上看到的東西：</p>
+
+  <table>
+    <thead>
+      <tr><th>RL 角色</th><th>在 Maze2D 裡是...</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Agent</strong></td>
+        <td>在迷宮裡移動的藍色圓點</td>
+      </tr>
+      <tr>
+        <td><strong>Environment</strong></td>
+        <td>迷宮地圖本身——它接受 Agent 的移動指令，更新位置，判斷是否到達終點或撞牆</td>
+      </tr>
+      <tr>
+        <td><strong>State</strong></td>
+        <td>Agent 目前在迷宮中的格子座標（x, y）</td>
+      </tr>
+      <tr>
+        <td><strong>Reward</strong></td>
+        <td>抵達終點給大正值，撞牆或超時給負值，平常移動給小負值（鼓勵快速到達）</td>
+      </tr>
+      <tr>
+        <td><strong>Action</strong></td>
+        <td>上、下、左、右四個移動方向</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>每一個訓練回合：Agent 從起點出發，根據當前座標選擇方向，移動後收到 Reward，再根據新座標繼續選擇——直到到達終點或超過步數上限。</p>
+
+  <!-- ── Q-Table 可視化 ── -->
+  <h2>為什麼 RL 的學習「看得見」？</h2>
+
+  <p>
+    大多數 AI 的「學習成果」藏在幾千萬個神經網路參數裡，完全看不懂。
+    Q-Learning 不一樣——它把學習結果存在一張叫 <strong>Q-Table</strong> 的表格裡。
+  </p>
+  <p>
+    Q-Table 的每一格記錄的是：「在這個狀態下，採取這個動作，長期來看能拿到多少 Reward？」
+    訓練越久，這張表格就越精準。
+  </p>
+  <p>
+    Rein Room 的「分析」分頁把 Q-Table 轉成 <strong>熱力圖</strong>：顏色越亮的位置，代表 Agent 認為越有價值。
+    在 Maze2D 裡，你會看到終點附近明亮、死路暗沉——這就是 Agent 一步步試出來的「世界地圖」。
+  </p>
+
+  <img src="img/rl-qtable-heatmap.png" class="article-img" alt="Q-Table 熱力圖"><p class="article-img-caption">Maze2D 的 Q-Table 熱力圖：亮色代表 Agent 認為高價值的位置</p>
+
+  <div class="success-callout">
+    <strong>重點整理</strong><br>
+    強化學習 = 試錯 + 回饋 + 累積經驗。Agent 不需要老師給答案，只需要一個能給出 Reward 訊號的環境。
+    Q-Table 把這個學習過程記錄下來，熱力圖讓我們用眼睛讀懂它。
+  </div>
+
+  <!-- ── 常見問題 ── -->
+  <h2>常見疑問</h2>
+
+  <div class="qa-block">
+    <div class="qa-q">Reward 一定要是數字嗎？可以是文字評語嗎？</div>
+    <div class="qa-a">傳統強化學習的 Reward 必須是數值，因為演算法需要比大小、做加減計算。用文字評語做 Reward 是一個進階研究方向（稱為 RLHF，人類回饋強化學習），ChatGPT 等大語言模型就用了這種方式，但其底層仍然會把人類評分轉成數值。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">State 一定要是座標嗎？</div>
+    <div class="qa-a">不一定。State 可以是任何能描述「當前情況」的資訊。Maze2D 用座標，CartPole 用推車位置、速度、桿子角度、角速度四個數值，MAB 多臂拉霸幾乎沒有狀態（每次拉都是獨立的）。State 的設計是強化學習中很重要的工程決策。</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q">Q-Learning 和深度學習（DQN）有什麼差？</div>
+    <div class="qa-a">Q-Learning 用表格記錄每個狀態-動作對的價值，適合狀態空間有限的問題。DQN 用神經網路取代表格，能處理狀態空間巨大（甚至是圖像輸入）的問題。Rein Room 同時實作了這兩種方法，可以在設定面板切換。</div>
+  </div>
+
+  <div class="bottom-nav">
+    <a href="quickstart.html">← 上一篇：五分鐘開始你的第一個 AI 實驗</a>
+    <a href="qlearning.html">下一篇：Q-Learning 如何運作？ →</a>
+  </div>
+
+</div>
+</body>
+</html>

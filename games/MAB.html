@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>多臂拉霸機遊戲 - 多模式版</title>
+  <link rel="stylesheet" href="game-info.css">
   <style>
     body {
       width: fit-content;
@@ -28,17 +29,6 @@
       background: #f0f0f0;
     }
 
-    #info {
-      margin-top: 20px;
-      line-height: 1.7;
-    }
-
-    code {
-      background: #f3f3f3;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-
     #controls {
       margin-bottom: 12px;
       line-height: 2;
@@ -46,8 +36,6 @@
   </style>
 </head>
 <body>
-
-  <h2>🎰 多臂拉霸機遊戲</h2>
 
   <div id="game-container">
     <table>
@@ -74,48 +62,55 @@
       <label><input type="radio" name="poolMode" value="jackpot" onchange="updatePoolMode()"> 隱藏大獎</label>
     </div>
 
-    <h3>遊戲說明</h3>
-    <p>
-      這是一個簡化版的多臂拉霸機環境，共有 5 台機器：A0 ~ A4。<br>
-      每次動作就是直接選擇其中一台機器。每拉 10 次拉霸，視為 1 回合（Episode）。
-    </p>
+    <h3>任務說明</h3>
+    <p>共有 5 台拉霸機（A0 ~ A4），每次選擇一台拉動。智能體需要在探索未知機器與利用已知最佳機器之間取得平衡。每 10 次拉霸為一回合。</p>
 
-    <h3>獎勵機制</h3>
-    <ul>
-      <li>每次選擇一台機器後，會從該機器的獎勵池中隨機抽出 1 個 emoji。</li>
-      <li><code>❌</code>：0 分</li>
-      <li><code>🍬</code>：1 分</li>
-      <li><code>🪙</code>：3 分</li>
-      <li><code>💎</code>：10 分</li>
-    </ul>
+    <details>
+      <summary>🎯 獎勵機制</summary>
+      <ul>
+        <li>每次拉動，從該機器的獎勵池隨機抽出一個結果</li>
+        <li><code>❌</code>：0 分 ／ <code>🍬</code>：1 分 ／ <code>🪙</code>：3 分 ／ <code>💎</code>：10 分</li>
+        <li><code>相同分配</code>：所有機器使用相同獎勵池</li>
+        <li><code>固定獎勵</code>：兩台全 ❌、兩台全 🍬、一台全 🪙</li>
+        <li><code>些微差異</code>：各機器期望值略有高低</li>
+        <li><code>隱藏大獎</code>：四台普通，一台藏有高倍率 💎 池</li>
+      </ul>
+    </details>
 
-    <h3>獎勵池模式</h3>
-    <ul>
-      <li><code>相同分配</code>：全部機器使用相同獎勵池。</li>
-      <li><code>固定獎勵</code>：兩台全 ❌、兩台全 🍬、一台全 🪙。</li>
-      <li><code>些微差異</code>：兩台維持原本、兩台變好、一台更好。</li>
-      <li><code>隱藏大獎</code>：四台普通，一台藏有高倍率 💎 池。</li>
-      <li><code>洗牌</code>：在不改變模式的情況下，重新隨機分配各機器對應的獎勵池。</li>
-    </ul>
+    <details>
+      <summary>🧭 狀態描述</summary>
+      <ul>
+        <li><code>selectedMachine</code>：目前選中的機台索引（0 ~ 4）</li>
+      </ul>
+    </details>
 
-    <h3>State 描述</h3>
-    <ul>
-      <li><code>selectedMachine</code>：目前選中的機台索引（0 ~ 4）</li>
-    </ul>
+    <details>
+      <summary>🕹️ 動作功能</summary>
+      <ul>
+        <li><code>0</code>：A0 ／ <code>1</code>：A1 ／ <code>2</code>：A2 ／ <code>3</code>：A3 ／ <code>4</code>：A4</li>
+      </ul>
+    </details>
 
-    <h3>Action 描述</h3>
-    <ul>
-      <li><code>0</code>：A0</li>
-      <li><code>1</code>：A1</li>
-      <li><code>2</code>：A2</li>
-      <li><code>3</code>：A3</li>
-      <li><code>4</code>：A4</li>
-    </ul>
-
-    <h3>手動操作</h3>
-    <ul>
-      <li>鍵盤 0 ~ 4：選擇 A0 ~ A4</li>
-    </ul>
+    <details>
+      <summary>⚙️ 參數建議</summary>
+      <div class="param-grid">
+        <div class="param-col">
+          <h4>新手</h4>
+          <ul>
+            <li>bins = 1</li>
+            <li>ε = 0.3，α = 0.5</li>
+            <li>推薦：些微差異模式</li>
+          </ul>
+        </div>
+        <div class="param-col">
+          <h4>進階</h4>
+          <ul>
+            <li>ε 衰減，比較各策略差異</li>
+            <li>切換模式觀察適應速度</li>
+          </ul>
+        </div>
+      </div>
+    </details>
   </div>
 
   <script>

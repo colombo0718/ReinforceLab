@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>調參數的心法 | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="/">← 返回 Rein Room</a>
+
+  <img src="img/illus-tuning.png" class="article-img" alt="參數設定不對，訓練就像面對故障的控制台">
+  <div class="article-label">調參</div>
+  <h1>調參數的心法</h1>
+  <div class="article-sub">常見學習失敗模式與對應的調整方向</div>
+
+  <!-- ── 開場 ── -->
+  <h2>訓練失敗，通常不是算法的問題</h2>
+
+  <p>
+    強化學習訓練失敗的原因，絕大多數不是 Q-Learning 本身有問題，而是參數設定不對。參數就像食譜裡的火候和比例——算法是正確的，但如果學習率太大、探索太少，結果同樣一塌糊塗。
+  </p>
+  <p>
+    好消息是，RL 的失敗模式是有規律的。Reward 曲線的「形狀」就是診斷的線索：完全不動、劇烈震盪、過早停滯——每一種形狀都對應著不同的問題。學會讀曲線，你就能精準調整，而不是盲目試誤。
+  </p>
+
+  <div class="callout">
+    調參的第一原則：一次只改一個參數。如果你同時調了 α 和 ε，你永遠不知道是哪一個造成了變化。
+  </div>
+
+  <!-- ── 四個核心參數速查 ── -->
+  <h2>四個核心參數速查</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>參數</th>
+        <th>名稱</th>
+        <th>作用</th>
+        <th>太高的症狀</th>
+        <th>太低的症狀</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>α</strong></td>
+        <td>學習率</td>
+        <td>每次更新 Q 值的幅度</td>
+        <td>Reward 震盪劇烈，學習不穩定</td>
+        <td>收斂極慢，需要更多回合</td>
+      </tr>
+      <tr>
+        <td><strong>γ</strong></td>
+        <td>折扣因子</td>
+        <td>未來獎勵的重視程度</td>
+        <td>過度追求遠期獎勵，短期表現差</td>
+        <td>只看眼前，學不到需要多步規劃的策略</td>
+      </tr>
+      <tr>
+        <td><strong>ε</strong></td>
+        <td>探索率</td>
+        <td>隨機嘗試新動作的機率</td>
+        <td>一直隨機，無法穩定利用已學知識</td>
+        <td>探索不足，容易陷入局部最佳解</td>
+      </tr>
+      <tr>
+        <td><strong>ψ</strong></td>
+        <td>探索偏移</td>
+        <td>對 Q 值加上偏移量，影響探索傾向</td>
+        <td>過度偏好未嘗試的動作，策略不穩定</td>
+        <td>低維狀態下幾乎沒有影響</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 常見失敗模式 ── -->
+  <h2>常見失敗模式與診斷</h2>
+
+  <h3>模式一：Reward 完全不動，停在 0</h3>
+
+  <div class="callout">
+    曲線形狀：一條完全水平的直線，貼近橫軸，毫無起伏。
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">診斷</div>
+    <div class="step-content">
+      <p>最常見的原因有兩個：</p>
+      <p><strong>1. 遊戲沒有正確載入。</strong>如果 Agent 根本沒有收到 state，就不會有任何學習。先確認遊戲畫面是否出現、是否在跑。</p>
+      <p><strong>2. ε 太低（接近 0）。</strong>如果 Q-Table 初始值都是 0，所有動作的 Q 值一樣，Agent 就只能靠 ε 隨機探索。ε 太低意味著 Agent 幾乎不探索，永遠只做同一個動作，永遠拿不到獎勵。</p>
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">解法</div>
+    <div class="step-content">
+      先重新載入遊戲確認環境正常。若遊戲正常，把 ε 調高到 0.3 以上重新訓練。
+    </div>
+  </div>
+
+  <h3>模式二：Reward 震盪劇烈，忽高忽低</h3>
+
+  <div class="callout">
+    曲線形狀：像心電圖一樣劇烈起伏，完全沒有上升趨勢，或上升之後又大幅跌落。
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">診斷</div>
+    <div class="step-content">
+      通常是 α（學習率）太大。每次更新的幅度太大，新的 Q 值會大幅覆蓋舊的 Q 值，導致 Agent 這一回合剛學會往右走，下一回合又被覆蓋成往左走。學習過程無法累積。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">解法</div>
+    <div class="step-content">
+      把 α 降低，例如從 0.5 降到 0.1 或 0.05。收斂會變慢，但曲線會平滑很多。
+    </div>
+  </div>
+
+  <h3>模式三：快速「收斂」但 Reward 很低</h3>
+
+  <div class="callout">
+    曲線形狀：很快就穩定下來，看起來像收斂了，但穩定的位置卻在一個很低的 Reward 水平。
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">診斷</div>
+    <div class="step-content">
+      這是局部最佳解的典型症狀。Agent 找到了一個「夠用」的策略，ε 太低導致它不再探索，從此固定在這個次優策略上。它「學完了」，但學到的不夠好。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">解法</div>
+    <div class="step-content">
+      清空 Q-Table，把 ε 調高（例如 0.2–0.3），重新訓練。讓 Agent 有更多機會發現更好的路徑，然後再讓 ε 隨時間衰減。
+    </div>
+  </div>
+
+  <h3>模式四：學到一半停滯，不再進步</h3>
+
+  <div class="callout">
+    曲線形狀：前期有明顯上升，但中途突然停止進步，進入長時間的平台期。
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">診斷</div>
+    <div class="step-content">
+      可能是狀態空間覆蓋不足。Bucket 數太少，導致不同的真實狀態被映射到同一個格子，Q-Table 無法區分細節，學習到某個精度之後就無法再進步。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">解法</div>
+    <div class="step-content">
+      試著增加每個維度的 bucket 數。注意：bucket 數增加會讓 Q-Table 變大，需要更多回合才能充分探索，訓練時間也會拉長。
+    </div>
+  </div>
+
+  <h3>模式五：CartPole 的回合長度一直很短</h3>
+
+  <div class="step-block">
+    <div class="step-num">診斷</div>
+    <div class="step-content">
+      CartPole 是 4D 連續狀態，離散化之後的狀態空間很大（4 維 × 每維 6 格 = 1296 格），Q-Table 需要非常多的回合才能充分覆蓋。純 Q-Learning 收斂慢是正常的，不是參數問題。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">解法</div>
+    <div class="step-content">
+      先跑 500 回合確認有緩慢上升趨勢，然後切換到 DQN 模式繼續訓練。DQN 不受格子數限制，在高維連續狀態下效果明顯優於純 Q-Table。
+    </div>
+  </div>
+
+  <!-- ── 調參順序建議 ── -->
+  <h2>調參的建議順序</h2>
+
+  <div class="step-block">
+    <div class="step-num">1</div>
+    <div class="step-content"><strong>確認遊戲正常載入。</strong>看遊戲畫面是否出現、Agent 是否在動。Reward 完全為 0 有一半以上的機率是環境問題，不是參數問題。</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">2</div>
+    <div class="step-content"><strong>用預設值跑一次，建立基線。</strong>記錄收斂速度與最終 Reward 水平。這是你的對照組。</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">3</div>
+    <div class="step-content"><strong>一次只改一個參數。</strong>改了 α 就先不動 ε，觀察差異之後再決定下一步。如果同時改多個參數，你無法判斷是哪一個造成了變化。</div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">4</div>
+    <div class="step-content"><strong>改完觀察至少 200 回合再下結論。</strong>RL 的曲線有自然的噪聲，太短的訓練看不出趨勢。</div>
+  </div>
+
+  <!-- ── 實驗設計模板 ── -->
+  <h2>實驗設計模板</h2>
+
+  <p>如果你想系統地比較不同參數設定，以下是一個簡單的對照實驗設計：</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>實驗組</th>
+        <th>變動參數</th>
+        <th>固定參數</th>
+        <th>觀察指標</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>組 A（基線）</td>
+        <td>α = 0.1</td>
+        <td>γ=0.9, ε=0.2, 500 回合</td>
+        <td>最終 Reward、收斂回合數</td>
+      </tr>
+      <tr>
+        <td>組 B</td>
+        <td>α = 0.3</td>
+        <td>同上</td>
+        <td>同上</td>
+      </tr>
+      <tr>
+        <td>組 C</td>
+        <td>α = 0.5</td>
+        <td>同上</td>
+        <td>同上</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>固定其他所有條件，只改一個參數，對比三組的收斂曲線。這樣的設計讓「α 的影響」可以被清楚地觀察到。</p>
+
+  <!-- ── ψ 的使用時機 ── -->
+  <h2>進階：ψ 的使用時機</h2>
+
+  <p>
+    ψ（探索偏移）是一個比較少被討論的參數。它的作用是對 Q 值加上一個偏移量，讓 Agent 在選擇動作時有稍微偏向「還沒嘗試過的動作」的傾向。
+  </p>
+  <p>
+    在低維狀態空間（如 Maze1D、Maze2D）中，ψ 的影響通常不明顯——狀態空間夠小，Agent 自然會探索到大部分格子。但在高維狀態空間中（如 CartPole 的 4D 狀態），很多 state 在訓練過程中只會被造訪一次甚至從未造訪，這時候稍微正值的 ψ 有助於鼓勵 Agent 多往陌生的狀態嘗試，加速覆蓋狀態空間。
+  </p>
+
+  <div class="callout">
+    建議使用時機：狀態維度 ≥ 3、Q-Table 出現長時間平台期、懷疑是狀態覆蓋不足造成的停滯。一般情況下 ψ = 0 即可。
+  </div>
+
+  <div class="bottom-nav">
+    <a href="choose-game.html">← 上一篇：選哪個遊戲？</a>
+    <a href="dqn.html">下一篇：DQN 是什麼？ →</a>
+  </div>
+
+</div>
+</body>
+</html>

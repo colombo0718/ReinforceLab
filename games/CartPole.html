@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RR CartPole</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <link rel="stylesheet" href="game-info.css">
   <style>
     body {
-      width: 600px;
+      max-width: 700px;
       margin: auto;
+      padding: 0 16px;
       font-family: Arial, "Noto Sans TC", sans-serif;
       color: #111827;
     }
@@ -21,53 +23,64 @@
       margin: 12px 0 16px;
       line-height: 1.9;
     }
-    #info ul {
-      margin-top: 6px;
-    }
   </style>
 </head>
 <body>
 
-<h2>🎡 CartPole 平衡桿</h2>
-
 <div id="game-container"></div>
 
 <div id="info">
-  <h2>遊戲說明</h2>
-  <p>
-    本遊戲為經典 CartPole 平衡控制任務。玩家控制小車左右移動，使桿子保持直立不倒。
-    桿子傾斜角度超過 ±90°，或小車碰到左右邊界，即結束回合。
-  </p>
+  <h3>任務說明</h3>
+  <p>一根桿子立在小車上。智能體需要透過左右移動小車，讓桿子保持直立不倒。桿子傾斜角度超過 ±90° 或小車碰到邊界，回合即結束。</p>
 
-  <h3>遊戲機制</h3>
-  <ul>
-    <li>小車受重力與摩擦力影響，桿子透過樞紐鉸接在車頂。</li>
-    <li>每個存活的 frame 累積 +0.1 小回饋。</li>
-    <li>桿子倒下或小車出界時扣 10 分並結束回合。</li>
-    <li>按空白鍵可手動重置。</li>
-  </ul>
+  <details>
+    <summary>🎯 獎勵機制</summary>
+    <ul>
+      <li>每個存活 frame：+0.1</li>
+      <li>桿子倒下或小車出界：-10，回合結束</li>
+    </ul>
+  </details>
 
-  <h3>操作方式</h3>
-  <ul>
-    <li>← / A 鍵：向左施力</li>
-    <li>→ / D 鍵：向右施力</li>
-    <li>空白鍵：重置</li>
-  </ul>
+  <details>
+    <summary>🧭 狀態描述</summary>
+    <ul>
+      <li><code>cartX</code>：小車中心 X 座標（0 ~ 600）</li>
+      <li><code>cartVelX</code>：小車水平速度（約 -10 ~ 10）</li>
+      <li><code>poleAngle</code>：桿子傾斜角度（弧度，-1.57 ~ 1.57）</li>
+      <li><code>poleAngularVel</code>：桿子角速度（約 -6 ~ 6）</li>
+    </ul>
+  </details>
 
-  <h3>State 描述</h3>
-  <ul>
-    <li>cartX：小車中心 X 座標（0 ～ 600）</li>
-    <li>cartVelX：小車水平速度（約 -10 ～ 10）</li>
-    <li>poleAngle：桿子傾斜角度（弧度，-1.57 ～ 1.57）</li>
-    <li>poleAngularVel：桿子角速度（約 -6 ～ 6）</li>
-  </ul>
+  <details>
+    <summary>🕹️ 動作功能</summary>
+    <ul>
+      <li><code>0</code>：none（不施力）</li>
+      <li><code>1</code>：left（向左施力）</li>
+      <li><code>2</code>：right（向右施力）</li>
+    </ul>
+  </details>
 
-  <h3>Action 描述</h3>
-  <ul>
-    <li>0：none（不施力）</li>
-    <li>1：left（向左施力）</li>
-    <li>2：right（向右施力）</li>
-  </ul>
+  <details>
+    <summary>⚙️ 參數建議</summary>
+    <div class="param-grid">
+      <div class="param-col">
+        <h4>新手</h4>
+        <ul>
+          <li>bins = 6（已預設）</li>
+          <li>ε = 0.3，α = 0.5，γ = 0.95</li>
+          <li>狀態維度多，需更多回合</li>
+        </ul>
+      </div>
+      <div class="param-col">
+        <h4>進階</h4>
+        <ul>
+          <li>開啟 DQN，觀察蒸餾過程</li>
+          <li>調整 bins 觀察離散化影響</li>
+          <li>R² 同步率達 0.8 以上為佳</li>
+        </ul>
+      </div>
+    </div>
+  </details>
 </div>
 
 <script>

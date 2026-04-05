@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM 當道，學生還需要學 RL 嗎？| Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="/">← 返回 Rein Room</a>
+
+  <img src="img/illus-llm-vs-rl.png" class="article-img" alt="LLM 解決知識問答，RL 解決目標導向決策">
+  <div class="article-label">為何重要</div>
+  <h1>LLM 當道，學生還需要學 RL 嗎？</h1>
+  <div class="article-sub">強化學習的不可取代性——當 AI 不是回答問題，而是做決定</div>
+
+  <!-- ── 問題設定 ── -->
+  <h2>ChatGPT 這麼強，RL 還有存在價值嗎？</h2>
+
+  <p>
+    這是一個合理的問題。2023 年之後，大型語言模型（LLM）的能力讓很多人重新評估：
+    我們還需要學什麼？ChatGPT 能寫程式、能解釋概念、能回答幾乎所有問題，
+    那還花時間學強化學習，值得嗎？
+  </p>
+  <p>
+    答案是肯定的——但理由不是「RL 比 LLM 更厲害」，
+    而是它們根本在解決<strong>兩個完全不同的問題</strong>。
+  </p>
+
+  <!-- ── 核心區分 ── -->
+  <h2>兩個不同的問題</h2>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="14">
+
+      <!-- LLM 側 -->
+      <rect x="30" y="20" width="280" height="220" rx="12" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5"/>
+      <text x="170" y="48" text-anchor="middle" font-weight="bold" font-size="15" fill="#1D4ED8">LLM（語言模型）</text>
+
+      <rect x="60" y="62" width="220" height="36" rx="6" fill="#DBEAFE" stroke="#93C5FD"/>
+      <text x="170" y="85" text-anchor="middle" fill="#1E40AF">文字 / 問題輸入</text>
+
+      <text x="170" y="122" text-anchor="middle" font-size="22" fill="#60A5FA">↓</text>
+
+      <rect x="60" y="130" width="220" height="36" rx="6" fill="#DBEAFE" stroke="#93C5FD"/>
+      <text x="170" y="153" text-anchor="middle" fill="#1E40AF">文字 / 答案輸出</text>
+
+      <text x="170" y="200" text-anchor="middle" font-size="12" fill="#6B7280">解決：知識問答、文字生成</text>
+      <text x="170" y="220" text-anchor="middle" font-size="12" fill="#6B7280">特徵：單次輸入 → 單次輸出</text>
+
+      <!-- RL 側 -->
+      <rect x="390" y="20" width="280" height="220" rx="12" fill="#F0FDF4" stroke="#6EE7B7" stroke-width="1.5"/>
+      <text x="530" y="48" text-anchor="middle" font-weight="bold" font-size="15" fill="#065F46">RL（強化學習）</text>
+
+      <rect x="420" y="62" width="100" height="36" rx="6" fill="#D1FAE5" stroke="#6EE7B7"/>
+      <text x="470" y="85" text-anchor="middle" fill="#064E3B">狀態</text>
+
+      <text x="540" y="85" text-anchor="middle" font-size="18" fill="#34D399">→</text>
+
+      <rect x="560" y="62" width="80" height="36" rx="6" fill="#D1FAE5" stroke="#6EE7B7"/>
+      <text x="600" y="85" text-anchor="middle" fill="#064E3B">動作</text>
+
+      <text x="530" y="122" text-anchor="middle" font-size="22" fill="#34D399">↓</text>
+
+      <rect x="440" y="130" width="180" height="36" rx="6" fill="#D1FAE5" stroke="#6EE7B7"/>
+      <text x="530" y="153" text-anchor="middle" fill="#064E3B">環境反饋（獎勵）</text>
+
+      <text x="530" y="192" text-anchor="middle" font-size="20" fill="#34D399">↺ 循環</text>
+
+      <text x="530" y="216" text-anchor="middle" font-size="12" fill="#6B7280">解決：目標導向決策</text>
+    </svg>
+  </div>
+
+  <p>
+    LLM 的強項是「知識的提取與重組」：給一段輸入，輸出一段回應。
+    它非常擅長回答問題、解釋概念、生成文字。
+  </p>
+  <p>
+    RL 解決的是完全不同的問題：<strong>一個 Agent 如何在與環境的持續互動中，學會完成一個目標。</strong>
+    輸入不只是文字，輸出不只是回答，而是一連串的「決策」，每個決策都會改變環境狀態，
+    環境再回饋獎勵，Agent 靠這個訊號學習。
+  </p>
+
+  <!-- ── 三個不可取代場景 ── -->
+  <h2>RL 的三個不可取代場景</h2>
+
+  <div class="step-block">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <strong>連續決策問題</strong><br>
+      自動駕駛、機器人控制、電玩遊戲 AI——這些任務要求 Agent 在時間序列中持續做出決策，
+      每個動作都影響下一個狀態。LLM 不擅長這種「時序依賴的控制問題」，而這正是 RL 的主場。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <strong>需要試錯的學習</strong><br>
+      很多真實任務沒有「正確答案」可以預先標注。AlphaGo 不是靠人類棋譜學會下贏人類的，
+      而是靠自我對局、靠輸贏訊號學習。RL 能在沒有教師標注的情況下，從零習得策略。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <strong>與環境互動的任務</strong><br>
+      工廠排程優化、資源分配、個人化推薦系統——Agent 不是在「讀資料」，而是在「做動作」，
+      動作的結果會改變環境，環境再給新的訊號。這個閉環本質是 RL 的核心，LLM 無法替代。
+    </div>
+  </div>
+
+  <!-- ── LLM + RL 的結合 ── -->
+  <h2>LLM + RL：不是競爭，是合作</h2>
+
+  <p>
+    事實上，最前沿的 AI 系統正在把兩者結合：
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>應用</th><th>說明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>RLHF</strong>（人類反饋強化學習）</td>
+        <td>ChatGPT 本身就是用 RL 訓練的。人類評分者的偏好被轉化成獎勵訊號，用 RL 讓 GPT 的輸出更符合人類期望。沒有 RL，ChatGPT 不會這麼好用。</td>
+      </tr>
+      <tr>
+        <td><strong>LLM 作規劃器，RL 作執行器</strong></td>
+        <td>新一代 AI Agent 架構：LLM 負責理解任務、分解步驟（高層規劃），RL 負責在環境中精確執行每一步動作（低層控制）。兩者各司其職。</td>
+      </tr>
+      <tr>
+        <td><strong>AI Agent 系統</strong></td>
+        <td>能自主瀏覽網頁、操作軟體、完成多步驟任務的 Agent，核心機制正是「狀態觀察 → 決策 → 執行 → 獲得反饋」——這是標準 RL 框架。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>關鍵點：</strong>
+    你用的 ChatGPT，背後就有 RL。理解 RL，不只是學一個工具，
+    而是理解你每天使用的 AI 是怎麼被訓練出來的。
+  </div>
+
+  <!-- ── 為什麼現在學 RL 特別有價值 ── -->
+  <h2>為什麼「現在」學 RL 特別有價值？</h2>
+
+  <div class="step-block">
+    <div class="step-num">理解</div>
+    <div class="step-content">
+      <strong>理解 AI 如何學習，不只是如何使用</strong><br>
+      學會「提示 ChatGPT」是使用技能。理解「AI 如何通過獎勵訊號學習行為」是設計思維。
+      在 AI 工具越來越強大的時代，能理解底層機制的人，擁有截然不同的視角。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">能力</div>
+    <div class="step-content">
+      <strong>從「提示 AI」到「設計 AI」的能力跳躍</strong><br>
+      RL 讓你思考的問題是：目標是什麼？獎勵怎麼定義？狀態要怎麼表示？
+      這些問題沒有標準答案，需要你做設計決策。這種能力，是 Prompt Engineering 之上的層次。
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">素養</div>
+    <div class="step-content">
+      <strong>RL 思維是 AI 時代的底層素養</strong><br>
+      Reward 設計、狀態表示、探索與利用的取捨——這些概念不只適用於 AI，
+      也是決策科學、管理學、產品設計的底層邏輯。學 RL，是在建立一套思考框架。
+    </div>
+  </div>
+
+  <div class="warning-callout">
+    <strong>一個值得思考的問題：</strong>
+    如果學生只學會「怎麼用 AI」，而不理解「AI 怎麼學習」，
+    當下一波 AI 工具出現時，他們還有競爭力嗎？
+  </div>
+
+  <!-- ── 結尾收斂 ── -->
+  <h2>讓抽象變得可觀察</h2>
+
+  <p>
+    RL 的概念——獎勵訊號、策略更新、探索與利用——聽起來很抽象，
+    但它們描述的其實是非常直觀的事：<strong>一個人（或機器）如何在嘗試與失敗中學會一件事。</strong>
+  </p>
+  <p>
+    Rein Room 要做的，就是把這個過程變得可觀察、可操作。
+    你不需要讀懂 Bellman 方程，就能看到 Q-Table 如何在訓練中逐漸從隨機變為有意義；
+    你不需要理解反向傳播，就能感受到 DQN 在什麼時候比 Q-Table 更有優勢。
+  </p>
+  <p>
+    在 LLM 已經能回答所有問題的時代，「親眼觀察 AI 如何學習」這件事，
+    反而變得更稀缺、更有價值。
+  </p>
+
+  <div class="success-callout">
+    <strong>下一步：</strong>
+    如果你好奇 RR 怎麼用，可以從
+    <a href="quickstart.html">快速上手指南</a> 開始——
+    5 分鐘內讓你的第一個 Agent 跑起來。
+  </div>
+
+  <!-- ── 底部導覽 ── -->
+  <div class="bottom-nav">
+    <a href="intro-rr.html">← 上一篇：Rein Room 是什麼？</a>
+    <a href="quickstart.html">下一篇：快速上手 →</a>
+  </div>
+
+</div>
+</body>
+</html>

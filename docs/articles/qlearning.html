@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q-Learning — 決策價值怎麼學起來的 | Rein Room</title>
+  <link rel="stylesheet" href="article.css">
+</head>
+<body>
+<div class="article-wrap">
+
+  <a class="back-link" href="/">← 返回 Rein Room</a>
+
+  <div class="article-label">演算法</div>
+  <h1>Q-Learning — 決策價值怎麼學起來的</h1>
+  <div class="article-sub">從一張數字表開始，每次互動讓它更接近最佳策略</div>
+
+  <!-- ── Q-Table 是什麼 ── -->
+  <h2>Q-Table 是什麼？</h2>
+
+  <p>
+    Q-Learning 的核心是一張叫做 <strong>Q-Table</strong> 的表格。
+    它的列是「狀態（State）」，行是「動作（Action）」，
+    每個格子裡存的數值叫做 <strong>Q 值（Q-value）</strong>，
+    代表：「在這個狀態下，選這個動作，預期能獲得的未來總獎勵是多少？」
+  </p>
+
+  <p>
+    訓練一開始，所有 Q 值都是 0（一無所知）。
+    Agent 每與環境互動一步，就根據收到的 reward 更新對應格子的數值。
+    隨著訓練回合累積，表格逐漸反映出哪些（狀態, 動作）組合是好的、哪些是差的。
+  </p>
+
+  <div class="callout">
+    <strong>Q 值的直觀意義：</strong>
+    Q(s, a) 越高，代表「在狀態 s 採取動作 a」長期來看越有利。
+    Agent 的目標就是讓每個狀態對應的最佳動作有最高的 Q 值。
+  </div>
+
+  <!-- ── 地圖筆記比喻 ── -->
+  <h2>直觀比喻：像一本「路線筆記」</h2>
+
+  <p>
+    想像你剛搬到一個陌生城市，要從家走到公司。
+    一開始你完全不知道哪條路快、哪條路塞車。
+    你只能試著走，每天記下「從這個路口往左轉，今天花了 20 分鐘，不錯」、
+    「從那個巷子直走，被堵了 40 分鐘，下次不走了」。
+  </p>
+  <p>
+    Q-Table 就是這本「路線筆記」。Agent 每走一步，就更新一格。
+    走了夠多回之後，哪條路最快，筆記裡就一目瞭然——
+    那就是 Q-Learning 找到最佳策略的過程。
+  </p>
+
+  <!-- ── Bellman 更新公式 ── -->
+  <h2>Bellman 更新公式</h2>
+
+  <p>每次 Agent 從狀態 <em>s</em> 採取動作 <em>a</em>、抵達新狀態 <em>s'</em> 並收到 reward <em>r</em> 時，Q-Table 就依下列公式更新：</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 720 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bellman 更新公式拆解圖">
+      <!-- Q(s,a) 舊值 -->
+      <rect x="10" y="30" width="120" height="56" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="70" y="54" text-anchor="middle" font-size="13" fill="#1e40af" font-weight="bold">Q(s, a)</text>
+      <text x="70" y="72" text-anchor="middle" font-size="11" fill="#1e40af">舊的估計值</text>
+
+      <!-- 加號 -->
+      <text x="148" y="63" text-anchor="middle" font-size="22" fill="#374151">+</text>
+
+      <!-- α -->
+      <rect x="165" y="30" width="58" height="56" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="194" y="54" text-anchor="middle" font-size="16" fill="#92400e" font-weight="bold">α</text>
+      <text x="194" y="72" text-anchor="middle" font-size="11" fill="#92400e">學習率</text>
+
+      <!-- 乘號 -->
+      <text x="238" y="63" text-anchor="middle" font-size="18" fill="#374151">×</text>
+
+      <!-- 大括號內：[ r + γ·maxQ(s',a') - Q(s,a) ] -->
+      <rect x="255" y="20" width="450" height="76" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="480" y="14" text-anchor="middle" font-size="11" fill="#166534">「新資訊 − 舊估計」</text>
+
+      <!-- r -->
+      <rect x="272" y="34" width="78" height="48" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+      <text x="311" y="55" text-anchor="middle" font-size="14" fill="#166534" font-weight="bold">r</text>
+      <text x="311" y="72" text-anchor="middle" font-size="11" fill="#166534">即時 reward</text>
+
+      <!-- 加號 -->
+      <text x="366" y="63" text-anchor="middle" font-size="18" fill="#374151">+</text>
+
+      <!-- γ·max Q(s',a') -->
+      <rect x="382" y="34" width="148" height="48" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+      <text x="456" y="55" text-anchor="middle" font-size="13" fill="#166534" font-weight="bold">γ · max Q(s′,a′)</text>
+      <text x="456" y="72" text-anchor="middle" font-size="11" fill="#166534">折扣後的未來最大預期值</text>
+
+      <!-- 減號 -->
+      <text x="546" y="63" text-anchor="middle" font-size="18" fill="#374151">−</text>
+
+      <!-- Q(s,a) 舊值（括號內） -->
+      <rect x="562" y="34" width="128" height="48" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+      <text x="626" y="55" text-anchor="middle" font-size="13" fill="#166534" font-weight="bold">Q(s, a)</text>
+      <text x="626" y="72" text-anchor="middle" font-size="11" fill="#166534">舊的估計值（誤差修正）</text>
+    </svg>
+  </div>
+
+  <p>
+    用白話說：<strong>新 Q 值 = 舊 Q 值 + 學習率 × （新資訊 - 舊估計）</strong>。
+    括號裡的「新資訊」就是「這次實際拿到的 reward 加上打折後的未來最大值」，
+    用它和舊估計的差距，去修正 Q-Table 中對應格子的數值。
+  </p>
+
+  <div class="callout">
+    <strong>為什麼要減掉舊估計？</strong>
+    這是「TD 誤差（Temporal Difference Error）」的概念——
+    我們只修正「預期錯了多少」，而不是直接把格子換成新數字。
+    這讓學習更平滑、更穩定。
+  </div>
+
+  <!-- ── 三個參數 ── -->
+  <h2>三個關鍵參數</h2>
+
+  <div class="step-block">
+    <div class="step-num">α</div>
+    <div class="step-content">
+      <strong>學習率（Learning Rate）</strong><br>
+      每次更新，要信多少新資訊？
+      <ul>
+        <li>α 高（如 0.9）：學得快，但容易在剛找到的好策略上劇烈震盪，不穩定。</li>
+        <li>α 低（如 0.1）：學得慢，但更新溫和、收斂更穩。</li>
+        <li>一般從 0.1–0.5 開始調。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">γ</div>
+    <div class="step-content">
+      <strong>折扣因子（Discount Factor）</strong><br>
+      Agent 多在乎未來的獎勵？
+      <ul>
+        <li>γ 高（如 0.99）：重視長遠回報，適合需要多步規劃的任務（如 CartPole）。</li>
+        <li>γ 低（如 0.5）：只看眼前，適合短回合或即時 reward 明確的任務（如 MAB）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step-block">
+    <div class="step-num">ψ</div>
+    <div class="step-content">
+      <strong>樂觀值（Psi）— RR 特有參數</strong><br>
+      控制 Q-Learning 的更新風格，範圍 -1 到 1：
+      <ul>
+        <li><strong>ψ = 0</strong>：標準 Q-Learning，使用下一狀態的最大 Q 值（max Q(s′, a′)）。</li>
+        <li><strong>ψ &gt; 0（樂觀）</strong>：偏向 max，鼓勵探索未知潛力；訓練初期能加速找到好路徑。</li>
+        <li><strong>ψ &lt; 0（保守，SARSA 風格）</strong>：偏向實際執行的動作之 Q 值，保守穩健，適合容易失敗的環境。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="warning-callout">
+    <strong>ψ 不是標準 Q-Learning 參數！</strong>
+    這是 RR 平台的擴充設計，讓你在純 Q-Learning 和 SARSA 風格之間滑動調整。
+    如果你只想跑標準 Q-Learning，把 ψ 設為 0 即可。
+  </div>
+
+  <!-- ── Q-Table 熱力圖 ── -->
+  <h2>Q-Table 在 RR 的視覺化：熱力圖怎麼讀</h2>
+
+  <p>
+    RR 提供 <strong>Q-Table 熱力圖</strong>，讓你直接看到學習進度。
+    熱力圖的橫軸是動作（Action），縱軸是狀態（State），
+    每個格子的顏色深淺代表 Q 值高低：
+  </p>
+
+  <ul>
+    <li><strong>顏色越深（越暖色）</strong>：Q 值越高，Agent 越「偏好」這個（狀態, 動作）組合。</li>
+    <li><strong>顏色越淺（越冷色）</strong>：Q 值低或尚未探索，Agent 認為這組合不佳或還不了解。</li>
+    <li>訓練初期，整張圖均勻淺色（一無所知）；隨訓練推進，某些格子會開始突出，代表策略正在形成。</li>
+  </ul>
+
+  <img src="img/ql-qtable-heatmap.png" class="article-img" alt="Q-Table 熱力圖（收斂後）"><p class="article-img-caption">收斂後的 Q-Table：終點右上角附近 Q 值最高（橘色區域），路徑上形成漸層</p>
+
+  <p>
+    搭配「動作分布圖」可以看出在某個狀態下，Agent 選各動作的頻率；
+    搭配「動作熱圖」（地圖上的箭頭）可以看出每個位置的最佳策略方向。
+  </p>
+
+  <!-- ── Q-Learning 的限制 ── -->
+  <h2>Q-Learning 的限制：Q-Table 爆炸問題</h2>
+
+  <p>
+    Q-Table 的格子數 = 狀態數 × 動作數。
+    對於簡單遊戲（如 Maze1D，10 個狀態 × 2 個動作 = 20 格），完全沒問題。
+    但當狀態空間變複雜，格子數會爆炸性增長：
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>遊戲</th><th>狀態維度</th><th>Q-Table 格子數（估計）</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>MAB</td>
+        <td>1 維（哪台機器）</td>
+        <td>數十格</td>
+      </tr>
+      <tr>
+        <td>Maze2D</td>
+        <td>2 維（x, y 座標）</td>
+        <td>數百格</td>
+      </tr>
+      <tr>
+        <td>CartPole</td>
+        <td>4 維（位置、速度、角度、角速度）</td>
+        <td>數萬～數十萬格</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    CartPole 的 4 維連續狀態空間，即使經過離散化（每維切 10 格），
+    也有 10⁴ = 10,000 個狀態格。而且大多數格子很少被探索到，學習效率極差。
+  </p>
+
+  <div class="callout">
+    <strong>這就是為什麼需要 DQN：</strong>
+    用神經網路取代 Q-Table，把「狀態」直接輸入網路，輸出各動作的 Q 值——
+    不再需要一格一格記，而是用函數逼近整個 Q 值分布。
+    RR 的 DQN 正是這樣運作的。
+  </div>
+
+  <div class="success-callout">
+    <strong>動手試試看：</strong>
+    開啟 Maze2D，訓練幾十回合後觀察熱力圖的變化。
+    試著調高或調低 α、γ，看收斂速度和穩定性的差異——
+    這比看一百遍公式都有效。
+  </div>
+
+  <!-- ── 底部導覽 ── -->
+  <div class="bottom-nav">
+    <a href="intro-rl.html">← 上一篇：強化學習是什麼？</a>
+    <a href="exploration.html">下一篇：探索 vs 利用 →</a>
+  </div>
+
+</div>
+</body>
+</html>
