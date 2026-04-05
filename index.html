@@ -359,7 +359,7 @@
     toggleAccelBtn.addEventListener("click", () => {
       if (!isAccel) {
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
-        toggleAccelBtn.textContent = "🐢正常";
+        toggleAccelBtn.textContent = "🐇正常";
         delayTime = basicDelayTime / 5;
       } else {
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
