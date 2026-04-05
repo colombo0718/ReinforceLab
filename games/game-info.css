@@ -9,6 +9,13 @@
   font-size: 15px;
 }
 
+#info h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: #111827;
+}
+
 #info p {
   margin: 0 0 10px;
 }
