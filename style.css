@@ -265,7 +265,7 @@ iframe {
 }
 .gamelist-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 .game-card {
@@ -277,6 +277,7 @@ iframe {
   flex-direction: column;
   gap: 6px;
   transition: box-shadow 0.15s, transform 0.15s;
+  cursor: pointer;
 }
 .game-card:hover {
   box-shadow: 0 4px 14px rgba(0,0,0,0.09);
@@ -328,12 +329,6 @@ iframe {
   color: #666;
   line-height: 1.6;
   flex-grow: 1;
-}
-.game-card-btn {
-  margin-top: 6px;
-  padding: 5px 12px;
-  font-size: 12px;
-  align-self: flex-start;
 }
 
 .chart {
