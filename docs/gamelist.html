@@ -1,17 +1,149 @@
 
-          <p>選擇下列遊戲快速載入：</p>
-          <div>
-            <button class="quick-load-button" data-url="/games/MAB.html">🎰Multi-Armed Bandit</button>
-            <button id='game-maze' class="quick-load-button" data-url="/games/Maze1D.html">📏Maze1D</button>
-            <button class="quick-load-button" data-url="/games/Maze2D_emoji.html">🗺️Maze2D</button>
-            <br>
-            <button class="quick-load-button" data-url="/games/heli.html">🚁Heli Flappy</button>
-            <button class="quick-load-button" data-url="/games/CartPole.html">🎡CartPole</button>
-            <br>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck">🦖Dinosaur Jump</button>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">🥁Taiko Beat</button>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">🎯Easy Shoot</button>
-            <br>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/fighterPlane">✈️space fighter</button>
-            <button class="quick-load-button" data-url="https://colombo0718.neocities.org/graphicalGYM/games/magic">🧙 Magic Duel</button>
+          <div class="gamelist-wrap">
+
+            <div class="gamelist-section-label">離散狀態</div>
+            <div class="gamelist-grid">
+
+              <div class="game-card">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🎰</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">1D</span>
+                    <span class="game-tag game-tag-type">離散</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Multi-Armed Bandit</div>
+                <div class="game-card-desc">5 台拉霸機，每次選一台。探索與利用的最基礎訓練場。</div>
+                <button class="quick-load-button game-card-btn" data-url="/games/MAB.html">載入</button>
+              </div>
+
+              <div class="game-card">
+                <div class="game-card-top">
+                  <span class="game-card-icon">📏</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">1D</span>
+                    <span class="game-tag game-tag-type">離散</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Maze 1D</div>
+                <div class="game-card-desc">十格直線通道，躲避炸彈、走向終點。支援多種回饋模式。</div>
+                <button class="quick-load-button game-card-btn" id="game-maze" data-url="/games/Maze1D.html">載入</button>
+              </div>
+
+              <div class="game-card">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🗺️</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">2D</span>
+                    <span class="game-tag game-tag-type">離散</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Maze 2D</div>
+                <div class="game-card-desc">10×10 棋盤地圖，多關卡設計，牆壁、金幣、傳送門一應俱全。</div>
+                <button class="quick-load-button game-card-btn" data-url="/games/Maze2D_emoji.html">載入</button>
+              </div>
+
+            </div>
+
+            <div class="gamelist-section-label">連續狀態</div>
+            <div class="gamelist-grid">
+
+              <div class="game-card">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🚁</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">3D</span>
+                    <span class="game-tag game-tag-type">連續</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Heli Flappy</div>
+                <div class="game-card-desc">直升機穿越牆壁開口，即時制物理環境，適合練習連續狀態離散化。</div>
+                <button class="quick-load-button game-card-btn" data-url="/games/heli.html">載入</button>
+              </div>
+
+              <div class="game-card">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🎡</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">4D</span>
+                    <span class="game-tag game-tag-type">連續</span>
+                  </div>
+                </div>
+                <div class="game-card-title">CartPole</div>
+                <div class="game-card-desc">物理模擬平衡桿，4 維狀態空間，DQN 的最佳展示舞台。</div>
+                <button class="quick-load-button game-card-btn" data-url="/games/CartPole.html">載入</button>
+              </div>
+
+            </div>
+
+            <div class="gamelist-section-label">社群遊戲</div>
+            <div class="gamelist-grid">
+
+              <div class="game-card game-card-community">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🦖</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">2D</span>
+                    <span class="game-tag game-tag-ext">外部</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Dinosaur Jump</div>
+                <div class="game-card-desc">恐龍跳躍跑酷，障礙物隨機生成，入門 DQN 的好選擇。</div>
+                <button class="quick-load-button game-card-btn" data-url="https://colombo0718.neocities.org/graphicalGYM/games/dinasourCheck">載入</button>
+              </div>
+
+              <div class="game-card game-card-community">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🥁</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">1D</span>
+                    <span class="game-tag game-tag-ext">外部</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Taiko Beat</div>
+                <div class="game-card-desc">節拍判斷任務，訓練時機感知與節奏型決策。</div>
+                <button class="quick-load-button game-card-btn" data-url="https://colombo0718.neocities.org/graphicalGYM/games/beatInfo">載入</button>
+              </div>
+
+              <div class="game-card game-card-community">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🎯</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">2D</span>
+                    <span class="game-tag game-tag-ext">外部</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Easy Shoot</div>
+                <div class="game-card-desc">瞄準射擊任務，訓練目標定位與連續動作控制。</div>
+                <button class="quick-load-button game-card-btn" data-url="https://colombo0718.neocities.org/graphicalGYM/games/easyShoot">載入</button>
+              </div>
+
+              <div class="game-card game-card-community">
+                <div class="game-card-top">
+                  <span class="game-card-icon">✈️</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">2D</span>
+                    <span class="game-tag game-tag-ext">外部</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Space Fighter</div>
+                <div class="game-card-desc">太空射擊對戰，躲避障礙並攻擊目標，進階動作空間。</div>
+                <button class="quick-load-button game-card-btn" data-url="https://colombo0718.neocities.org/graphicalGYM/games/fighterPlane">載入</button>
+              </div>
+
+              <div class="game-card game-card-community">
+                <div class="game-card-top">
+                  <span class="game-card-icon">🧙</span>
+                  <div class="game-card-tags">
+                    <span class="game-tag game-tag-dim">2D</span>
+                    <span class="game-tag game-tag-ext">外部</span>
+                  </div>
+                </div>
+                <div class="game-card-title">Magic Duel</div>
+                <div class="game-card-desc">魔法對決，策略型動作選擇，適合探索進階策略學習。</div>
+                <button class="quick-load-button game-card-btn" data-url="https://colombo0718.neocities.org/graphicalGYM/games/magic">載入</button>
+              </div>
+
+            </div>
+
           </div>

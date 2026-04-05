@@ -251,8 +251,93 @@ iframe {
   margin-bottom: 6px;
   text-transform: uppercase;
 }
+/* ── 遊戲列表 ─────────────────────────────────────────── */
+.gamelist-wrap {
+  padding: 8px 4px 16px;
+}
+.gamelist-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #999;
+  margin: 16px 0 8px;
+}
+.gamelist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.game-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.game-card:hover {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.09);
+  transform: translateY(-2px);
+}
+.game-card-community {
+  border-color: #e8e8e8;
+  background: #fafafa;
+}
+.game-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.game-card-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.game-card-tags {
+  display: flex;
+  gap: 4px;
+}
+.game-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.game-tag-dim {
+  background: #e8f0fe;
+  color: #1a56db;
+}
+.game-tag-type {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.game-tag-ext {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+.game-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.3;
+}
+.game-card-desc {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.6;
+  flex-grow: 1;
+}
+.game-card-btn {
+  margin-top: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  align-self: flex-start;
+}
+
 .chart {
-    width: 500px; 
+    width: 500px;
     height: 300px;
 }
 /************************************************************
