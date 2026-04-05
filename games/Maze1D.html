@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>1D 迷宮遊戲 - 優化版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <link rel="stylesheet" href="game-info.css">
   <style>
     body {
-      width: 500px; /* 控制區塊寬度 */
-      margin: auto; /* 讓區塊置中 */  
+      max-width: 600px;
+      margin: auto;
+      padding: 16px;
     }
   </style>
 </head>
 <body>
-
-<h2>🌟 1D 迷宮遊戲：躲避炸彈，奪取獎盃！</h2>
 
 <div id="game-container"></div>
 
@@ -32,43 +32,56 @@
 </div>
 
 <div id="info">
-  <h2>遊戲說明</h2>
-  <p>
-    本遊戲為 1D 線性迷宮（500×50 畫布，每格 50×50 px）。<br>
-    玩家從第 5 格（index 4）出發，目標是移動至第 10 格（index 9）取得終點獎勵，同時避開第 1 格的炸彈 💣。
-  </p>
+  <p>智能體在一條 10 格的直線通道中移動。目標是走到終點 🏆 取得獎勵，同時避開炸彈 💣。切換模式可改變沿途回饋與終點設定，觀察不同環境對學習的影響。</p>
 
-  <h3>遊戲機制</h3>
-  <ul>
-    <li>玩家以 🧑 表示，每次可移動 1 格。</li>
-    <li>若玩家移動到炸彈 💣，遊戲立即結束並扣 10 分。</li>
-    <li>一般模式下，若玩家移動到獎盃 🏆，遊戲成功通關並加 10 分。</li>
-    <li>畫大餅模式下，終點會由獎盃 🏆 改為 pizza 🍕，且只加 2 分。</li>
-    <li>順境模式與逆境模式會在路途中加入小回饋：
-      <ul>
-        <li>🍬：小正回饋</li>
-        <li>🔥：小負回饋</li>
-      </ul>
-    </li>
-  </ul>
+  <details>
+    <summary>🎯 獎勵機制</summary>
+    <ul>
+      <li>到達終點 🏆：+10，回合結束</li>
+      <li>踩到炸彈 💣：-10，回合結束</li>
+      <li>順境模式：路途中有 🍬 小正回饋</li>
+      <li>逆境模式：路途中有 🔥 小負回饋</li>
+      <li>畫大餅模式：終點改為 🍕，僅得 +2</li>
+    </ul>
+  </details>
 
-  <h3>操作方式</h3>
-  <ul>
-    <li>向左移動：A 或 ← 鍵</li>
-    <li>向右移動：D 或 → 鍵</li>
-  </ul>
+  <details>
+    <summary>🧭 狀態描述</summary>
+    <ul>
+      <li><code>playerPos</code>：玩家所在格子索引（0 ~ 9）</li>
+    </ul>
+  </details>
 
-  <h3>State 描述</h3>
-  <ul>
-    <li>playerPos：玩家所在格子的索引（0 ~ 9）</li>
-  </ul>
+  <details>
+    <summary>🕹️ 動作功能</summary>
+    <ul>
+      <li><code>0</code>：none（不動作）</li>
+      <li><code>1</code>：right（向右移動一格）</li>
+      <li><code>2</code>：left（向左移動一格）</li>
+    </ul>
+  </details>
 
-  <h3>Action 描述</h3>
-  <ul>
-    <li>0：none（不動作）</li>
-    <li>1：right（向右移動一格）</li>
-    <li>2：left（向左移動一格）</li>
-  </ul>
+  <details>
+    <summary>⚙️ 參數建議</summary>
+    <div class="param-grid">
+      <div class="param-col">
+        <h4>新手</h4>
+        <ul>
+          <li>bins = 10，ε = 0.3</li>
+          <li>α = 0.5，γ = 0.9</li>
+          <li>推薦：無小回饋模式</li>
+        </ul>
+      </div>
+      <div class="param-col">
+        <h4>進階</h4>
+        <ul>
+          <li>切換順境 / 逆境模式</li>
+          <li>觀察沿途回饋對收斂的影響</li>
+          <li>比較「畫大餅」vs 正常終點</li>
+        </ul>
+      </div>
+    </div>
+  </details>
 </div>
 
 <script>

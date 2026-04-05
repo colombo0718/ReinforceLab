@@ -93,6 +93,37 @@ DQN 為 Q-Table 蒸餾式架構，已完整實作。設計細節見 `Q表蒸餾�
 
 ---
 
+## 開發習慣與規範
+
+### 遊戲頁面佈局規範
+- 不加 header 標題，遊戲畫面直接顯示
+- 遊戲畫面：`max-width` + `margin: auto`，盡量 RWD（canvas 大小目前固定，待後續處理）
+- 說明區：`<p>` 任務說明（2~3 句，口吻是「模擬任務」，不寫技術細節）
+- RL 資訊用 `<details>` 收攏，順序：🎯 獎勵機制 → 🧭 狀態描述 → 🕹️ 動作功能 → ⚙️ 參數建議
+- 參數建議分「新手」／「進階」兩欄（`.param-grid` / `.param-col`）
+- 共用樣式：`games/game-info.css`
+
+### 截圖腳本（Playwright）
+- 用 `locator.screenshot()` 而非手動計算 clip（避免越界錯誤）
+- `shot_multi()` 需加 viewport 邊界保護
+- 訓練等待用輪詢（`wait_episodes()`），不要 `sleep` 固定秒數
+- Windows 最大化：`--start-maximized` + `no_viewport=True`
+- 截圖命名：`[縮寫]-[描述].png`（例：`qs-maze2d-early.png`）
+
+### 文章 / 文件
+- 共用樣式抽成獨立 CSS，不要內嵌 `<style>`
+- 圖片佔位符格式：`📸 需要截圖：描述` 或 `🎨 AI插圖：prompt描述`
+- AI 插圖命名：`illus-[主題].png`
+- 文章連結使用 root-relative 路徑（`/docs/articles/xxx.html`）
+
+### URL 硬編碼原則
+- 平台內部遊戲連結 → root-relative（`/games/xxx.html`）
+- 外部遊戲 → 完整 URL
+- 腳本中的 RR_URL → 正式網址（不用 localhost 或舊網址）
+- 不在 HTML 屬性裡寫死任何環境相關 URL
+
+---
+
 ## 注意事項
 
 - `docs/gamelist.html` 是動態載入進 index.html 的，不是獨立頁面

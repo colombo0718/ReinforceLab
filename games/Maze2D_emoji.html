@@ -6,6 +6,7 @@
   <title>10×10 棋盤地圖遊戲 - p5.js 版</title>
   <!-- 載入 p5.js 函式庫 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <link rel="stylesheet" href="game-info.css">
   <style>
     body { margin: 0; padding: 0; }
     #game-container {
@@ -20,11 +21,6 @@
     #level-select label {
       margin: 0 10px;
       cursor: pointer;
-    }
-    #info {
-      width: 500px;
-      margin: auto;
-      text-align: left;
     }
   </style>
 </head>
@@ -46,26 +42,55 @@
 
   <!-- 遊戲說明區 -->
   <div id="info">
-    <h2>遊戲說明</h2>
-    <p>
-      本遊戲以 10×10 棋盤呈現（500×500 畫布，每格 50×50 px）。<br>
-      棋盤座標以左下為原點，玩家初始位置與目標位置由關卡資料決定。<br>
-      控制動作：none、up、down、left、right；鍵盤採用 WASD 控制。<br>
-      部分地圖物件會影響玩家移動，例如牆壁阻擋、火箭直接傳送到目標點等。
-    </p>
-    <h3>State 描述</h3>
-    <ul>
-      <li>playerX：角色 X 座標 (0 ~ 500)</li>
-      <li>playerY：角色 Y 座標 (0 ~ 500)</li>
-    </ul>
-    <h3>Action 描述</h3>
-    <ul>
-      <li>0：none（不動作）</li>
-      <li>1：up（向上移動一格）</li>
-      <li>2：down（向下移動一格）</li>
-      <li>3：left（向左移動一格）</li>
-      <li>4：right（向右移動一格）</li>
-    </ul>
+    <p>智能體在 10×10 的棋盤地圖上移動，從起點出發，找出通往目標的路徑。地圖中可能有牆壁阻擋、金幣獎勵、危險物件，以及能直接送達目標的火箭。</p>
+
+    <details>
+      <summary>🎯 獎勵機制</summary>
+      <ul>
+        <li>到達目標 🏆：+10，回合結束</li>
+        <li>撿到金幣 💰：小正回饋</li>
+        <li>踩到炸彈 💣 / 火焰 🔥：負回饋，回合結束</li>
+        <li>踩到火箭 🚀：直接傳送到目標</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>🧭 狀態描述</summary>
+      <ul>
+        <li><code>playerX</code>：角色 X 座標（0 ~ 500）</li>
+        <li><code>playerY</code>：角色 Y 座標（0 ~ 500）</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>🕹️ 動作功能</summary>
+      <ul>
+        <li><code>0</code>：none（不動作）</li>
+        <li><code>1</code>：up ／ <code>2</code>：down ／ <code>3</code>：left ／ <code>4</code>：right</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>⚙️ 參數建議</summary>
+      <div class="param-grid">
+        <div class="param-col">
+          <h4>新手</h4>
+          <ul>
+            <li>bins = 10，ε = 0.3</li>
+            <li>α = 0.5，γ = 0.9</li>
+            <li>從關卡 1 開始</li>
+          </ul>
+        </div>
+        <div class="param-col">
+          <h4>進階</h4>
+          <ul>
+            <li>挑戰有障礙物的關卡</li>
+            <li>觀察 Q-Table 熱力圖</li>
+            <li>比較各關卡收斂速度</li>
+          </ul>
+        </div>
+      </div>
+    </details>
   </div>
 
   <script>

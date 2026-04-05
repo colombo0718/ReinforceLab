@@ -14,7 +14,7 @@
 | 檔案 | 對象 | 寫什麼 |
 |------|------|--------|
 | `CLAUDE.md` | Claude（AI） | 通用工作規範（本檔）+ @PROJECT.md |
-| `PROJECT.md` | Claude（AI） | 這個專案的架構、協定、已知坑 |
+| `PROJECT.md` | Claude（AI） | 這個專案的架構、協定、已知坑、專案特有開發習慣 |
 | `README.md` | 陌生人 | 專案介紹、安裝、使用方式 |
 | `TODO.md` | 開發者 | 待辦、擱置功能、未來想法 |
 | `CHANGELOG.md` | 開發者/使用者 | 重大改動里程碑、架構決策紀錄 |
@@ -26,6 +26,7 @@
 - 通訊協定或 API 規格（不顯而易見的部分）
 - 已知 bug / quirk / 例外處理
 - 開發規範（commit 語言、避免大改的理由）
+- 專案特有開發習慣（命名規則、工具使用偏好、格式慣例等）
 
 ### TODO.md 格式規則
 - `[ ]` 待辦，`[x]` 完成
@@ -52,6 +53,8 @@
 gemini -p "你的 prompt"                                    # 基本用法
 gemini --include-directories "C:/path/outside" -p "..."   # 讀取 workspace 外的目錄
 gemini --yolo -p "..."                                     # 自動批准所有工具調用
+gemini -p "..." --output-format json                       # 結構化輸出，方便 Claude 解析
+timeout 60 gemini -p "..."                                 # 加 timeout 保護，避免等太久
 ```
 
 **適合交給 Gemini 的任務：**
@@ -100,30 +103,3 @@ Code review / 程式分析       → codex review
             → 正式網址自動更新（push 後約 1 分鐘）
 ```
 
----
-
-## 截圖腳本規範（Playwright）
-
-- 用 `locator.screenshot()` 而非手動計算 clip（避免越界錯誤）
-- `shot_multi()` 需加 viewport 邊界保護
-- 訓練等待用輪詢（`wait_episodes()`），不要 `sleep` 固定秒數
-- Windows 最大化：`--start-maximized` + `no_viewport=True`
-- 截圖命名：`[縮寫]-[描述].png`（例：`qs-maze2d-early.png`）
-
----
-
-## 文章 / 文件規範
-
-- 共用樣式抽成獨立 CSS，不要內嵌 `<style>`
-- 圖片佔位符格式：`📸 需要截圖：描述` 或 `🎨 AI插圖：prompt描述`
-- AI 插圖命名：`illus-[主題].png`
-- 文章連結使用 root-relative 路徑（`/docs/articles/xxx.html`）
-
----
-
-## URL 硬編碼原則
-
-- 平台內部遊戲連結 → root-relative（`/games/xxx.html`）
-- 外部遊戲 → 完整 URL
-- 腳本中的 RR_URL → 正式網址（不用 localhost 或舊網址）
-- 不在 HTML 屬性裡寫死任何環境相關 URL
