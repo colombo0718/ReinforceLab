@@ -419,6 +419,7 @@ function step(action) {
         position++;
         logClass = 'buy';
         logText  = `[${currentStep}] BUY  $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
+        actionHistory.push({ step: currentStep, action: 0, price });
       } else {
         // 現金不足，給小懲罰
         reward   = -0.01;
@@ -442,6 +443,7 @@ function step(action) {
       position--;
       logClass = 'sell';
       logText  = `[${currentStep}] SELL $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
+      actionHistory.push({ step: currentStep, action: 2, price });
     }
   } else {
     // 持有
@@ -468,8 +470,7 @@ function step(action) {
   prevTotal = curTotal;
   equityHistory.push(curTotal);
 
-  // 記錄動作
-  actionHistory.push({ step: currentStep - 1, action, price });
+  // 箭頭標記已在各成交分支內記錄，非法動作不畫箭頭
 
   // 更新 UI
   updateUI(price, curTotal);
