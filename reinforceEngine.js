@@ -144,17 +144,33 @@ function eGreedyStrategy(qArray) {
   return strategy;
 }
 
-// ⚠ 此公式為單調遞減（epsilon↑ → tau↓），與直覺相反，待確認
+// ε↑ → τ↑（探索越強，Softmax 越平滑）
 function epsilonToTau(epsilon) {
-  if (epsilon === 0) return 0.01; // 避免後續除以極小值
-  return 1 / (epsilon + 0.1) - 0.5;
+  return Math.max(0.01, epsilon * 2);
 }
 
 function softmaxStrategy(qArray) {
-  const tau      = epsilonToTau(Epsilon);
+  const tau       = epsilonToTau(Epsilon);
   const expValues = qArray.map(q => Math.exp(q / tau));
-  const sumExp   = expValues.reduce((sum, val) => sum + val, 0);
+  const sumExp    = expValues.reduce((sum, val) => sum + val, 0);
   return expValues.map(exp => exp / sumExp);
+}
+
+// 純函數版（供 qualityCharts 等外部呼叫，不依賴全域 Epsilon）
+function calcEGreedyProbs(qArray, epsilon) {
+  const n = qArray.length;
+  if (qArray.every(v => v === 0)) return new Array(n).fill(1 / n);
+  const best  = qArray.indexOf(Math.max(...qArray));
+  const probs = new Array(n).fill(epsilon / (n - 1));
+  probs[best] = 1 - epsilon;
+  return probs;
+}
+
+function calcSoftmaxProbs(qArray, epsilon) {
+  const tau  = epsilonToTau(epsilon);
+  const exps = qArray.map(q => Math.exp(q / tau));
+  const sum  = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
 }
 
 function selectAction(strategy) {
