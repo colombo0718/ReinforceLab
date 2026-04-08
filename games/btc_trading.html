@@ -249,25 +249,17 @@
 
 <script>
 // ═══════════════════════════════════════════════════════
-//  BTC Trading Environment
-//  RR Platform postMessage 通訊協定
+//  BTC Trading Environment — RR Platform 通訊協定
 //
-//  RR → Game (action):
-//    { type: 'action', action: 0|1|2 }
-//    { type: 'reset' }
+//  RR → Game:
+//    { type: 'questInfo', sessionId }  → 回傳 gameInfo，觸發 reset
+//    { type: 'action', action: 0|1|2 } → 執行一步
+//    { type: 'pause' }  → toggle 暫停
+//    { type: 'accel' }  → toggle 加速（預留）
 //
-//  Game → RR (step result):
-//    { type: 'step', state: [cnn_signal, position],
-//      reward: Number, done: Boolean,
-//      info: { price, cash, btc_value, total, return_pct, step } }
-//
-//  Game → RR (reset result):
-//    { type: 'reset', state: [cnn_signal, position],
-//      info: { total_steps, ... } }
-//
-//  Game → RR (env info, 載入完成時送出):
-//    { type: 'env_info', state_size: 55, action_size: 3,
-//      state_dims: [5, 11] }
+//  Game → RR:
+//    { type: 'gameInfo', players: [{ stateInfo, actionInfo }] }
+//    { type: 'reward_state', reward, state, done, sessionId }
 // ═══════════════════════════════════════════════════════
 
 // ── 常數 ──────────────────────────────────────────────
@@ -290,6 +282,8 @@ let equityHistory = [];
 let priceHistory  = [];
 let actionHistory = [];   // { step, action, price }
 let envReady      = false;
+let currentSessionId = null;
+let isPaused      = false;
 
 // ── DOM ────────────────────────────────────────────────
 const chartCanvas  = document.getElementById('chart-canvas');
@@ -312,29 +306,33 @@ async function loadData() {
     const res  = await fetch('btc_states.json');
     const json = await res.json();
     statesData = json.data;
-    setStatus(`資料載入完成：${statesData.length} 步`);
+    setStatus(`資料載入完成：${statesData.length} 步，等待 RR 連線...`);
     envReady = true;
-
-    // 通知 RR 平台環境資訊
-    sendToRR({
-      type:       'env_info',
-      state_size: 55,
-      action_size: 3,
-      state_dims: [5, 11],
-    });
-
-    // 等 layout 穩定後再 reset（避免 canvas 尺寸為 0）
-    requestAnimationFrame(() => resetEnv());
   } catch (e) {
-    setStatus('⚠ 找不到 btc_states.json，請先執行 Colab 產出');
+    setStatus('⚠ 找不到 btc_states.json，使用 Demo 資料');
     console.warn(e);
-    // 開發用：產生假資料讓畫面可以預覽
     useDemoData();
   }
 }
 
+function sendGameInfo() {
+  sendToRR({
+    type: 'gameInfo',
+    players: [{
+      stateInfo: [
+        { name: 'CNN信號', min: 0, max: 4 },
+        { name: '持倉格數', min: 0, max: 10 },
+      ],
+      actionInfo: [{
+        type: 'switch',
+        name: ['買入', '持有', '賣出'],
+        level: 3,
+      }],
+    }],
+  });
+}
+
 function useDemoData() {
-  // 假資料：300 步，隨機 state
   statesData = Array.from({ length: 300 }, (_, i) => ({
     step:  i,
     date:  '',
@@ -342,9 +340,7 @@ function useDemoData() {
     state: Math.floor(Math.random() * 5),
   }));
   envReady = true;
-  setStatus(`[Demo] 假資料 ${statesData.length} 步`);
-  sendToRR({ type: 'env_info', state_size: 55, action_size: 3, state_dims: [5, 11] });
-  requestAnimationFrame(() => resetEnv());
+  setStatus(`[Demo] 假資料 ${statesData.length} 步，等待 RR 連線...`);
 }
 
 // ── 環境核心函數 ───────────────────────────────────────
@@ -373,11 +369,13 @@ function resetEnv() {
   updateUI();
   clearLog();
 
-  const state = getStateVector();
+  // 送出初始 reward_state（reward=0, done=false）
   sendToRR({
-    type:  'reset',
-    state: state,
-    info:  { total_steps: statesData.length },
+    type:      'reward_state',
+    reward:    0,
+    state:     getStateVector(),
+    done:      false,
+    sessionId: currentSessionId,
   });
 }
 
@@ -465,21 +463,13 @@ function step(action) {
   updateUI(price, curTotal);
   addLog(logText, logClass);
 
-  // 送出 step 結果給 RR
-  const state = done ? getStateVector() : getStateVector();
+  // 送出 reward_state 給 RR
   sendToRR({
-    type:   'step',
-    state:  state,
-    reward: reward,
-    done:   done,
-    info: {
-      step:       currentStep,
-      price:      price,
-      cash:       cash,
-      btc_value:  btcHeld * price,
-      total:      curTotal,
-      return_pct: (curTotal - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100,
-    },
+    type:      'reward_state',
+    reward:    reward,
+    state:     getStateVector(),
+    done:      done,
+    sessionId: currentSessionId,
   });
 }
 
@@ -493,10 +483,15 @@ window.addEventListener('message', (e) => {
   const msg = e.data;
   if (!msg || !msg.type) return;
 
-  if (msg.type === 'reset') {
-    resetEnv();
+  if (msg.type === 'questInfo') {
+    currentSessionId = msg.sessionId;
+    sendGameInfo();
+    requestAnimationFrame(() => resetEnv());
   } else if (msg.type === 'action') {
-    step(msg.action);
+    if (!isPaused) step(msg.action);
+  } else if (msg.type === 'pause') {
+    isPaused = !isPaused;
+    setStatus(isPaused ? '⏸ 暫停中' : '▶ 訓練中...');
   }
 });
 
