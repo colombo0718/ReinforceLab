@@ -456,6 +456,8 @@ function generateQBarSlice() {
   const colors   = getActionColors(action_size);
   const tickText = qArr.map((_, i) => `a${i}`);
 
+  // 三柱手動定位：Q 值柱（寬 0.3）在左，兩根機率柱（寬 0.15）在右
+  // offset 是相對 x 的左緣偏移量，barmode: 'overlay' 讓我們完全控制位置
   const traces = [];
   for (let a = 0; a < action_size; a++) {
     const base  = colors[a];
@@ -464,15 +466,20 @@ function generateQBarSlice() {
 
     traces.push({
       x: [a], y: [qArr[a]], type: 'bar', name: `Q a${a}`,
-      marker: { color: base }, yaxis: 'y'
+      marker: { color: base },
+      width: 0.3, offset: -0.32,
+      yaxis: 'y'
     });
     traces.push({
       x: [a], y: [egProbs[a]], type: 'bar', name: `ε a${a}`,
-      marker: { color: dark }, yaxis: 'y2'
+      marker: { color: dark },
+      width: 0.15, offset: 0.01,
+      yaxis: 'y2'
     });
     traces.push({
       x: [a], y: [smProbs[a]], type: 'bar', name: `SM a${a}`,
-      marker: { color: light, opacity: 0.6, line: { color: 'white', width: 1 } },
+      marker: { color: light },
+      width: 0.15, offset: 0.17,
       yaxis: 'y2'
     });
   }
@@ -480,10 +487,10 @@ function generateQBarSlice() {
   Plotly.newPlot('p1-bars-value', traces, {
     title: '動作價值與選擇機率',
     xaxis: { title: '動作', tickvals: qArr.map((_, i) => i), ticktext: tickText },
-    yaxis:  { title: 'Q 值' },
+    yaxis:  { title: '價值評估' },
     yaxis2: { title: '選擇機率', overlaying: 'y', side: 'right',
               range: [0, 1], showgrid: false },
-    barmode: 'group', showlegend: false,
+    barmode: 'overlay', showlegend: false,
     margin: { t: 30, b: 40, l: 50, r: 50 }
   }, { displayModeBar: false });
 }
