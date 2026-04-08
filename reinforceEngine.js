@@ -144,19 +144,13 @@ function eGreedyStrategy(qArray) {
   return strategy;
 }
 
-// ε↑ → τ↑（探索越強，Softmax 越平滑）
-function epsilonToTau(epsilon) {
-  return Math.max(0.01, epsilon * 2);
-}
-
 function softmaxStrategy(qArray) {
-  const tau       = epsilonToTau(Epsilon);
-  const expValues = qArray.map(q => Math.exp(q / tau));
-  const sumExp    = expValues.reduce((sum, val) => sum + val, 0);
-  return expValues.map(exp => exp / sumExp);
+  const exps = qArray.map(q => Math.exp(q / Tau));
+  const sum  = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
 }
 
-// 純函數版（供 qualityCharts 等外部呼叫，不依賴全域 Epsilon）
+// 純函數版（供 qualityCharts 等外部呼叫，不依賴全域變數）
 function calcEGreedyProbs(qArray, epsilon) {
   const n = qArray.length;
   if (qArray.every(v => v === 0)) return new Array(n).fill(1 / n);
@@ -166,8 +160,7 @@ function calcEGreedyProbs(qArray, epsilon) {
   return probs;
 }
 
-function calcSoftmaxProbs(qArray, epsilon) {
-  const tau  = epsilonToTau(epsilon);
+function calcSoftmaxProbs(qArray, tau) {
   const exps = qArray.map(q => Math.exp(q / tau));
   const sum  = exps.reduce((a, b) => a + b, 0);
   return exps.map(e => e / sum);

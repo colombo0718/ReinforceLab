@@ -451,8 +451,9 @@ function generateQBarSlice() {
   if (!qArr) return;
 
   const epsilon  = typeof Epsilon !== 'undefined' ? Epsilon : 0.1;
+  const tau      = typeof Tau     !== 'undefined' ? Tau     : 5.0;
   const egProbs  = calcEGreedyProbs(qArr, epsilon);
-  const smProbs  = calcSoftmaxProbs(qArr, epsilon);
+  const smProbs  = calcSoftmaxProbs(qArr, tau);
   const colors   = getActionColors(action_size);
   const tickText = qArr.map((_, i) => `a${i}`);
 
