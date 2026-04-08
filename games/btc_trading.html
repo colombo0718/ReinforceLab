@@ -455,14 +455,12 @@ function step(action) {
   // ── 計算 Reward ──
   const curTotal = getTotal(price);
   if (reward === 0) {
-    // 每步 reward = 資產變化比例
-    reward = (curTotal - prevTotal) / (prevTotal + 1e-9);
+    // 每步 reward = 資產絕對變化（USDT），累積值直接等於總損益
+    reward = curTotal - prevTotal;
   }
 
-  // 終局額外 reward = 最終報酬率，並自動重置進入下一回合
   if (done) {
     const finalReturn = (curTotal - INITIAL_CAPITAL) / INITIAL_CAPITAL;
-    reward += finalReturn;
     logText += ` ✓ 終局 ${(finalReturn * 100).toFixed(2)}%`;
     setStatus(`Ep ${episodeCount} 結束 | 報酬率 ${(finalReturn * 100).toFixed(2)}%`);
   }
