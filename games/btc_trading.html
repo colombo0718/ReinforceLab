@@ -273,6 +273,7 @@
 const INITIAL_CAPITAL = 10000;  // USDT
 const MAX_POSITION    = 10;     // 最大持倉格數
 const UNIT_FRACTION   = 1 / MAX_POSITION;  // 每格 = 1/10 總資產
+const FEE_RATE        = 0.001;  // 手續費 0.1%（幣安現貨）
 
 const STATE_LABEL = ['大漲▲▲', '小漲▲', '持平─', '小跌▼', '大跌▼▼'];
 const STATE_CLASS  = ['s0', 's1', 's2', 's3', 's4'];
@@ -387,7 +388,11 @@ function resetEnv() {
 }
 
 function step(action) {
-  if (!envReady || currentStep >= statesData.length) return;
+  if (!envReady) return;
+  if (currentStep >= statesData.length) {
+    resetEnv();
+    return;
+  }
 
   const row   = statesData[currentStep];
   const price = row.price;
@@ -407,12 +412,13 @@ function step(action) {
     } else {
       const spend = INITIAL_CAPITAL * UNIT_FRACTION;
       if (cash >= spend) {
-        const boughtBTC = spend / price;
+        const fee       = spend * FEE_RATE;
+        const boughtBTC = (spend - fee) / price;
         cash    -= spend;
         btcHeld += boughtBTC;
         position++;
         logClass = 'buy';
-        logText  = `[${currentStep}] BUY  $${price.toFixed(0)}`;
+        logText  = `[${currentStep}] BUY  $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
       } else {
         // 現金不足，給小懲罰
         reward   = -0.01;
@@ -427,15 +433,15 @@ function step(action) {
       logClass = 'err';
       logText  = `[${currentStep}] SELL → 空倉，懲罰`;
     } else {
-      const unitBTC = INITIAL_CAPITAL * UNIT_FRACTION / price;  // 約略1格的BTC量
-      // 實際賣出 btcHeld / position 格（平均每格）
-      const sellBTC = btcHeld / position;
-      const proceeds = sellBTC * price;
+      const sellBTC  = btcHeld / position;
+      const gross    = sellBTC * price;
+      const fee      = gross * FEE_RATE;
+      const proceeds = gross - fee;
       btcHeld  -= sellBTC;
       cash     += proceeds;
       position--;
       logClass = 'sell';
-      logText  = `[${currentStep}] SELL $${price.toFixed(0)}`;
+      logText  = `[${currentStep}] SELL $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
     }
   } else {
     // 持有
@@ -453,7 +459,7 @@ function step(action) {
     reward = (curTotal - prevTotal) / (prevTotal + 1e-9);
   }
 
-  // 終局額外 reward = 最終報酬率
+  // 終局額外 reward = 最終報酬率，並自動重置進入下一回合
   if (done) {
     const finalReturn = (curTotal - INITIAL_CAPITAL) / INITIAL_CAPITAL;
     reward += finalReturn;
