@@ -40,17 +40,27 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 0;
   }
 
-  canvas {
+  .canvas-wrap {
+    position: relative;
     background: #161b22;
     border: 1px solid #30363d;
     border-radius: 6px;
-    display: block;
-    width: 100%;
+    overflow: hidden;
+    min-height: 0;
   }
-  #chart-canvas { flex: 2; }
-  #equity-canvas { flex: 1; }
+  #chart-wrap  { flex: 2; }
+  #equity-wrap { flex: 1; }
+
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
 
   /* 右側：狀態面板 */
   #right-panel {
@@ -168,8 +178,12 @@
 <div id="main-grid">
   <!-- 左側 -->
   <div id="left-panel">
-    <canvas id="chart-canvas"></canvas>
-    <canvas id="equity-canvas"></canvas>
+    <div class="canvas-wrap" id="chart-wrap">
+      <canvas id="chart-canvas"></canvas>
+    </div>
+    <div class="canvas-wrap" id="equity-wrap">
+      <canvas id="equity-canvas"></canvas>
+    </div>
   </div>
 
   <!-- 右側 -->
@@ -304,13 +318,13 @@ async function loadData() {
     // 通知 RR 平台環境資訊
     sendToRR({
       type:       'env_info',
-      state_size: 55,          // 5 × 11
+      state_size: 55,
       action_size: 3,
-      state_dims: [5, 11],     // [cnn_signal, position]
+      state_dims: [5, 11],
     });
 
-    // 自動 reset 準備第一個 episode
-    resetEnv();
+    // 等 layout 穩定後再 reset（避免 canvas 尺寸為 0）
+    requestAnimationFrame(() => resetEnv());
   } catch (e) {
     setStatus('⚠ 找不到 btc_states.json，請先執行 Colab 產出');
     console.warn(e);
@@ -330,7 +344,7 @@ function useDemoData() {
   envReady = true;
   setStatus(`[Demo] 假資料 ${statesData.length} 步`);
   sendToRR({ type: 'env_info', state_size: 55, action_size: 3, state_dims: [5, 11] });
-  resetEnv();
+  requestAnimationFrame(() => resetEnv());
 }
 
 // ── 環境核心函數 ───────────────────────────────────────
@@ -550,10 +564,12 @@ function clearLog() {
 // ── Canvas 繪圖 ────────────────────────────────────────
 
 function resizeCanvas(canvas) {
-  const rect = canvas.getBoundingClientRect();
-  if (canvas.width !== rect.width || canvas.height !== rect.height) {
-    canvas.width  = rect.width;
-    canvas.height = rect.height;
+  const wrap = canvas.parentElement;
+  const W = wrap.clientWidth  || 300;
+  const H = wrap.clientHeight || 200;
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width  = W;
+    canvas.height = H;
   }
 }
 
