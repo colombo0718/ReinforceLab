@@ -451,6 +451,7 @@ function step(action) {
     const finalReturn = (curTotal - INITIAL_CAPITAL) / INITIAL_CAPITAL;
     reward += finalReturn;
     logText += ` ✓ 終局 ${(finalReturn * 100).toFixed(2)}%`;
+    setStatus(`Ep ${episodeCount} 結束 | 報酬率 ${(finalReturn * 100).toFixed(2)}%`);
   }
 
   prevTotal = curTotal;
@@ -487,6 +488,7 @@ window.addEventListener('message', (e) => {
     currentSessionId = msg.sessionId;
     sendGameInfo();
     requestAnimationFrame(() => resetEnv());
+    setStatus('▶ 訓練中...');
   } else if (msg.type === 'action') {
     if (!isPaused) step(msg.action);
   } else if (msg.type === 'pause') {
@@ -602,20 +604,7 @@ function drawChart() {
     ctx.fillText(`$${Math.round(val / 1000)}K`, PAD.l - 4, y + 4);
   }
 
-  // 買賣標記區間（背景）
   const offset = priceHistory.length > SHOW ? priceHistory.length - SHOW : 0;
-  actionHistory.forEach(({ step, action }) => {
-    const localIdx = step - offset;
-    if (localIdx < 0 || localIdx >= prices.length) return;
-    const x = px(localIdx);
-    if (action === 0) {
-      ctx.fillStyle = 'rgba(63, 185, 80, 0.15)';
-      ctx.fillRect(x - 2, PAD.t, 4, H - PAD.t - PAD.b);
-    } else if (action === 2) {
-      ctx.fillStyle = 'rgba(248, 81, 73, 0.15)';
-      ctx.fillRect(x - 2, PAD.t, 4, H - PAD.t - PAD.b);
-    }
-  });
 
   // 價格線
   ctx.beginPath();
@@ -626,19 +615,19 @@ function drawChart() {
   });
   ctx.stroke();
 
-  // 買賣箭頭
+  // 買賣箭頭（只標記 BUY/SELL，不畫背景）
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
   actionHistory.forEach(({ step, action }) => {
     const localIdx = step - offset;
     if (localIdx < 0 || localIdx >= prices.length) return;
     const x = px(localIdx), y = py(prices[localIdx]);
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
     if (action === 0) {
       ctx.fillStyle = '#3fb950';
-      ctx.fillText('▲', x, y + 16);
+      ctx.fillText('▲', x, y + 14);
     } else if (action === 2) {
       ctx.fillStyle = '#f85149';
-      ctx.fillText('▼', x, y - 6);
+      ctx.fillText('▼', x, y - 5);
     }
   });
 
