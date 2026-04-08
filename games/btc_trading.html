@@ -152,6 +152,18 @@
   .log-entry.hold { color: #58a6ff; }
   .log-entry.err  { color: #d29922; }
 
+  /* 閾值輸入框 */
+  .th-input {
+    width: 60px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 11px;
+    text-align: right;
+  }
+
   /* 進度條 */
   #progress-bar-wrap {
     background: #21262d;
@@ -195,6 +207,35 @@
 
   <!-- 右側 -->
   <div id="right-panel">
+
+    <!-- 閾值設定 -->
+    <div class="panel">
+      <div class="panel-title">State Thresholds (%)</div>
+      <div style="font-size:11px;color:#8b949e;margin-bottom:6px;">
+        pred_return_pct 切分成 5 種狀態
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">大漲 (&gt;)</span>
+        <input id="th-big-up"   class="th-input" type="number" value="1.0"  step="0.1">
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">小漲 (&gt;)</span>
+        <input id="th-small-up" class="th-input" type="number" value="0.3"  step="0.1">
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">小跌 (&gt;)</span>
+        <input id="th-small-dn" class="th-input" type="number" value="-0.3" step="0.1">
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">大跌 (&gt;)</span>
+        <input id="th-big-dn"   class="th-input" type="number" value="-1.0" step="0.1">
+      </div>
+      <button id="btn-apply" style="width:100%;margin-top:6px;padding:3px;
+        background:#21262d;border:1px solid #30363d;color:#58a6ff;
+        border-radius:4px;cursor:pointer;font-size:11px;">
+        套用（重置 Episode）
+      </button>
+    </div>
 
     <!-- CNN 狀態 -->
     <div class="panel">
@@ -278,6 +319,25 @@ const FEE_RATE        = 0.001;  // 手續費 0.1%（幣安現貨）
 const STATE_LABEL = ['大漲▲▲', '小漲▲', '持平─', '小跌▼', '大跌▼▼'];
 const STATE_CLASS  = ['s0', 's1', 's2', 's3', 's4'];
 
+// ── 閾值（由 UI 控制）─────────────────────────────────
+function getThresholds() {
+  return {
+    bigUp:   parseFloat(document.getElementById('th-big-up').value)   ||  1.0,
+    smallUp: parseFloat(document.getElementById('th-small-up').value) ||  0.3,
+    smallDn: parseFloat(document.getElementById('th-small-dn').value) || -0.3,
+    bigDn:   parseFloat(document.getElementById('th-big-dn').value)   || -1.0,
+  };
+}
+
+function predReturnToState(pred_return_pct) {
+  const t = getThresholds();
+  if (pred_return_pct >  t.bigUp)   return 0; // 大漲
+  if (pred_return_pct >  t.smallUp) return 1; // 小漲
+  if (pred_return_pct >= t.smallDn) return 2; // 持平
+  if (pred_return_pct >= t.bigDn)   return 3; // 小跌
+  return 4;                                    // 大跌
+}
+
 // ── 環境狀態 ───────────────────────────────────────────
 let statesData    = [];   // btc_states.json 的 data 陣列
 let currentStep   = 0;
@@ -354,8 +414,9 @@ function useDemoData() {
 // ── 環境核心函數 ───────────────────────────────────────
 
 function getStateVector() {
-  // 回傳給 RR 的 state = [cnn_signal, position]（兩個整數）
-  const cnnSignal = statesData[currentStep]?.state ?? 2;
+  // 從 pred_return_pct 即時計算 cnn_signal
+  const row = statesData[Math.min(currentStep, statesData.length - 1)];
+  const cnnSignal = row ? predReturnToState(row.pred_return_pct) : 2;
   return [cnnSignal, position];
 }
 
@@ -516,8 +577,9 @@ function updateUI(price, total) {
   document.getElementById('episode-label').textContent =
     `Episode: ${episodeCount} | Step: ${currentStep} / ${statesData.length}`;
 
-  // CNN 狀態
-  const cnnSig = statesData[Math.min(currentStep, statesData.length - 1)]?.state ?? 2;
+  // CNN 狀態（從 pred_return_pct 即時算）
+  const curRow = statesData[Math.min(currentStep, statesData.length - 1)];
+  const cnnSig = curRow ? predReturnToState(curRow.pred_return_pct) : 2;
   const badge  = document.getElementById('state-badge');
   badge.textContent  = STATE_LABEL[cnnSig];
   badge.className    = `state-badge ${STATE_CLASS[cnnSig]}`;
@@ -710,6 +772,11 @@ function drawEquity() {
 
 // ── 視窗 resize ────────────────────────────────────────
 window.addEventListener('resize', () => { drawChart(); drawEquity(); });
+
+// ── 閾值套用按鈕 ──────────────────────────────────────
+document.getElementById('btn-apply').addEventListener('click', () => {
+  if (envReady) resetEnv();
+});
 
 // ── 啟動 ──────────────────────────────────────────────
 loadData();
