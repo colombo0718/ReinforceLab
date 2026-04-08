@@ -406,9 +406,8 @@ function step(action) {
   if (action === 0) {
     // 買入：用 1/10 初始資本買 BTC（買入時用現金）
     if (position >= MAX_POSITION) {
-      reward   = -0.01;   // 非法動作懲罰
       logClass = 'err';
-      logText  = `[${currentStep}] BUY → 滿倉，懲罰`;
+      logText  = `[${currentStep}] BUY → 滿倉`;
     } else {
       const spend = INITIAL_CAPITAL * UNIT_FRACTION;
       if (cash >= spend) {
@@ -421,8 +420,6 @@ function step(action) {
         logText  = `[${currentStep}] BUY  $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
         actionHistory.push({ step: currentStep, action: 0, price });
       } else {
-        // 現金不足，給小懲罰
-        reward   = -0.01;
         logClass = 'err';
         logText  = `[${currentStep}] BUY → 現金不足`;
       }
@@ -430,9 +427,8 @@ function step(action) {
   } else if (action === 2) {
     // 賣出：賣掉 1/10 的 BTC
     if (position <= 0) {
-      reward   = -0.01;
       logClass = 'err';
-      logText  = `[${currentStep}] SELL → 空倉，懲罰`;
+      logText  = `[${currentStep}] SELL → 空倉`;
     } else {
       const sellBTC  = btcHeld / position;
       const gross    = sellBTC * price;
