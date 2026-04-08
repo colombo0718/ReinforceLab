@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=800, initial-scale=1.0">
+  <title>Two Players and Game Ball</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #2c3e50;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const { Engine, Render, World, Bodies, Body, Events } = Matter;
+
+    // 建立引擎
+    let engine = Engine.create();
+    engine.world.gravity.x = 0; // 水平重力
+    engine.world.gravity.y = 0; // 垂直重力
+    
+    // 調整時間加速或減速
+    engine.timing.timeScale = 0.5; // 減速為原來的一半
+    // engine.timing.timeScale = 2.0; // 加速為原來的兩倍
+
+    // 建立渲染器
+    let render = Render.create({
+      element: document.body,
+      engine: engine,
+      options: {
+        width: 800,  // 場地寬度
+        height: 400, // 場地高度
+        wireframes: false // 使用填充樣式
+      }
+    });
+
+    // 定義碰撞類別
+    const categoryPlayers = 0x0001; // 玩家類別
+    const categoryWhiteBall = 0x0002; // 白球類別
+    const categoryWall = 0x0004; // 黃牆和綠牆類別
+
+    // 場地邊界與球門牆
+    let walls = [
+      Bodies.rectangle(400, 0, 800, 20, { isStatic: true, render: { fillStyle: '#34495e' } }),   // 上邊界
+      Bodies.rectangle(400, 400, 800, 20, { isStatic: true, render: { fillStyle: '#34495e' } }), // 下邊界
+
+      // 左側牆拆分
+      Bodies.rectangle(0, 50, 20, 100, { isStatic: true, render: { fillStyle: '#34495e' } }),   // 左上牆
+      Bodies.rectangle(0, 350, 20, 100, { isStatic: true, render: { fillStyle: '#34495e' } }),  // 左下牆
+      Bodies.rectangle(0, 200, 20, 200, { // 左側球門（綠色）
+        isStatic: true,
+        collisionFilter: {
+          category: categoryWall,
+          mask: categoryPlayers // 只與玩家碰撞，不與白球碰撞
+        },
+        render: { fillStyle: '#27ae60' } // 綠色
+      }),
+
+      // 右側牆拆分
+      Bodies.rectangle(800, 50, 20, 100, { isStatic: true, render: { fillStyle: '#34495e' } }),   // 右上牆
+      Bodies.rectangle(800, 350, 20, 100, { isStatic: true, render: { fillStyle: '#34495e' } }),  // 右下牆
+      Bodies.rectangle(800, 200, 20, 200, { // 右側球門（綠色）
+        isStatic: true,
+        collisionFilter: {
+          category: categoryWall,
+          mask: categoryPlayers // 只與玩家碰撞，不與白球碰撞
+        },
+        render: { fillStyle: '#27ae60' } // 綠色
+      })
+    ];
+
+    // 中間豎直牆
+    let verticalWall = Bodies.rectangle(400, 200, 20, 400, {
+      isStatic: true,
+      collisionFilter: {
+        category: categoryWall,
+        mask: categoryPlayers // 只與玩家碰撞，不與白球碰撞
+      },
+      render: { fillStyle: '#f1c40f' } // 黃色
+    });
+
+    // 玩家初始位置
+    const player1Start = { x: 700, y: 100 }; // 紅方玩家初始位置
+    const player2Start = { x: 100, y: 100 }; // 藍方玩家初始位置
+    const ballStartBlue = { x: 300, y: 200 }; // 藍方發球點
+    const ballStartRed = { x: 500, y: 200 };  // 紅方發球點
+
+    // 玩家1（紅色球）
+    let player1 = Bodies.circle(player1Start.x, player1Start.y, 20, {
+      restitution: 0.9,
+      friction: 0.01,
+      frictionAir: 0.005,
+      collisionFilter: {
+        category: categoryPlayers,
+        mask: categoryPlayers | categoryWall | categoryWhiteBall // 與玩家、黃牆、白球碰撞
+      },
+      render: { fillStyle: '#e74c3c' }
+    });
+    player1.mass = 1;
+
+    // 玩家2（淺藍色球）
+    let player2 = Bodies.circle(player2Start.x, player2Start.y, 20, {
+      restitution: 0.9,
+      friction: 0.01,
+      frictionAir: 0.03,
+      collisionFilter: {
+        category: categoryPlayers,
+        mask: categoryPlayers | categoryWall | categoryWhiteBall // 與玩家、黃牆、白球碰撞
+      },
+      render: { fillStyle: '#3498db' }
+    });
+    player2.mass = 1;
+
+    // 白球（遊戲球）
+    let gameBall = Bodies.circle(ballStartBlue.x, ballStartBlue.y, 10, {
+      restitution: 0.9,
+      friction: 0.01,
+      frictionAir: 0.00,
+      collisionFilter: {
+        category: categoryWhiteBall,
+        mask: categoryPlayers | categoryWhiteBall // 與玩家碰撞，不與黃牆/綠牆碰撞
+      },
+      render: { fillStyle: '#ffffff' }
+    });
+    gameBall.mass=0.5
+
+    // 添加物件至世界
+    World.add(engine.world, [player1, player2, gameBall, ...walls, verticalWall]);
+
+    // 玩家1控制狀態
+    let p1Up = false;
+    let p1Down = false;
+    let p1Left = false;
+    let p1Right = false;
+
+    // 玩家2控制狀態
+    let p2Up = false;
+    let p2Down = false;
+    let p2Left = false;
+    let p2Right = false;
+
+    // 分數
+    let blueScore = 0;
+    let redScore = 0;
+
+    // 監聽鍵盤按下
+    document.addEventListener('keydown', (event) => {
+      switch (event.key) {
+        // 玩家1用方向鍵（紅方）
+        case 'ArrowUp':
+          p1Up = true;
+          break;
+        case 'ArrowDown':
+          p1Down = true;
+          break;
+        case 'ArrowLeft':
+          p1Left = true;
+          break;
+        case 'ArrowRight':
+          p1Right = true;
+          break;
+        // 玩家2用 WASD（藍方）
+        case 'w':
+          p2Up = true;
+          break;
+        case 's':
+          p2Down = true;
+          break;
+        case 'a':
+          p2Left = true;
+          break;
+        case 'd':
+          p2Right = true;
+          break;
+      }
+    });
+
+    // 監聽鍵盤放開
+    document.addEventListener('keyup', (event) => {
+      switch (event.key) {
+        // 玩家1用方向鍵
+        case 'ArrowUp':
+          p1Up = false;
+          break;
+        case 'ArrowDown':
+          p1Down = false;
+          break;
+        case 'ArrowLeft':
+          p1Left = false;
+          break;
+        case 'ArrowRight':
+          p1Right = false;
+          break;
+        // 玩家2用 WASD
+        case 'w':
+          p2Up = false;
+          break;
+        case 's':
+          p2Down = false;
+          break;
+        case 'a':
+          p2Left = false;
+          break;
+        case 'd':
+          p2Right = false;
+          break;
+      }
+    });
+    
+        // 在每次更新前持續施力
+    Events.on(engine, 'beforeUpdate', () => {
+      const forceMagnitude = 0.002;
+
+      // 對玩家1持續施力（紅方）
+      if (p1Up) {
+        Body.applyForce(player1, player1.position, { x: 0, y: -forceMagnitude });
+      }
+      if (p1Down) {
+        Body.applyForce(player1, player1.position, { x: 0, y: forceMagnitude });
+      }
+      if (p1Left) {
+        Body.applyForce(player1, player1.position, { x: -forceMagnitude, y: 0 });
+      }
+      if (p1Right) {
+        Body.applyForce(player1, player1.position, { x: forceMagnitude, y: 0 });
+      }
+
+      // 對玩家2持續施力（藍方）
+      if (p2Up) {
+        Body.applyForce(player2, player2.position, { x: 0, y: -forceMagnitude });
+      }
+      if (p2Down) {
+        Body.applyForce(player2, player2.position, { x: 0, y: forceMagnitude });
+      }
+      if (p2Left) {
+        Body.applyForce(player2, player2.position, { x: -forceMagnitude, y: 0 });
+      }
+      if (p2Right) {
+        Body.applyForce(player2, player2.position, { x: forceMagnitude, y: 0 });
+      }
+    });
+
+
+    // 每次更新後檢查是否得分
+    Events.on(engine, 'afterUpdate', () => {
+      const x = gameBall.position.x;
+      const y = gameBall.position.y;
+
+      // 檢查球是否進入左側球門區
+      if (x < 0 && y > 100 && y < 300) {
+        // 紅方得分
+        redScore++;
+        resetPositions('red');
+      }
+
+      // 檢查球是否進入右側球門區
+      if (x > 800 && y > 100 && y < 300) {
+        // 藍方得分
+        blueScore++;
+        resetPositions('blue');
+      }
+    });
+
+    // 重置球與玩家位置
+    function resetPositions(scoredSide) {
+      // 移動玩家回初始位置
+      Body.setPosition(player1, {x: player1Start.x, y: player1Start.y});
+      Body.setVelocity(player1, {x: 0, y: 0});
+      Body.setAngularVelocity(player1, 0);
+
+      Body.setPosition(player2, {x: player2Start.x, y: player2Start.y});
+      Body.setVelocity(player2, {x: 0, y: 0});
+      Body.setAngularVelocity(player2, 0);
+
+      // 根據得分方決定球的重新擺放位置
+      if (scoredSide === 'red') {
+        // 紅方得分，白球放在紅方發球點(500,200)
+        Body.setPosition(gameBall, {x: ballStartRed.x, y: ballStartRed.y});
+      } else {
+        // 藍方得分，白球放在藍方發球點(300,200)
+        Body.setPosition(gameBall, {x: ballStartBlue.x, y: ballStartBlue.y});
+      }
+      Body.setVelocity(gameBall, {x: 0, y: 0});
+      Body.setAngularVelocity(gameBall, 0);
+    }
+    
+    // 繪製箭頭的函式
+    function drawArrow(context, x, y, dx, dy, color) {
+      const length = Math.sqrt(dx*dx + dy*dy);
+      if (length === 0) return;
+    
+      const arrowLength = 50;
+      const arrowHeadSize = 3;    // 增大箭頭的三角形尺寸
+      const arrowLineWidth = 2;    // 增加線條寬度
+    
+      // 將 (dx, dy) 規範化並放大到 arrowLength
+      const ux = (dx / length) * arrowLength; 
+      const uy = (dy / length) * arrowLength;
+    
+      context.save();
+      context.translate(x, y);
+    
+      // 畫箭身
+      context.strokeStyle = color;
+      context.fillStyle = color;
+      context.lineWidth = arrowLineWidth;
+      context.beginPath();
+      context.moveTo(0, 0);
+      context.lineTo(ux, uy);
+      context.stroke();
+    
+      // 箭頭頭部的計算
+      // 垂直向量 (vx, vy)
+      const perpendicularLength = Math.sqrt(uy*uy + ux*ux);
+      const vx = -uy / perpendicularLength * arrowHeadSize;
+      const vy = ux / perpendicularLength * arrowHeadSize;
+    
+      // 將箭頭的基底往後縮，使箭尖真的在 (ux, uy)，
+      // 而箭頭的底邊在箭尖往回縮一段距離 (以 arrowHeadSize 為參考)
+      const headBackDist = arrowHeadSize * 2; // 箭頭底部往回縮0.5倍arrowHeadSize，可自行調整
+      const bx = ux - (dx / length) * headBackDist;
+      const by = uy - (dy / length) * headBackDist;
+    
+      // 繪製三角形：頂點為(ux, uy)，底部兩側點為 (bx - vx, by - vy) 和 (bx + vx, by + vy)
+      context.beginPath();
+      context.moveTo(ux, uy);               // 箭頭頂點
+      context.lineTo(bx - vx, by - vy);     // 底邊一側
+      context.lineTo(bx + vx, by + vy);     // 底邊另一側
+      context.closePath();
+      context.fill();
+      context.stroke();
+    
+      context.restore();
+    }
+
+    // 在渲染後繪製分數和箭頭
+    Events.on(render, 'afterRender', () => {
+      const context = render.context;
+
+      // 繪製分數
+      context.fillStyle = 'gray';
+      context.font = '30px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+
+      // 藍方分數顯示在(200, 50)
+      context.fillText(blueScore, 200, 50);
+
+      // 紅方分數顯示在(600, 50)
+      context.fillText(redScore, 600, 50);
+
+      // 計算玩家1的方向向量
+      let p1dx = (p1Right ? 2 : 0) - (p1Left ? 2 : 0);
+      let p1dy = (p1Down ? 2 : 0) - (p1Up ? 2 : 0);
+
+      // 計算玩家2的方向向量
+      let p2dx = (p2Right ? 2 : 0) - (p2Left ? 2 : 0);
+      let p2dy = (p2Down ? 2 : 0) - (p2Up ? 2 : 0);
+
+      // 在玩家球位置上繪製箭頭 (紅方: 紅色箭頭, 藍方: 藍色箭頭)
+      drawArrow(context, player1.position.x, player1.position.y, p1dx, p1dy, '#ff0000');
+      drawArrow(context, player2.position.x, player2.position.y, p2dx, p2dy, '#0000ff');
+    });
+
+    // 啟動引擎與渲染器
+    Engine.run(engine);
+    Render.run(render);
+  </script>
+</body>
+</html>
