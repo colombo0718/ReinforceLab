@@ -318,6 +318,14 @@ iframe {
   background: #f3e8ff;
   color: #7e22ce;
 }
+.game-tag-flagship {
+  background: #fef3c7;
+  color: #b45309;
+}
+.game-card-flagship {
+  border-color: #f59e0b;
+  background: linear-gradient(to bottom right, #fffbeb, #fff);
+}
 .game-card-title {
   font-size: 13px;
   font-weight: 700;
