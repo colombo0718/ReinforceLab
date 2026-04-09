@@ -117,10 +117,18 @@
             <span class="value-display" id="gamma-value">0.95</span>
             <br>
 
+            <div id="epsilon-row">
             <label for="exploration-rate-slider">探索率 (ε):</label>
             <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.05" value="0.2"
                   oninput="updateValue('Epsilon', this.value)">
             <span class="value-display" id="epsilon-value">0.2</span>
+            </div>
+            <div id="tau-row" style="opacity:0.4">
+            <label for="temperature-slider">熱力值 (τ):</label>
+            <input id="temperature-slider" type="range" min="0.1" max="20" step="0.1" value="5" disabled
+                  oninput="updateValue('Tau', this.value)">
+            <span class="value-display" id="tau-value">5.0</span>
+            </div>
             <br>
             <!-- 環境超參數 -->
             <label for="optimism-slider">樂觀值 (ψ):</label>
@@ -447,6 +455,11 @@
 
     function handleStrategySelection() {
       currentStrategy = document.querySelector('input[name="strategy"]:checked').value;
+      const isEgreedy = currentStrategy === 'egreedy';
+      document.getElementById('epsilon-row').style.opacity = isEgreedy ? '1' : '0.4';
+      document.getElementById('exploration-rate-slider').disabled = !isEgreedy;
+      document.getElementById('tau-row').style.opacity    = isEgreedy ? '0.4' : '1';
+      document.getElementById('temperature-slider').disabled = isEgreedy;
     }
 
 
@@ -456,6 +469,7 @@
      * Alpha：學習率（Bellman 更新步長）
      * Gamma：折扣因子（未來獎勵的衰減率）
      * Epsilon：探索率（ε-greedy 中隨機探索的比例）
+     * Tau：溫度參數（Softmax 中控制動作機率分散程度，τ↑→越均等，τ↓→越貪婪）
      * Psi：樂觀初始化值（控制 targetQ 在 max/actual/min 之間的混合）
      * basicDelayTime：滑桿設定的基礎延遲（ms）
      * delayTime：實際使用的延遲，加速模式下為 basicDelayTime/5
@@ -466,6 +480,7 @@
     let Alpha   = 0.5;
     let Gamma   = 0.95;
     let Epsilon = 0.1;
+    let Tau     = 5.0;
     let Psi     = 0;
 
     let basicDelayTime = 50, delayTime = 50;
@@ -476,6 +491,7 @@
         case "Alpha":     Alpha = value; break;
         case "Gamma":     Gamma = value; break;
         case "Epsilon":   Epsilon = value; break;
+        case "Tau":       Tau = value; document.getElementById('tau-value').textContent = value.toFixed(1); break;
         case "Psi":       Psi = value; break;
         case "delayTime":
           basicDelayTime = value;

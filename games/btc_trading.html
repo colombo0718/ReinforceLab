@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>BTC Trading Env</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    font-family: 'Courier New', monospace;
+    background: #0d1117;
+    color: #c9d1d9;
+    font-size: 13px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 8px;
+  }
+  #header .title { color: #f0883e; font-weight: bold; font-size: 14px; }
+  #header .episode-info { color: #8b949e; font-size: 12px; }
+
+  #main-grid {
+    display: grid;
+    grid-template-columns: 1fr 180px;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* 左側：K線圖 + 資產曲線 */
+  #left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .canvas-wrap {
+    position: relative;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    overflow: hidden;
+    min-height: 0;
+  }
+  #chart-wrap  { flex: 2; }
+  #equity-wrap { flex: 1; }
+
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  /* 右側：狀態面板 */
+  #right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .panel {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .panel-title {
+    color: #58a6ff;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 4px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+  .stat-label { color: #8b949e; }
+  .stat-value { color: #e6edf3; font-weight: bold; }
+  .stat-value.up   { color: #3fb950; }
+  .stat-value.down { color: #f85149; }
+  .stat-value.neu  { color: #d29922; }
+
+  /* CNN 狀態燈 */
+  #state-display {
+    text-align: center;
+    padding: 8px 0;
+  }
+  .state-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 4px;
+  }
+  .s0 { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
+  .s1 { background: #1a2e1a; color: #7ee787; border: 1px solid #7ee787; }
+  .s2 { background: #2a2a1a; color: #d29922; border: 1px solid #d29922; }
+  .s3 { background: #2e1a1a; color: #f85149; border: 1px solid #f85149; }
+  .s4 { background: #3a1a1a; color: #ff7b72; border: 1px solid #ff7b72; }
+
+  /* 持倉格 */
+  #position-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+    margin-top: 4px;
+  }
+  .pos-cell {
+    height: 14px;
+    border-radius: 2px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    transition: background 0.2s;
+  }
+  .pos-cell.filled { background: #f0883e; border-color: #f0883e; }
+
+  /* 動作 log */
+  #action-log {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.8;
+  }
+  .log-entry { color: #8b949e; }
+  .log-entry.buy  { color: #3fb950; }
+  .log-entry.sell { color: #f85149; }
+  .log-entry.hold { color: #58a6ff; }
+  .log-entry.err  { color: #d29922; }
+
+  /* 閾值輸入框 */
+  .th-input {
+    width: 60px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 11px;
+    text-align: right;
+  }
+
+  /* 進度條 */
+  #progress-bar-wrap {
+    background: #21262d;
+    border-radius: 3px;
+    height: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    background: #58a6ff;
+    transition: width 0.1s;
+    width: 0%;
+  }
+
+  #status-text {
+    text-align: center;
+    font-size: 11px;
+    color: #8b949e;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <span class="title">📈 BTC Trading Env — RR Platform</span>
+  <span class="episode-info" id="episode-label">Episode: 0 | Step: 0 / 0</span>
+</div>
+
+<div id="main-grid">
+  <!-- 左側 -->
+  <div id="left-panel">
+    <div class="canvas-wrap" id="chart-wrap">
+      <canvas id="chart-canvas"></canvas>
+    </div>
+    <div class="canvas-wrap" id="equity-wrap">
+      <canvas id="equity-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- 右側 -->
+  <div id="right-panel">
+
+    <!-- 閾值設定 -->
+    <div class="panel">
+      <div class="panel-title">State Thresholds (%)</div>
+      <div style="font-size:11px;color:#8b949e;margin-bottom:6px;">
+        pred_return_pct 切分成 5 種狀態
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">大漲 (&gt;)</span>
+        <input id="th-big-up"   class="th-input" type="number" value="1.0"  step="0.1">
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">小漲 (&gt;)</span>
+        <input id="th-small-up" class="th-input" type="number" value="0.3"  step="0.1">
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">小跌 (&gt;)</span>
+        <input id="th-small-dn" class="th-input" type="number" value="-0.3" step="0.1">
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">大跌 (&gt;)</span>
+        <input id="th-big-dn"   class="th-input" type="number" value="-1.0" step="0.1">
+      </div>
+      <button id="btn-apply" style="width:100%;margin-top:6px;padding:3px;
+        background:#21262d;border:1px solid #30363d;color:#58a6ff;
+        border-radius:4px;cursor:pointer;font-size:11px;">
+        套用（重置 Episode）
+      </button>
+    </div>
+
+    <!-- CNN 狀態 -->
+    <div class="panel">
+      <div class="panel-title">CNN Signal</div>
+      <div id="state-display">
+        <div style="color:#8b949e;font-size:11px;">市場狀態</div>
+        <div id="state-badge" class="state-badge s2">持平</div>
+      </div>
+    </div>
+
+    <!-- 帳戶資訊 -->
+    <div class="panel">
+      <div class="panel-title">Account</div>
+      <div class="stat-row">
+        <span class="stat-label">BTC 價格</span>
+        <span class="stat-value" id="val-price">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">現金</span>
+        <span class="stat-value" id="val-cash">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">BTC 估值</span>
+        <span class="stat-value" id="val-btc">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">總資產</span>
+        <span class="stat-value" id="val-total">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">報酬率</span>
+        <span class="stat-value" id="val-return">—</span>
+      </div>
+    </div>
+
+    <!-- 持倉 -->
+    <div class="panel">
+      <div class="panel-title">Position (0~10格)</div>
+      <div id="position-grid">
+        <!-- JS 動態產生 10 格 -->
+      </div>
+    </div>
+
+    <!-- 進度 -->
+    <div class="panel">
+      <div class="panel-title">Episode Progress</div>
+      <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+      <div id="status-text">等待 RR 平台連線...</div>
+    </div>
+
+    <!-- 動作 log -->
+    <div class="panel" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="panel-title">Action Log</div>
+      <div id="action-log"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  BTC Trading Environment — RR Platform 通訊協定
+//
+//  RR → Game:
+//    { type: 'questInfo', sessionId }  → 回傳 gameInfo，觸發 reset
+//    { type: 'action', action: 0|1|2 } → 執行一步
+//    { type: 'pause' }  → toggle 暫停
+//    { type: 'accel' }  → toggle 加速（預留）
+//
+//  Game → RR:
+//    { type: 'gameInfo', players: [{ stateInfo, actionInfo }] }
+//    { type: 'reward_state', reward, state, done, sessionId }
+// ═══════════════════════════════════════════════════════
+
+// ── 常數 ──────────────────────────────────────────────
+const INITIAL_CAPITAL = 10000;  // USDT
+const MAX_POSITION    = 10;     // 最大持倉格數
+const UNIT_FRACTION   = 1 / MAX_POSITION;  // 每格 = 1/10 總資產
+const FEE_RATE        = 0.001;  // 手續費 0.1%（幣安現貨）
+
+const STATE_LABEL = ['大漲▲▲', '小漲▲', '持平─', '小跌▼', '大跌▼▼'];
+const STATE_CLASS  = ['s0', 's1', 's2', 's3', 's4'];
+
+// ── 閾值（由 UI 控制）─────────────────────────────────
+function getThresholds() {
+  return {
+    bigUp:   parseFloat(document.getElementById('th-big-up').value)   ||  1.0,
+    smallUp: parseFloat(document.getElementById('th-small-up').value) ||  0.3,
+    smallDn: parseFloat(document.getElementById('th-small-dn').value) || -0.3,
+    bigDn:   parseFloat(document.getElementById('th-big-dn').value)   || -1.0,
+  };
+}
+
+function predReturnToState(pred_return_pct) {
+  const t = getThresholds();
+  if (pred_return_pct >  t.bigUp)   return 0; // 大漲
+  if (pred_return_pct >  t.smallUp) return 1; // 小漲
+  if (pred_return_pct >= t.smallDn) return 2; // 持平
+  if (pred_return_pct >= t.bigDn)   return 3; // 小跌
+  return 4;                                    // 大跌
+}
+
+// ── 環境狀態 ───────────────────────────────────────────
+let statesData    = [];   // btc_states.json 的 data 陣列
+let currentStep   = 0;
+let cash          = INITIAL_CAPITAL;
+let btcHeld       = 0;    // 持有 BTC 數量（浮點）
+let position      = 0;    // 持倉格數（0~10）
+let prevTotal     = INITIAL_CAPITAL;
+let episodeCount  = 0;
+let equityHistory = [];
+let priceHistory  = [];
+let actionHistory = [];   // { step, action, price }
+let envReady      = false;
+let currentSessionId = null;
+let isPaused      = false;
+
+// ── DOM ────────────────────────────────────────────────
+const chartCanvas  = document.getElementById('chart-canvas');
+const equityCanvas = document.getElementById('equity-canvas');
+const chartCtx     = chartCanvas.getContext('2d');
+const equityCtx    = equityCanvas.getContext('2d');
+
+// 初始化持倉格
+const posGrid = document.getElementById('position-grid');
+for (let i = 0; i < MAX_POSITION; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'pos-cell';
+  cell.id = `pos-${i}`;
+  posGrid.appendChild(cell);
+}
+
+// ── 載入 btc_states.json ───────────────────────────────
+async function loadData() {
+  try {
+    const res  = await fetch('btc_states.json');
+    const json = await res.json();
+    statesData = json.data;
+    setStatus(`資料載入完成：${statesData.length} 步，等待 RR 連線...`);
+    envReady = true;
+  } catch (e) {
+    setStatus('⚠ 找不到 btc_states.json，使用 Demo 資料');
+    console.warn(e);
+    useDemoData();
+  }
+}
+
+function sendGameInfo() {
+  sendToRR({
+    type: 'gameInfo',
+    players: [{
+      stateInfo: [
+        { name: 'CNN信號', min: 0, max: 4 },
+        { name: '持倉格數', min: 0, max: 10 },
+      ],
+      actionInfo: [{
+        type: 'switch',
+        name: ['買入', '持有', '賣出'],
+        level: 3,
+      }],
+    }],
+  });
+}
+
+function useDemoData() {
+  statesData = Array.from({ length: 300 }, (_, i) => ({
+    step:  i,
+    date:  '',
+    price: 90000 + Math.sin(i / 20) * 5000 + (Math.random() - 0.5) * 2000,
+    state: Math.floor(Math.random() * 5),
+  }));
+  envReady = true;
+  setStatus(`[Demo] 假資料 ${statesData.length} 步，等待 RR 連線...`);
+}
+
+// ── 環境核心函數 ───────────────────────────────────────
+
+function getStateVector() {
+  // 從 pred_return_pct 即時計算 cnn_signal
+  const row = statesData[Math.min(currentStep, statesData.length - 1)];
+  const cnnSignal = row ? predReturnToState(row.pred_return_pct) : 2;
+  return [cnnSignal, position];
+}
+
+function getTotal(price) {
+  return cash + btcHeld * price;
+}
+
+function resetEnv() {
+  currentStep   = 0;
+  cash          = INITIAL_CAPITAL;
+  btcHeld       = 0;
+  position      = 0;
+  prevTotal     = INITIAL_CAPITAL;
+  equityHistory = [INITIAL_CAPITAL];
+  priceHistory  = [];
+  actionHistory = [];
+  episodeCount++;
+
+  updateUI();
+  clearLog();
+
+  // 送出初始 reward_state（reward=0, done=false）
+  sendToRR({
+    type:      'reward_state',
+    reward:    0,
+    state:     getStateVector(),
+    done:      false,
+    sessionId: currentSessionId,
+  });
+}
+
+function step(action) {
+  if (!envReady) return;
+  if (currentStep >= statesData.length) {
+    resetEnv();
+    return;
+  }
+
+  const row   = statesData[currentStep];
+  const price = row.price;
+  priceHistory.push(price);
+
+  let reward = 0;
+  let logClass = 'hold';
+  let logText  = '';
+
+  // ── 執行動作 ──
+  if (action === 0) {
+    // 買入：用 1/10 初始資本買 BTC（買入時用現金）
+    if (position >= MAX_POSITION) {
+      logClass = 'err';
+      logText  = `[${currentStep}] BUY → 滿倉`;
+    } else {
+      const spend = INITIAL_CAPITAL * UNIT_FRACTION;
+      if (cash >= spend) {
+        const fee       = spend * FEE_RATE;
+        const boughtBTC = (spend - fee) / price;
+        cash    -= spend;
+        btcHeld += boughtBTC;
+        position++;
+        logClass = 'buy';
+        logText  = `[${currentStep}] BUY  $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
+        actionHistory.push({ step: currentStep, action: 0, price });
+      } else {
+        logClass = 'err';
+        logText  = `[${currentStep}] BUY → 現金不足`;
+      }
+    }
+  } else if (action === 2) {
+    // 賣出：賣掉 1/10 的 BTC
+    if (position <= 0) {
+      logClass = 'err';
+      logText  = `[${currentStep}] SELL → 空倉`;
+    } else {
+      const sellBTC  = btcHeld / position;
+      const gross    = sellBTC * price;
+      const fee      = gross * FEE_RATE;
+      const proceeds = gross - fee;
+      btcHeld  -= sellBTC;
+      cash     += proceeds;
+      position--;
+      logClass = 'sell';
+      logText  = `[${currentStep}] SELL $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
+      actionHistory.push({ step: currentStep, action: 2, price });
+    }
+  } else {
+    // 持有
+    logClass = 'hold';
+    logText  = `[${currentStep}] HOLD`;
+  }
+
+  currentStep++;
+  const done = currentStep >= statesData.length;
+
+  // ── 計算 Reward ──
+  const curTotal = getTotal(price);
+  if (reward === 0) {
+    // 每步 reward = 資產絕對變化（USDT），累積值直接等於總損益
+    reward = curTotal - prevTotal;
+  }
+
+  if (done) {
+    const finalReturn = (curTotal - INITIAL_CAPITAL) / INITIAL_CAPITAL;
+    logText += ` ✓ 終局 ${(finalReturn * 100).toFixed(2)}%`;
+    setStatus(`Ep ${episodeCount} 結束 | 報酬率 ${(finalReturn * 100).toFixed(2)}%`);
+  }
+
+  prevTotal = curTotal;
+  equityHistory.push(curTotal);
+
+  // 箭頭標記已在各成交分支內記錄，非法動作不畫箭頭
+
+  // 更新 UI
+  updateUI(price, curTotal);
+  addLog(logText, logClass);
+
+  // 送出 reward_state 給 RR
+  sendToRR({
+    type:      'reward_state',
+    reward:    reward,
+    state:     getStateVector(),
+    done:      done,
+    sessionId: currentSessionId,
+  });
+}
+
+// ── postMessage 通訊 ───────────────────────────────────
+
+function sendToRR(payload) {
+  window.parent.postMessage(payload, '*');
+}
+
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (!msg || !msg.type) return;
+
+  if (msg.type === 'questInfo') {
+    currentSessionId = msg.sessionId;
+    sendGameInfo();
+    requestAnimationFrame(() => resetEnv());
+    setStatus('▶ 訓練中...');
+  } else if (msg.type === 'action') {
+    if (!isPaused) step(msg.action);
+  } else if (msg.type === 'pause') {
+    isPaused = !isPaused;
+    setStatus(isPaused ? '⏸ 暫停中' : '▶ 訓練中...');
+  }
+});
+
+// ── UI 更新 ────────────────────────────────────────────
+
+function updateUI(price, total) {
+  const p   = price ?? statesData[0]?.price ?? 0;
+  const tot = total ?? INITIAL_CAPITAL;
+  const ret = (tot - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100;
+
+  // episode label
+  document.getElementById('episode-label').textContent =
+    `Episode: ${episodeCount} | Step: ${currentStep} / ${statesData.length}`;
+
+  // CNN 狀態（從 pred_return_pct 即時算）
+  const curRow = statesData[Math.min(currentStep, statesData.length - 1)];
+  const cnnSig = curRow ? predReturnToState(curRow.pred_return_pct) : 2;
+  const badge  = document.getElementById('state-badge');
+  badge.textContent  = STATE_LABEL[cnnSig];
+  badge.className    = `state-badge ${STATE_CLASS[cnnSig]}`;
+
+  // 帳戶
+  document.getElementById('val-price').textContent  = `$${p.toLocaleString('en', {maximumFractionDigits: 0})}`;
+  document.getElementById('val-cash').textContent   = `$${cash.toFixed(0)}`;
+  document.getElementById('val-btc').textContent    = `$${(btcHeld * p).toFixed(0)}`;
+  document.getElementById('val-total').textContent  = `$${tot.toFixed(0)}`;
+
+  const retEl = document.getElementById('val-return');
+  retEl.textContent = `${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`;
+  retEl.className   = `stat-value ${ret > 0 ? 'up' : ret < 0 ? 'down' : 'neu'}`;
+
+  // 持倉格
+  for (let i = 0; i < MAX_POSITION; i++) {
+    document.getElementById(`pos-${i}`).className =
+      `pos-cell ${i < position ? 'filled' : ''}`;
+  }
+
+  // 進度條
+  const pct = statesData.length > 0 ? (currentStep / statesData.length * 100) : 0;
+  document.getElementById('progress-bar').style.width = `${pct}%`;
+
+  // 畫圖
+  drawChart();
+  drawEquity();
+}
+
+function setStatus(msg) {
+  document.getElementById('status-text').textContent = msg;
+}
+
+function addLog(text, cls = 'hold') {
+  const log = document.getElementById('action-log');
+  const div = document.createElement('div');
+  div.className = `log-entry ${cls}`;
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  // 只保留最近 100 條
+  while (log.children.length > 100) log.removeChild(log.firstChild);
+}
+
+function clearLog() {
+  document.getElementById('action-log').innerHTML = '';
+}
+
+// ── Canvas 繪圖 ────────────────────────────────────────
+
+function resizeCanvas(canvas) {
+  const wrap = canvas.parentElement;
+  const W = wrap.clientWidth  || 300;
+  const H = wrap.clientHeight || 200;
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width  = W;
+    canvas.height = H;
+  }
+}
+
+function drawChart() {
+  resizeCanvas(chartCanvas);
+  const ctx = chartCtx;
+  const W = chartCanvas.width, H = chartCanvas.height;
+  const PAD = { t: 20, r: 10, b: 20, l: 60 };
+
+  ctx.clearRect(0, 0, W, H);
+
+  // 顯示最近 120 步的價格
+  const SHOW = 120;
+  const prices = priceHistory.slice(-SHOW);
+  if (prices.length < 2) return;
+
+  const minP = Math.min(...prices) * 0.999;
+  const maxP = Math.max(...prices) * 1.001;
+  const scaleX = (W - PAD.l - PAD.r) / (prices.length - 1);
+  const scaleY = (H - PAD.t - PAD.b) / (maxP - minP);
+
+  const px = (i) => PAD.l + i * scaleX;
+  const py = (p) => H - PAD.b - (p - minP) * scaleY;
+
+  // 格線
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = PAD.t + (H - PAD.t - PAD.b) / 4 * i;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+    const val = maxP - (maxP - minP) / 4 * i;
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'right';
+    ctx.fillText(`$${Math.round(val / 1000)}K`, PAD.l - 4, y + 4);
+  }
+
+  const offset = priceHistory.length > SHOW ? priceHistory.length - SHOW : 0;
+
+  // 價格線
+  ctx.beginPath();
+  ctx.strokeStyle = '#58a6ff';
+  ctx.lineWidth = 1.5;
+  prices.forEach((p, i) => {
+    i === 0 ? ctx.moveTo(px(i), py(p)) : ctx.lineTo(px(i), py(p));
+  });
+  ctx.stroke();
+
+  // 買賣箭頭（只標記 BUY/SELL，不畫背景）
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  actionHistory.forEach(({ step, action }) => {
+    const localIdx = step - offset;
+    if (localIdx < 0 || localIdx >= prices.length) return;
+    const x = px(localIdx), y = py(prices[localIdx]);
+    if (action === 0) {
+      ctx.fillStyle = '#3fb950';
+      ctx.fillText('▲', x, y + 14);
+    } else if (action === 2) {
+      ctx.fillStyle = '#f85149';
+      ctx.fillText('▼', x, y - 5);
+    }
+  });
+
+  // 標題
+  ctx.fillStyle = '#8b949e';
+  ctx.font = '11px Courier New';
+  ctx.textAlign = 'left';
+  ctx.fillText('BTC Price (最近 120 步)', PAD.l, 14);
+}
+
+function drawEquity() {
+  resizeCanvas(equityCanvas);
+  const ctx = equityCtx;
+  const W = equityCanvas.width, H = equityCanvas.height;
+  const PAD = { t: 16, r: 10, b: 16, l: 60 };
+
+  ctx.clearRect(0, 0, W, H);
+
+  const eq = equityHistory;
+  if (eq.length < 2) return;
+
+  const minE = Math.min(...eq, INITIAL_CAPITAL) * 0.998;
+  const maxE = Math.max(...eq, INITIAL_CAPITAL) * 1.002;
+  const scaleX = (W - PAD.l - PAD.r) / (eq.length - 1);
+  const scaleY = (H - PAD.t - PAD.b) / (maxE - minE);
+
+  const px = (i) => PAD.l + i * scaleX;
+  const py = (v) => H - PAD.b - (v - minE) * scaleY;
+
+  // 基準線（初始資金）
+  const baseY = py(INITIAL_CAPITAL);
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(PAD.l, baseY); ctx.lineTo(W - PAD.r, baseY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Y 軸標籤
+  ctx.fillStyle = '#8b949e';
+  ctx.font = '10px Courier New';
+  ctx.textAlign = 'right';
+  ctx.fillText(`$${(INITIAL_CAPITAL / 1000).toFixed(0)}K`, PAD.l - 4, baseY + 4);
+
+  // 資產曲線（漸層填充）
+  const grad = ctx.createLinearGradient(0, PAD.t, 0, H - PAD.b);
+  const lastVal = eq[eq.length - 1];
+  const color   = lastVal >= INITIAL_CAPITAL ? '#3fb950' : '#f85149';
+  grad.addColorStop(0, color + '44');
+  grad.addColorStop(1, color + '00');
+
+  ctx.beginPath();
+  eq.forEach((v, i) => i === 0 ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v)));
+  ctx.lineTo(px(eq.length - 1), H - PAD.b);
+  ctx.lineTo(px(0), H - PAD.b);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  eq.forEach((v, i) => i === 0 ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v)));
+  ctx.stroke();
+
+  // 標題
+  const ret = (lastVal - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100;
+  ctx.fillStyle = '#8b949e';
+  ctx.font = '11px Courier New';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Equity  ${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`, PAD.l, 12);
+}
+
+// ── 視窗 resize ────────────────────────────────────────
+window.addEventListener('resize', () => { drawChart(); drawEquity(); });
+
+// ── 閾值套用按鈕 ──────────────────────────────────────
+document.getElementById('btn-apply').addEventListener('click', () => {
+  if (envReady) resetEnv();
+});
+
+// ── 啟動 ──────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>

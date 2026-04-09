@@ -9,9 +9,10 @@
  *   最大 Q 值熱力圖 (p1-maxi-value)   — max Q over cutX × cutY
  *   最小 Q 值熱力圖 (p1-mini-value)   — min Q over cutX × cutY
  *
- * 依賴 index.html 提供的全局變數：
- *   stateInfo, numBins, action_size
+ * 依賴 index.html / reinforceEngine.js 提供的全局變數：
+ *   stateInfo, numBins, action_size, Epsilon
  *   getQArrayForChart(), plotQualityCharts, nextState
+ *   calcEGreedyProbs(), calcSoftmaxProbs()（reinforceEngine.js）
  ***************************************************/
 
 
@@ -137,7 +138,7 @@ function renderActionColorWheel(actionInfo) {
   host.innerHTML = `
     <div class="title">動作色環</div>
     <div class="wheel"></div>
-    <div class="center">a0<br>none</div>
+    <div class="center"></div>
   `;
 
   if (!actionInfo?.length) return;
@@ -145,14 +146,12 @@ function renderActionColorWheel(actionInfo) {
   if (a0.type !== "switch") return;
 
   const names = a0.name || [];
-  host.querySelector(".center").innerHTML = `a0<br>${names[0] ?? "none"}`;
+  const n     = a0.level; // 包含 a0 在內的全部動作數
 
-  const n = Math.max(0, a0.level - 1);
   for (let i = 0; i < n; i++) {
-    const actionId = i + 1;
-    const deg      = (i / n) * 360;
-    const label    = `a${actionId} ${names[actionId] ?? ""}`.trim();
-    const needle   = document.createElement("div");
+    const deg   = (i / n) * 360;
+    const label = `a${i} ${names[i] ?? ""}`.trim();
+    const needle = document.createElement("div");
     needle.className = "needle";
     needle.style.transform = `rotate(${deg}deg)`;
     needle.innerHTML = `<span style="transform: translateX(100px) translateY(-8px) rotate(${-deg}deg)">${label}</span>`;
@@ -165,7 +164,13 @@ function renderActionColorWheel(actionInfo) {
  * [D] 熱力圖工具函數
  *
  * generateDiscreteColorscale(actionSize)
- *   a0 = 黑色，其餘以 HSV 色環等分配色
+ *   所有動作均分色環，a0 = 0°（紅），依序等角分布
+ *
+ * getActionColors(actionSize) → string[]
+ *   回傳各動作顏色字串陣列
+ *
+ * adjustColor(rgbStr, sFactor, vFactor) → 'rgb(r,g,b)'
+ *   調整顏色飽和度/亮度，產生深/淺變體
  *
  * hsvToRgb(h, s, v) → 'rgb(r,g,b)'
  *
@@ -177,12 +182,30 @@ function renderActionColorWheel(actionInfo) {
  *   回傳維度標籤：優先使用 stateInfo[dim].name，否則 '維度 N'
  ***************************************************/
 function generateDiscreteColorscale(actionSize) {
-  const colorscale = [[0, 'black']];
-  for (let i = 1; i < actionSize; i++) {
-    const hue = ((i - 1) * 360 / (actionSize - 1)) % 360;
-    colorscale.push([i / (actionSize - 1), hsvToRgb(hue, 1, 1)]);
-  }
-  return colorscale;
+  if (actionSize === 1) return [[0, hsvToRgb(0, 1, 1)]];
+  return Array.from({ length: actionSize }, (_, i) => {
+    const hue = (i * 360 / actionSize) % 360;
+    return [i / (actionSize - 1), hsvToRgb(hue, 1, 1)];
+  });
+}
+
+function getActionColors(actionSize) {
+  return generateDiscreteColorscale(actionSize).map(e => e[1]);
+}
+
+// 解析 'rgb(r,g,b)' 並調整 HSV 的 S/V 產生深/淺變體
+function adjustColor(rgbStr, sFactor, vFactor) {
+  const m = rgbStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+  if (!m) return rgbStr;
+  let r = +m[1] / 255, g = +m[2] / 255, b = +m[3] / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const v   = max;
+  const s   = max === 0 ? 0 : (max - min) / max;
+  const h   = max === min ? 0
+    : max === r ? (60 * ((g - b) / (max - min)) + 360) % 360
+    : max === g ? 60 * ((b - r) / (max - min)) + 120
+    :             60 * ((r - g) / (max - min)) + 240;
+  return hsvToRgb(h, Math.min(1, s * sFactor), Math.min(1, v * vFactor));
 }
 
 function hsvToRgb(h, s, v) {
@@ -427,19 +450,49 @@ function generateQBarSlice() {
   const qArr = getQArrayForChart(focusState);
   if (!qArr) return;
 
-  const actionColors = generateDiscreteColorscale(action_size).map(e => e[1]);
-  const traces       = qArr.map((q, action) => ({
-    x: [action], y: [q],
-    type: 'bar', name: `Action ${action}`,
-    marker: { color: actionColors[action] }
-  }));
+  const epsilon  = typeof Epsilon !== 'undefined' ? Epsilon : 0.1;
+  const tau      = typeof Tau     !== 'undefined' ? Tau     : 5.0;
+  const egProbs  = calcEGreedyProbs(qArr, epsilon);
+  const smProbs  = calcSoftmaxProbs(qArr, tau);
+  const colors   = getActionColors(action_size);
+  const tickText = qArr.map((_, i) => `a${i}`);
+
+  // 三柱手動定位：Q 值柱（寬 0.3）在左，兩根機率柱（寬 0.15）在右
+  // offset 是相對 x 的左緣偏移量，barmode: 'overlay' 讓我們完全控制位置
+  const traces = [];
+  for (let a = 0; a < action_size; a++) {
+    const base  = colors[a];
+    const dark  = adjustColor(base, 1, 0.6);   // 偏深：ε-greedy
+    const light = adjustColor(base, 0.4, 1);   // 偏淺：Softmax
+
+    traces.push({
+      x: [a], y: [qArr[a]], type: 'bar', name: `Q a${a}`,
+      marker: { color: base },
+      width: 0.3, offset: -0.32,
+      yaxis: 'y'
+    });
+    traces.push({
+      x: [a], y: [egProbs[a]], type: 'bar', name: `ε a${a}`,
+      marker: { color: dark },
+      width: 0.15, offset: 0.01,
+      yaxis: 'y2'
+    });
+    traces.push({
+      x: [a], y: [smProbs[a]], type: 'bar', name: `SM a${a}`,
+      marker: { color: light },
+      width: 0.15, offset: 0.17,
+      yaxis: 'y2'
+    });
+  }
 
   Plotly.newPlot('p1-bars-value', traces, {
-    title: '動作價值柱狀圖',
-    xaxis: { title: '動作選擇' },
-    yaxis: { title: '評估價值' },
-    barmode: 'group', showlegend: false,
-    margin: { t: 30, b: 40, l: 50, r: 20 }
+    title: '動作價值與選擇機率',
+    xaxis: { title: '動作', tickvals: qArr.map((_, i) => i), ticktext: tickText },
+    yaxis:  { title: '價值評估' },
+    yaxis2: { title: '選擇機率', overlaying: 'y', side: 'right',
+              range: [0, 1], showgrid: false },
+    barmode: 'overlay', showlegend: false,
+    margin: { t: 30, b: 40, l: 50, r: 50 }
   }, { displayModeBar: false });
 }
 

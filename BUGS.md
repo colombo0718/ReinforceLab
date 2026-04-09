@@ -19,7 +19,7 @@
 
 ## 🟠 中等（特定操作才踩到）
 
-- [ ] **#3 `epsilonToTau` 方向相反**
+- [x] **#3 `epsilonToTau` 方向相反**
   - 位置：`reinforceEngine.js`，`epsilonToTau` 函式
   - 問題：公式 `1/(epsilon+0.1)-0.5` 使 ε 越大 τ 越小（越貪婪），與 ε-greedy 的增探索方向相反。切換 Softmax 策略時行為與預期完全相反。
 
