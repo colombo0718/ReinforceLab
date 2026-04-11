@@ -35,22 +35,24 @@
 <div id="game-container"></div>
 
 <div id="controls">
-  <strong>目標模式：</strong>
-  <label><input type="radio" name="mode" value="fixed" checked onchange="setMode(this.value)" /> 固定位置</label>
-  <label><input type="radio" name="mode" value="randomX" onchange="setMode(this.value)" /> 隨機水平</label>
-  <label><input type="radio" name="mode" value="randomXY" onchange="setMode(this.value)" /> 隨機位置</label>
+  <strong>關卡：</strong>
+  <label><input type="radio" name="mode" value="fixed"    checked onchange="setMode(this.value)" /> 固定靶</label>
+  <label><input type="radio" name="mode" value="randomX"         onchange="setMode(this.value)" /> 隨機X</label>
+  <label><input type="radio" name="mode" value="randomXY"        onchange="setMode(this.value)" /> 隨機XY</label>
+  <label><input type="radio" name="mode" value="falling"         onchange="setMode(this.value)" /> 動靶</label>
+  <label><input type="radio" name="mode" value="drifting"        onchange="setMode(this.value)" /> 動靶+漂移</label>
 </div>
 
 <div id="info">
   <h3>任務說明</h3>
-  <p>玩家控制飛機 ✈️ 在底部左右移動，發射閃電 ⚡ 擊中畫面中漂浮的隕石 🪨。飛機具有慣性，速度需要時間加速與煞車，累積擊中 10 顆後回合成功結束。</p>
+  <p>玩家控制飛機 ✈️ 在太空中左右移動，發射閃電 ⚡ 擊中隕石 🪨。前三關為定靶，後兩關隕石從上方飛入，靠近飛機是機會也是風險。累積擊中 10 顆後回合成功結束。</p>
 
   <details>
     <summary>🎯 獎勵機制</summary>
     <ul>
-      <li>擊中隕石：+10</li>
-      <li>子彈飛出畫面未命中：-2</li>
-      <li>成功擊中 10 顆後，回合成功結束</li>
+      <li>擊中隕石：+1，並觸發爆炸 💥</li>
+      <li>隕石撞上飛機：-5，回合結束，觸發爆炸 💥</li>
+      <li>擊中 10 顆後，回合成功結束</li>
     </ul>
   </details>
 
@@ -58,10 +60,10 @@
     <summary>🧭 狀態描述（5 維，連續）</summary>
     <ul>
       <li><code>playerX</code>：飛機水平位置（畫面中心為 0，左負右正）</li>
-      <li><code>playerVelX</code>：飛機水平速度（正右負左）</li>
-      <li><code>rockDX</code>：隕石相對飛機的水平距離（正右負左）</li>
-      <li><code>rockY</code>：隕石距畫面中心的高度（正上負下）</li>
-      <li><code>cooldownNorm</code>：射擊冷卻進度（1.0 = 可射擊，0.0 = 剛射擊）</li>
+      <li><code>rockX</code>：隕石水平位置（同坐標系）</li>
+      <li><code>rockY</code>：隕石垂直位置（正上負下）</li>
+      <li><code>rockVX</code>：隕石水平速度（定靶模式為 0）</li>
+      <li><code>rockVY</code>：隕石垂直速度（定靶模式為 0）</li>
     </ul>
   </details>
 
@@ -71,7 +73,7 @@
       <li><code>0</code>：none（慣性滑行）</li>
       <li><code>1</code>：left（向左加速）</li>
       <li><code>2</code>：right（向右加速）</li>
-      <li><code>3</code>：shoot（發射 ⚡，同時停止加速）</li>
+      <li><code>3</code>：shoot（發射 ⚡）</li>
     </ul>
   </details>
 
@@ -81,17 +83,17 @@
       <div class="param-col">
         <h4>新手</h4>
         <ul>
-          <li>固定位置模式</li>
+          <li>從固定靶開始</li>
           <li>bins = 6，ε = 0.3</li>
-          <li>觀察飛機是否學會減速對準再射擊</li>
+          <li>逐關推進，觀察收斂差異</li>
         </ul>
       </div>
       <div class="param-col">
         <h4>進階</h4>
         <ul>
-          <li>隨機位置模式</li>
-          <li>bins = 8，提升解析度</li>
-          <li>觀察速度維度如何影響學習收斂</li>
+          <li>動靶模式，bins = 8</li>
+          <li>觀察 rockVY 如何影響射擊時機</li>
+          <li>比較閃避與射擊的 Q 值差異</li>
         </ul>
       </div>
     </div>
@@ -108,8 +110,8 @@ const maxSpeed = 12;
 const accelForce = 2.5;
 const friction = 0.82;
 const bulletSpeed = 14;
-const hitReward = 10;
-const missPenalty = -2;
+const hitReward = 1;
+const crashPenalty = -5;
 const clearHits = 10;
 const cooldownMax = 20; // frames
 
@@ -123,6 +125,7 @@ let playerX = canvasWidth / 2;
 let playerVelX = 0;
 let bullet = null;
 let rock = null;
+let explosions = []; // [{x, y, frames}]
 let cooldownFrames = 0;
 let boomFrames = 0;
 let gameStarted = false;
@@ -132,7 +135,7 @@ let accelerated = false;
 let accelMultiplier = 1;
 let pendingDone = false;
 let pendingDoneReward = 0;
-let moveDir = 0; // -1=left, 0=none, 1=right (持續加速方向)
+let moveDir = 0; // -1=left, 0=none, 1=right
 
 function setup() {
   const canvas = createCanvas(canvasWidth, canvasHeight);
@@ -172,6 +175,14 @@ function drawPlayfield() {
   drawPlane();
   drawRock();
   drawBullet();
+  drawExplosions();
+}
+
+function drawExplosions() {
+  textSize(36);
+  for (const e of explosions) {
+    text('💥', e.x, e.y);
+  }
 }
 
 function drawPlane() {
@@ -247,14 +258,14 @@ function drawHud() {
   textSize(11);
   fill(0, 170, 210, 200);
   text('最高', lx1, y + 61);
-  text('速度',  lx2, y + 61);
+  text('石頭',  lx2, y + 61);
   textSize(14);
   fill(0, 230, 255);
   text(String(highScore).padStart(3, '0'), vx1, y + 62);
 
-  const velStr = playerVelX.toFixed(1);
-  fill(Math.abs(playerVelX) > 8 ? color(255, 120, 60) : color(0, 230, 255));
-  text((playerVelX >= 0 ? '+' : '') + velStr, vx2, y + 62);
+  const rvStr = rock ? `${rock.vx.toFixed(1)},${rock.vy.toFixed(1)}` : '-';
+  fill(0, 230, 255);
+  text(rvStr, vx2, y + 62);
 
   textAlign(CENTER, CENTER);
 }
@@ -271,7 +282,10 @@ function drawOverlay(message) {
 }
 
 function stepWorld() {
-  // 速度更新
+  // 爆炸倒數
+  explosions = explosions.filter(e => --e.frames > 0);
+
+  // 飛機速度與圓柱位移
   if (moveDir === -1) {
     playerVelX = Math.max(-maxSpeed, playerVelX - accelForce);
   } else if (moveDir === 1) {
@@ -280,33 +294,56 @@ function stepWorld() {
     playerVelX *= friction;
     if (Math.abs(playerVelX) < 0.05) playerVelX = 0;
   }
-
-  playerX = Math.max(laneMin, Math.min(laneMax, playerX + playerVelX));
-  if (playerX === laneMin || playerX === laneMax) playerVelX = 0;
+  playerX = (playerX + playerVelX + canvasWidth) % canvasWidth;
 
   // 冷卻倒數
   if (cooldownFrames > 0) cooldownFrames--;
 
-  // 子彈移動
-  if (bullet) {
-    bullet.y -= bulletSpeed;
-    if (bullet.y < -20) {
-      rewardBuffer += missPenalty;
-      bullet = null;
+  // 石頭移動
+  if (rock) {
+    rock.x = (rock.x + rock.vx + canvasWidth) % canvasWidth;
+    rock.y += rock.vy;
+
+    // 動靶：飛出底部算 miss
+    if (mode === 'falling' || mode === 'drifting') {
+      if (rock.y > canvasHeight + 40) {
+        rock = createRock();
+      } else {
+        checkCrash();
+      }
     }
   }
 
-  checkHit();
+  // 子彈移動（圓柱水平）
+  if (bullet) {
+    bullet.x = (bullet.x + canvasWidth) % canvasWidth;
+    bullet.y -= bulletSpeed;
+    if (bullet.y < -20) bullet = null;
+  }
+
+  if (!gameOver) checkHit();
+}
+
+function checkCrash() {
+  if (!rock) return;
+  if (dist(playerX, playerY, rock.x, rock.y) > 30) return;
+  explosions.push({ x: rock.x, y: rock.y, frames: 20 });
+  rock = null;
+  rewardBuffer += crashPenalty;
+  boomFrames = 20;
+  finishEpisode();
 }
 
 function checkHit() {
   if (!bullet || !rock) return;
   if (dist(bullet.x, bullet.y, rock.x, rock.y) > 28) return;
 
+  explosions.push({ x: rock.x, y: rock.y, frames: 20 });
   rewardBuffer += hitReward;
   hits++;
   if (hits > highScore) highScore = hits;
   bullet = null;
+  rock = null;
 
   if (hits >= clearHits) {
     finishEpisode();
@@ -331,6 +368,7 @@ function resetEpisode(increment = true) {
   playerX = canvasWidth / 2;
   playerVelX = 0;
   bullet = null;
+  explosions = [];
   rock = createRock();
   cooldownFrames = 0;
   boomFrames = 0;
@@ -343,30 +381,35 @@ function resetEpisode(increment = true) {
 }
 
 function createRock() {
-  let x, y;
+  const x = Math.random() * canvasWidth;
+
   if (mode === 'fixed') {
-    x = canvasWidth / 2;
-    y = canvasHeight / 3;
-  } else if (mode === 'randomX') {
-    x = Math.random() * (laneMax - laneMin - 40) + laneMin + 20;
-    y = canvasHeight / 3;
-  } else {
-    x = Math.random() * (laneMax - laneMin - 40) + laneMin + 20;
-    y = Math.random() * (canvasHeight / 2 - 80) + 80;
+    return { x: canvasWidth / 2, y: canvasHeight / 3, vx: 0, vy: 0 };
   }
-  return { x, y };
+  if (mode === 'randomX') {
+    return { x, y: canvasHeight / 3, vx: 0, vy: 0 };
+  }
+  if (mode === 'randomXY') {
+    const y = 60 + Math.random() * (playerY - 120 - 60);
+    return { x, y, vx: 0, vy: 0 };
+  }
+  if (mode === 'falling') {
+    return { x, y: -40, vx: 0, vy: 3 };
+  }
+  // drifting
+  const vx = (Math.random() * 2 - 1) * 1.5;
+  return { x, y: -40, vx, vy: 3 };
 }
 
 function buildState() {
-  const centerX = canvasWidth / 2;
-  const centerY = canvasHeight / 2;
-  const cooldownNorm = cooldownFrames === 0 ? 1.0 : 1.0 - cooldownFrames / cooldownMax;
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
   return [
-    Math.round((playerX - centerX) * 10) / 10,
-    Math.round(playerVelX * 10) / 10,
-    Math.round((rock.x - playerX) * 10) / 10,
-    Math.round((centerY - rock.y) * 10) / 10,
-    Math.round(cooldownNorm * 100) / 100
+    Math.round((playerX - cx) * 10) / 10,
+    Math.round((rock.x - cx) * 10) / 10,
+    Math.round((cy - rock.y) * 10) / 10,
+    Math.round(rock.vx * 100) / 100,
+    Math.round(rock.vy * 100) / 100
   ];
 }
 
@@ -421,11 +464,11 @@ function receiveMessage(event) {
       players: [{
         role: 'fighterPlane',
         stateInfo: [
-          { name: 'playerX',      min: -250,      max: 250,      bin: 10 },
-          { name: 'playerVelX',   min: -maxSpeed, max: maxSpeed, bin: 8  },
-          { name: 'rockDX',       min: -464,      max: 464,      bin: 12 },
-          { name: 'rockY',        min: -300,      max: 300,      bin: 10 },
-          { name: 'cooldownNorm', min: 0,         max: 1,        bin: 4  }
+          { name: 'playerX', min: -250, max: 250, bin: 10 },
+          { name: 'rockX',   min: -250, max: 250, bin: 10 },
+          { name: 'rockY',   min: -300, max: 300, bin: 10 },
+          { name: 'rockVX',  min: -3,   max: 3,   bin: 6  },
+          { name: 'rockVY',  min: 0,    max: 5,   bin: 6  }
         ],
         actionInfo: [
           { type: 'switch', level: 4, name: ['none', 'left', 'right', 'shoot'] }
@@ -454,7 +497,7 @@ function receiveMessage(event) {
 
 function setMode(nextMode) {
   mode = nextMode;
-  if (rock) rock = createRock();
+  rock = createRock();
 }
 
 function keyPressed() {
