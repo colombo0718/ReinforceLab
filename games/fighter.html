@@ -404,12 +404,13 @@ function createRock() {
 function buildState() {
   const cx = canvasWidth / 2;
   const cy = canvasHeight / 2;
+  const r = rock || { x: cx, y: cy, vx: 0, vy: 0 };
   return [
     Math.round((playerX - cx) * 10) / 10,
-    Math.round((rock.x - cx) * 10) / 10,
-    Math.round((cy - rock.y) * 10) / 10,
-    Math.round(rock.vx * 100) / 100,
-    Math.round(rock.vy * 100) / 100
+    Math.round((r.x - cx) * 10) / 10,
+    Math.round((cy - r.y) * 10) / 10,
+    Math.round(r.vx * 100) / 100,
+    Math.round(r.vy * 100) / 100
   ];
 }
 
@@ -430,10 +431,14 @@ function handleAction(action) {
   if (pendingDone) {
     sendRewardState(true, pendingDoneReward);
     resetEpisode(true);
-    return;
+    // 繼續處理這個 action，不 return
   }
 
-  if (gameOver || paused) {
+  if (gameOver) {
+    resetEpisode(true);
+  }
+
+  if (paused) {
     sendRewardState(false, 0);
     return;
   }
