@@ -266,7 +266,7 @@ function drawHud() {
   fill(0, 230, 255);
   const hitStr = shotsFired > 0 ? `${hits}/${shotsFired}` : '-';
   text(hitStr, vx1, y + 62);
-  text(String(highScore).padStart(3, '0'), vx2, y + 62);
+  text(highScore > 0 ? highScore.toFixed(2) : '-', vx2, y + 62);
 
   textAlign(CENTER, CENTER);
 }
@@ -345,7 +345,6 @@ function checkHit() {
   explosions.push({ x: rock.x, y: rock.y, frames: 20 });
   rewardBuffer += hitReward;
   hits++;
-  if (hits > highScore) highScore = hits;
   bullet = null;
   rock = null;
 
@@ -357,6 +356,10 @@ function checkHit() {
 }
 
 function finishEpisode() {
+  if (shotsFired > 0) {
+    const acc = hits / shotsFired;
+    if (acc > highScore) highScore = acc;
+  }
   pendingDone = true;
   pendingDoneReward = rewardBuffer;
   rewardBuffer = 0;
