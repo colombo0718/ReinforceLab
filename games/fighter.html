@@ -50,8 +50,9 @@
   <details>
     <summary>🎯 獎勵機制</summary>
     <ul>
-      <li>擊中隕石：+1，並觸發爆炸 💥</li>
-      <li>隕石撞上飛機：-5，回合結束，觸發爆炸 💥</li>
+      <li>擊中隕石：+10，並觸發爆炸 💥</li>
+      <li>子彈飛出上邊緣（未命中）：-1</li>
+      <li>隕石撞上飛機：-100，回合結束，觸發爆炸 💥</li>
       <li>擊中 10 顆後，回合成功結束</li>
     </ul>
   </details>
@@ -109,9 +110,10 @@ const playerY = canvasHeight - 72;
 const maxSpeed = 12;
 const accelForce = 2.5;
 const friction = 0.82;
-const bulletSpeed = 14;
-const hitReward = 1;
-const crashPenalty = -5;
+const bulletSpeed = 20;
+const hitReward = 10;
+const missPenalty = -1;
+const crashPenalty = -100;
 const clearHits = 10;
 const cooldownMax = 20; // frames
 
@@ -120,6 +122,7 @@ let currentSessionId = 0;
 let episodeCount = 0;
 let highScore = 0;
 let hits = 0;
+let shotsFired = 0;
 let rewardBuffer = 0;
 let playerX = canvasWidth / 2;
 let playerVelX = 0;
@@ -247,8 +250,8 @@ function drawHud() {
   // 列1
   textSize(11);
   fill(0, 170, 210, 200);
-  text('回合',   lx1, y + 21);
-  text('命中', lx2, y + 21);
+  text('回合', lx1, y + 21);
+  text('石頭', lx2, y + 21);
   textSize(14);
   fill(0, 230, 255);
   text(String(episodeCount).padStart(3, '0'), vx1, y + 22);
@@ -257,15 +260,13 @@ function drawHud() {
   // 列2
   textSize(11);
   fill(0, 170, 210, 200);
-  text('最高', lx1, y + 61);
-  text('石頭',  lx2, y + 61);
+  text('命中', lx1, y + 61);
+  text('最高', lx2, y + 61);
   textSize(14);
   fill(0, 230, 255);
-  text(String(highScore).padStart(3, '0'), vx1, y + 62);
-
-  const rvStr = rock ? `${rock.vx.toFixed(1)},${rock.vy.toFixed(1)}` : '-';
-  fill(0, 230, 255);
-  text(rvStr, vx2, y + 62);
+  const hitStr = shotsFired > 0 ? `${hits}/${shotsFired}` : '-';
+  text(hitStr, vx1, y + 62);
+  text(String(highScore).padStart(3, '0'), vx2, y + 62);
 
   textAlign(CENTER, CENTER);
 }
@@ -318,7 +319,10 @@ function stepWorld() {
   if (bullet) {
     bullet.x = (bullet.x + canvasWidth) % canvasWidth;
     bullet.y -= bulletSpeed;
-    if (bullet.y < -20) bullet = null;
+    if (bullet.y < -20) {
+      rewardBuffer += missPenalty;
+      bullet = null;
+    }
   }
 
   if (!gameOver) checkHit();
@@ -364,6 +368,7 @@ function finishEpisode() {
 function resetEpisode(increment = true) {
   if (increment) episodeCount++;
   hits = 0;
+  shotsFired = 0;
   rewardBuffer = 0;
   playerX = canvasWidth / 2;
   playerVelX = 0;
@@ -454,6 +459,7 @@ function handleAction(action) {
   if (action === 3 && bullet === null && cooldownFrames === 0) {
     bullet = { x: playerX, y: playerY - 28 };
     cooldownFrames = cooldownMax;
+    shotsFired++;
   }
 
   sendRewardState(false);
@@ -512,6 +518,7 @@ function keyPressed() {
     if (bullet === null && cooldownFrames === 0) {
       bullet = { x: playerX, y: playerY - 28 };
       cooldownFrames = cooldownMax;
+      shotsFired++;
     }
   }
 }
