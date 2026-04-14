@@ -4,6 +4,17 @@
 
 ---
 
+## 通路合作
+
+- [ ] **進駐 mosme.net（磨課師平台）**
+  已與原工作老闆討論，RR 平台可進駐 https://www.mosme.net/ 並借助其既有教師/學生會員系統引流。
+  待確認事項：
+  - 接入方式：iframe 嵌入 / 外連連結 / SSO 會員對接？
+  - 若需 SSO，Google OAuth 方向可能改走他們的帳號系統，影響登入功能的技術路線
+  - 若有 Teacher Dashboard 需求，可與他們的教師角色系統整合
+
+---
+
 ## 部署 / 上架 ⬅️ 當前優先
 
 - [x] **上架到正式網址 reinroom.leaflune.org（Cloudflare）**
@@ -38,6 +49,20 @@
 ---
 
 ## 遊戲環境
+
+- [ ] **CC2D（CubicCraft 2D）接入 RR — 旗艦級遊戲**
+  復活中的太空機體競技遊戲，物理核心（質心/慣性矩/推力扭矩/Checkpoint 驗證）已完整實作。
+  缺的只有 RR 通訊層，接入後成為平台目前最複雜的示範環境。
+
+  **接入順序：**
+  - [ ] Step 1：kernal 機體（4 引擎 on/off，16 個離散動作）接上 RR 協定
+    - `gameInfo`：stateInfo（x, y, vx, vy, angle, ω, dx/dy/dist to checkpoint）、actionInfo（16 動作）
+    - 每幀回傳 `reward_state`（通過 checkpoint +100，時間懲罰 -0.1/幀，偏離過遠 done=true）
+    - 現有 DQN 即可處理，不需等 PPO
+  - [ ] Step 2：部署到 `cubiccraft.leaflune.org`，加入 RR 遊戲清單（社群遊戲區段）
+  - [ ] Step 3：PPO 算法接入 RR，為 fighter 機體（512 動作）與連續推力版預備
+  > CC2D 的複雜度會自然倒逼 RR 算法升級：DQN → PPO → SAC，這條路線即是課程敘事的核心。
+  > 詳見 `C:\Users\USER\cubiccraft\CC2D接入RR平台的升級路線.md`
 
 - [ ] **CartPole：State 前處理可切換 UI**
   加入 checkbox 讓使用者選擇是否套用 sign·√|x| 前處理，方便對照實驗（Q-Learning 有益，DQN 不必要）。需等平台支援動態 gameInfo 後再實作。

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RR Fighter Plane</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <link rel="stylesheet" href="game-info.css">
+  <style>
+    body {
+      max-width: 620px;
+      margin: auto;
+      font-family: Arial, "Noto Sans TC", sans-serif;
+      color: #111827;
+    }
+
+    #game-container {
+      width: 500px;
+      height: 600px;
+      margin: 0 auto 12px;
+    }
+
+    #controls {
+      margin-bottom: 16px;
+      line-height: 1.9;
+    }
+
+    #controls label {
+      margin-right: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container"></div>
+
+<div id="controls">
+  <strong>關卡：</strong>
+  <label><input type="radio" name="mode" value="fixed"    checked onchange="setMode(this.value)" /> 固定靶</label>
+  <label><input type="radio" name="mode" value="randomX"         onchange="setMode(this.value)" /> 隨機X</label>
+  <label><input type="radio" name="mode" value="randomXY"        onchange="setMode(this.value)" /> 隨機XY</label>
+  <label><input type="radio" name="mode" value="falling"         onchange="setMode(this.value)" /> 動靶</label>
+  <label><input type="radio" name="mode" value="drifting"        onchange="setMode(this.value)" /> 動靶+漂移</label>
+</div>
+
+<div id="info">
+  <h3>任務說明</h3>
+  <p>玩家控制飛機 ✈️ 在太空中左右移動，發射閃電 ⚡ 擊中隕石 🪨。前三關為定靶，後兩關隕石從上方飛入，靠近飛機是機會也是風險。累積擊中 10 顆後回合成功結束。</p>
+
+  <details>
+    <summary>🎯 獎勵機制</summary>
+    <ul>
+      <li>擊中隕石：+10，並觸發爆炸 💥</li>
+      <li>子彈飛出上邊緣（未命中）：-1</li>
+      <li>隕石撞上飛機：-100，回合結束，觸發爆炸 💥</li>
+      <li>擊中 10 顆後，回合成功結束</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>🧭 狀態描述（5 維，連續）</summary>
+    <ul>
+      <li><code>playerX</code>：飛機水平位置（畫面中心為 0，左負右正）</li>
+      <li><code>rockX</code>：隕石水平位置（同坐標系）</li>
+      <li><code>rockY</code>：隕石垂直位置（正上負下）</li>
+      <li><code>rockVX</code>：隕石水平速度（定靶模式為 0）</li>
+      <li><code>rockVY</code>：隕石垂直速度（定靶模式為 0）</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>🕹️ 動作功能</summary>
+    <ul>
+      <li><code>0</code>：none（慣性滑行）</li>
+      <li><code>1</code>：left（向左加速）</li>
+      <li><code>2</code>：right（向右加速）</li>
+      <li><code>3</code>：shoot（發射 ⚡）</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>⚙️ 參數建議</summary>
+    <div class="param-grid">
+      <div class="param-col">
+        <h4>新手</h4>
+        <ul>
+          <li>從固定靶開始</li>
+          <li>bins = 6，ε = 0.3</li>
+          <li>逐關推進，觀察收斂差異</li>
+        </ul>
+      </div>
+      <div class="param-col">
+        <h4>進階</h4>
+        <ul>
+          <li>動靶模式，bins = 8</li>
+          <li>觀察 rockVY 如何影響射擊時機</li>
+          <li>比較閃避與射擊的 Q 值差異</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+const canvasWidth = 500;
+const canvasHeight = 600;
+const laneMin = 36;
+const laneMax = canvasWidth - 36;
+const playerY = canvasHeight - 72;
+const maxSpeed = 12;
+const accelForce = 2.5;
+const friction = 0.82;
+const bulletSpeed = 20;
+const hitReward = 10;
+const missPenalty = -1;
+const crashPenalty = -100;
+const clearHits = 10;
+const cooldownMax = 20; // frames
+
+let mode = 'fixed';
+let currentSessionId = 0;
+let episodeCount = 0;
+let highScore = 0;
+let hits = 0;
+let shotsFired = 0;
+let rewardBuffer = 0;
+let playerX = canvasWidth / 2;
+let playerVelX = 0;
+let bullet = null;
+let rock = null;
+let explosions = []; // [{x, y, frames}]
+let cooldownFrames = 0;
+let boomFrames = 0;
+let gameStarted = false;
+let gameOver = false;
+let paused = false;
+let accelerated = false;
+let accelMultiplier = 1;
+let pendingDone = false;
+let pendingDoneReward = 0;
+let moveDir = 0; // -1=left, 0=none, 1=right
+
+function setup() {
+  const canvas = createCanvas(canvasWidth, canvasHeight);
+  canvas.parent('game-container');
+  textAlign(CENTER, CENTER);
+  textFont('Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Arial');
+  resetEpisode(false);
+  window.addEventListener('message', receiveMessage);
+}
+
+function draw() {
+  background(0);
+  drawPlayfield();
+  drawHud();
+
+  if (!gameStarted) {
+    drawOverlay('等待 RR 啟動');
+    return;
+  }
+  if (gameOver) {
+    if (boomFrames > 0) boomFrames--;
+    drawOverlay(`回合結束\nHits: ${hits}/${clearHits}`);
+    return;
+  }
+  if (paused) {
+    drawOverlay('暫停中');
+    return;
+  }
+
+  for (let i = 0; i < accelMultiplier; i++) {
+    stepWorld();
+    if (gameOver) break;
+  }
+}
+
+function drawPlayfield() {
+  drawPlane();
+  drawRock();
+  drawBullet();
+  drawExplosions();
+}
+
+function drawExplosions() {
+  textSize(36);
+  for (const e of explosions) {
+    text('💥', e.x, e.y);
+  }
+}
+
+function drawPlane() {
+  textSize(36);
+  if (boomFrames > 0) {
+    text('💥', playerX, playerY);
+    return;
+  }
+  push();
+  translate(playerX, playerY);
+  rotate(-PI / 4);
+  text('✈️', 0, 0);
+  pop();
+}
+
+function drawRock() {
+  if (!rock) return;
+  textSize(34);
+  text('🪨', rock.x, rock.y);
+}
+
+function drawBullet() {
+  if (!bullet) return;
+  textSize(28);
+  text('⚡', bullet.x, bullet.y);
+}
+
+function drawHud() {
+  const x = 10, y = 10, w = 228, h = 82;
+  const cl = 11; // corner bracket length
+
+  // 半透明深色底板
+  noStroke();
+  fill(0, 8, 20, 160);
+  rect(x, y, w, h);
+
+  // 青色角框
+  stroke(0, 210, 255, 220);
+  strokeWeight(1.5);
+  noFill();
+  line(x,      y + cl, x,      y     ); line(x,      y,      x + cl, y     );
+  line(x+w-cl, y,      x + w,  y     ); line(x + w,  y,      x + w,  y + cl);
+  line(x,      y+h-cl, x,      y + h ); line(x,      y + h,  x + cl, y + h );
+  line(x+w-cl, y + h,  x + w,  y + h ); line(x + w,  y + h,  x + w,  y+h-cl);
+
+  // 中間分隔線（淡）
+  stroke(0, 210, 255, 45);
+  strokeWeight(0.5);
+  line(x + 8, y + 41, x + w - 8, y + 41);
+
+  // 垂直分隔線
+  line(x + w / 2, y + 6, x + w / 2, y + h - 6);
+
+  noStroke();
+  textAlign(LEFT, CENTER);
+
+  const lx1 = x + 14;  // 左欄 label x
+  const vx1 = x + 58;  // 左欄 value x
+  const lx2 = x + w / 2 + 10; // 右欄 label x
+  const vx2 = x + w / 2 + 52; // 右欄 value x
+
+  // 列1
+  textSize(11);
+  fill(0, 170, 210, 200);
+  text('回合', lx1, y + 21);
+  text('石頭', lx2, y + 21);
+  textSize(14);
+  fill(0, 230, 255);
+  text(String(episodeCount).padStart(3, '0'), vx1, y + 22);
+  text(`${hits}/${clearHits}`, vx2, y + 22);
+
+  // 列2
+  textSize(11);
+  fill(0, 170, 210, 200);
+  text('命中', lx1, y + 61);
+  text('最高', lx2, y + 61);
+  textSize(14);
+  fill(0, 230, 255);
+  const hitStr = shotsFired > 0 ? `${hits}/${shotsFired}` : '-';
+  text(hitStr, vx1, y + 62);
+  text(highScore > 0 ? highScore.toFixed(2) : '-', vx2, y + 62);
+
+  textAlign(CENTER, CENTER);
+}
+
+function drawOverlay(message) {
+  fill(0, 0, 0, 150);
+  rect(70, 220, 360, 140, 14);
+  fill(255);
+  textSize(24);
+  const lines = message.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    text(lines[i], canvasWidth / 2, 260 + i * 34);
+  }
+}
+
+function stepWorld() {
+  // 爆炸倒數
+  explosions = explosions.filter(e => --e.frames > 0);
+
+  // 飛機速度與圓柱位移
+  if (moveDir === -1) {
+    playerVelX = Math.max(-maxSpeed, playerVelX - accelForce);
+  } else if (moveDir === 1) {
+    playerVelX = Math.min(maxSpeed, playerVelX + accelForce);
+  } else {
+    playerVelX *= friction;
+    if (Math.abs(playerVelX) < 0.05) playerVelX = 0;
+  }
+  playerX = (playerX + playerVelX + canvasWidth) % canvasWidth;
+
+  // 冷卻倒數
+  if (cooldownFrames > 0) cooldownFrames--;
+
+  // 石頭移動
+  if (rock) {
+    rock.x = (rock.x + rock.vx + canvasWidth) % canvasWidth;
+    rock.y += rock.vy;
+
+    // 動靶：飛出底部算 miss
+    if (mode === 'falling' || mode === 'drifting') {
+      if (rock.y > canvasHeight + 40) {
+        rock = createRock();
+      } else {
+        checkCrash();
+      }
+    }
+  }
+
+  // 子彈移動（圓柱水平）
+  if (bullet) {
+    bullet.x = (bullet.x + canvasWidth) % canvasWidth;
+    bullet.y -= bulletSpeed;
+    if (bullet.y < -20) {
+      rewardBuffer += missPenalty;
+      bullet = null;
+    }
+  }
+
+  if (!gameOver) checkHit();
+}
+
+function checkCrash() {
+  if (!rock) return;
+  if (dist(playerX, playerY, rock.x, rock.y) > 30) return;
+  explosions.push({ x: rock.x, y: rock.y, frames: 20 });
+  rock = null;
+  rewardBuffer += crashPenalty;
+  boomFrames = 20;
+  finishEpisode();
+}
+
+function checkHit() {
+  if (!bullet || !rock) return;
+  if (dist(bullet.x, bullet.y, rock.x, rock.y) > 28) return;
+
+  explosions.push({ x: rock.x, y: rock.y, frames: 20 });
+  rewardBuffer += hitReward;
+  hits++;
+  bullet = null;
+  rock = null;
+
+  if (hits >= clearHits) {
+    finishEpisode();
+    return;
+  }
+  rock = createRock();
+}
+
+function finishEpisode() {
+  if (shotsFired > 0) {
+    const acc = hits / shotsFired;
+    if (acc > highScore) highScore = acc;
+  }
+  pendingDone = true;
+  pendingDoneReward = rewardBuffer;
+  rewardBuffer = 0;
+  gameOver = true;
+  paused = false;
+  boomFrames = 0;
+}
+
+function resetEpisode(increment = true) {
+  if (increment) episodeCount++;
+  hits = 0;
+  shotsFired = 0;
+  rewardBuffer = 0;
+  playerX = canvasWidth / 2;
+  playerVelX = 0;
+  bullet = null;
+  explosions = [];
+  rock = createRock();
+  cooldownFrames = 0;
+  boomFrames = 0;
+  pendingDone = false;
+  pendingDoneReward = 0;
+  gameStarted = true;
+  gameOver = false;
+  paused = false;
+  moveDir = 0;
+}
+
+function createRock() {
+  const x = Math.random() * canvasWidth;
+
+  if (mode === 'fixed') {
+    return { x: canvasWidth / 2, y: canvasHeight / 3, vx: 0, vy: 0 };
+  }
+  if (mode === 'randomX') {
+    return { x, y: canvasHeight / 3, vx: 0, vy: 0 };
+  }
+  if (mode === 'randomXY') {
+    const y = 60 + Math.random() * (playerY - 120 - 60);
+    return { x, y, vx: 0, vy: 0 };
+  }
+  if (mode === 'falling') {
+    return { x, y: -40, vx: 0, vy: 3 };
+  }
+  // drifting
+  const vx = (Math.random() * 2 - 1) * 1.5;
+  return { x, y: -40, vx, vy: 3 };
+}
+
+function buildState() {
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
+  const r = rock || { x: cx, y: cy, vx: 0, vy: 0 };
+  return [
+    Math.round((playerX - cx) * 10) / 10,
+    Math.round((r.x - cx) * 10) / 10,
+    Math.round((cy - r.y) * 10) / 10,
+    Math.round(r.vx * 100) / 100,
+    Math.round(r.vy * 100) / 100
+  ];
+}
+
+function sendRewardState(done = false, forcedReward = null) {
+  window.parent.postMessage({
+    type: 'reward_state',
+    reward: forcedReward !== null ? forcedReward : rewardBuffer,
+    state: buildState(),
+    done,
+    sessionId: currentSessionId
+  }, '*');
+  rewardBuffer = 0;
+}
+
+function handleAction(action) {
+  if (!gameStarted) resetEpisode(true);
+
+  if (pendingDone) {
+    sendRewardState(true, pendingDoneReward);
+    resetEpisode(true);
+    // 繼續處理這個 action，不 return
+  }
+
+  if (gameOver) {
+    resetEpisode(true);
+  }
+
+  if (paused) {
+    sendRewardState(false, 0);
+    return;
+  }
+
+  if (action === 1) {
+    moveDir = -1;
+  } else if (action === 2) {
+    moveDir = 1;
+  } else {
+    moveDir = 0;
+  }
+
+  if (action === 3 && bullet === null && cooldownFrames === 0) {
+    bullet = { x: playerX, y: playerY - 28 };
+    cooldownFrames = cooldownMax;
+    shotsFired++;
+  }
+
+  sendRewardState(false);
+}
+
+function receiveMessage(event) {
+  const msg = event.data || {};
+
+  if (msg.type === 'questInfo') {
+    currentSessionId = msg.sessionId || 0;
+    window.parent.postMessage({
+      type: 'gameInfo',
+      players: [{
+        role: 'fighterPlane',
+        stateInfo: [
+          { name: 'playerX', min: -250, max: 250, bin: 10 },
+          { name: 'rockX',   min: -250, max: 250, bin: 10 },
+          { name: 'rockY',   min: -300, max: 300, bin: 10 },
+          { name: 'rockVX',  min: -3,   max: 3,   bin: 6  },
+          { name: 'rockVY',  min: 0,    max: 5,   bin: 6  }
+        ],
+        actionInfo: [
+          { type: 'switch', level: 4, name: ['none', 'left', 'right', 'shoot'] }
+        ]
+      }]
+    }, '*');
+    return;
+  }
+
+  if (msg.type === 'action') {
+    if (typeof msg.sessionId !== 'undefined' && msg.sessionId !== currentSessionId) return;
+    handleAction(msg.action);
+    return;
+  }
+
+  if (msg.type === 'pause') {
+    paused = !paused;
+    return;
+  }
+
+  if (msg.type === 'accel') {
+    accelerated = !accelerated;
+    accelMultiplier = accelerated ? 5 : 1;
+  }
+}
+
+function setMode(nextMode) {
+  mode = nextMode;
+  rock = createRock();
+}
+
+function keyPressed() {
+  if (keyCode === LEFT_ARROW || key === 'a' || key === 'A') moveDir = -1;
+  else if (keyCode === RIGHT_ARROW || key === 'd' || key === 'D') moveDir = 1;
+  else if (key === ' ' || key === 's' || key === 'S') {
+    if (bullet === null && cooldownFrames === 0) {
+      bullet = { x: playerX, y: playerY - 28 };
+      cooldownFrames = cooldownMax;
+      shotsFired++;
+    }
+  }
+}
+
+function keyReleased() {
+  if ((keyCode === LEFT_ARROW || key === 'a' || key === 'A') && moveDir === -1) moveDir = 0;
+  else if ((keyCode === RIGHT_ARROW || key === 'd' || key === 'D') && moveDir === 1) moveDir = 0;
+}
+</script>
+</body>
+</html>
