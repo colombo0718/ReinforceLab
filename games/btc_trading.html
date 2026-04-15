@@ -146,18 +146,17 @@
   }
   .pos-cell.filled { background: #f0883e; border-color: #f0883e; }
 
-  /* 動作 log */
-  #action-log {
-    flex: 1;
-    overflow-y: auto;
-    font-size: 11px;
-    line-height: 1.8;
+  /* 季度篩選 */
+  .q-row { display: flex; align-items: center; gap: 4px; margin-top: 5px; }
+  .q-year { color: #8b949e; font-size: 10px; width: 28px; flex-shrink: 0; }
+  .q-btns { display: flex; gap: 3px; flex: 1; }
+  .q-btn {
+    flex: 1; padding: 2px 0; font-size: 10px; cursor: pointer;
+    border-radius: 3px; border: 1px solid #30363d;
+    background: #21262d; color: #8b949e;
   }
-  .log-entry { color: #8b949e; }
-  .log-entry.buy  { color: #3fb950; }
-  .log-entry.sell { color: #f85149; }
-  .log-entry.hold { color: #58a6ff; }
-  .log-entry.err  { color: #d29922; }
+  .q-btn.q-active  { border-color: #58a6ff; color: #58a6ff; background: #0d1f2e; }
+  .q-btn.q-disabled { opacity: 0.3; cursor: not-allowed; }
 
   /* 進度條 */
   #progress-bar-wrap {
@@ -247,6 +246,7 @@
           <input type="radio" name="market" value="bear"> 熊市
         </label>
       </div>
+      <div id="quarter-grid"></div>
     </div>
 
     <!-- 圖表選項 -->
@@ -306,12 +306,6 @@
       <div id="status-text">等待 RR 平台連線...</div>
     </div>
 
-    <!-- 動作 log -->
-    <div class="panel" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
-      <div class="panel-title">Action Log</div>
-      <div id="action-log"></div>
-    </div>
-
   </div>
 </div>
 
@@ -342,6 +336,7 @@ let statesData       = [];
 let activeData       = [];   // 當前使用的資料段（依模式+市場篩選）
 let currentMode      = 'train';   // 'train' | 'validate'
 let currentMarket    = 'all';     // 'all' | 'bull' | 'bear'
+let selectedQuarters = new Set(); // e.g. "2024-Q2", "2025-Q3"; empty = no filter
 
 let chartOpts = { priceLine: true, predLine: false, candles: false };
 
@@ -374,13 +369,68 @@ for (let i = 0; i < MAX_POSITION; i++) {
   posGrid.appendChild(cell);
 }
 
+// ── 季度工具 ──────────────────────────────────────────
+function getQKey(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+}
+
+function buildQuarterGrid() {
+  const trainData = statesData.filter(d => d.phase === 'train' && d.date);
+  const available = new Set(trainData.map(d => getQKey(d.date)));
+  const years = [...new Set([...available].map(k => k.split('-')[0]))].sort();
+
+  const container = document.getElementById('quarter-grid');
+  container.innerHTML = '';
+
+  years.forEach(yr => {
+    const row = document.createElement('div');
+    row.className = 'q-row';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'q-year';
+    lbl.textContent = yr;
+    row.appendChild(lbl);
+
+    const btns = document.createElement('div');
+    btns.className = 'q-btns';
+    for (let q = 1; q <= 4; q++) {
+      const key = `${yr}-Q${q}`;
+      const btn = document.createElement('button');
+      btn.className = available.has(key) ? 'q-btn' : 'q-btn q-disabled';
+      btn.textContent = `Q${q}`;
+      btn.dataset.key = key;
+      btn.disabled = !available.has(key);
+      if (available.has(key)) {
+        btn.addEventListener('click', () => toggleQuarter(key, btn));
+      }
+      btns.appendChild(btn);
+    }
+    row.appendChild(btns);
+    container.appendChild(row);
+  });
+}
+
+function toggleQuarter(key, btn) {
+  if (selectedQuarters.has(key)) {
+    selectedQuarters.delete(key);
+    btn.classList.remove('q-active');
+  } else {
+    selectedQuarters.add(key);
+    btn.classList.add('q-active');
+  }
+  buildActiveData();
+  if (envReady) resetEnv();
+}
+
 // ── 資料篩選 ──────────────────────────────────────────
 function buildActiveData() {
   if (currentMode === 'train') {
     activeData = statesData.filter(d => {
       if (d.phase !== 'train') return false;
-      if (currentMarket === 'bull') return d.market === 'bull';
-      if (currentMarket === 'bear') return d.market === 'bear';
+      if (currentMarket === 'bull' && d.market !== 'bull') return false;
+      if (currentMarket === 'bear' && d.market !== 'bear') return false;
+      if (selectedQuarters.size > 0 && !selectedQuarters.has(getQKey(d.date))) return false;
       return true;
     });
   } else {
@@ -394,6 +444,7 @@ async function loadData() {
     const res  = await fetch('btc_states.json');
     const json = await res.json();
     statesData = json.data;
+    buildQuarterGrid();
     buildActiveData();
     const trainCount = statesData.filter(d => d.phase === 'train').length;
     const testCount  = statesData.filter(d => d.phase === 'test').length;
@@ -464,7 +515,6 @@ function resetEnv() {
   episodeCount++;
 
   updateUI();
-  clearLog();
 
   sendToRR({
     type:      'reward_state',
@@ -489,14 +539,9 @@ function step(action) {
   predHistory.push(price * (1 + (row.pred_return_pct ?? 0) / 100));
 
   let reward = 0;
-  let logClass = 'hold';
-  let logText  = '';
 
   if (action === 0) {
-    if (position >= MAX_POSITION) {
-      logClass = 'err';
-      logText  = `[${currentStep}] BUY → 滿倉`;
-    } else {
+    if (position < MAX_POSITION) {
       const spend = INITIAL_CAPITAL * UNIT_FRACTION;
       if (cash >= spend) {
         const fee       = spend * FEE_RATE;
@@ -504,19 +549,11 @@ function step(action) {
         cash    -= spend;
         btcHeld += boughtBTC;
         position++;
-        logClass = 'buy';
-        logText  = `[${currentStep}] BUY  $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
         actionHistory.push({ step: currentStep, action: 0, price });
-      } else {
-        logClass = 'err';
-        logText  = `[${currentStep}] BUY → 現金不足`;
       }
     }
   } else if (action === 2) {
-    if (position <= 0) {
-      logClass = 'err';
-      logText  = `[${currentStep}] SELL → 空倉`;
-    } else {
+    if (position > 0) {
       const sellBTC  = btcHeld / position;
       const gross    = sellBTC * price;
       const fee      = gross * FEE_RATE;
@@ -524,13 +561,8 @@ function step(action) {
       btcHeld  -= sellBTC;
       cash     += proceeds;
       position--;
-      logClass = 'sell';
-      logText  = `[${currentStep}] SELL $${price.toFixed(0)} fee:${fee.toFixed(2)}`;
       actionHistory.push({ step: currentStep, action: 2, price });
     }
-  } else {
-    logClass = 'hold';
-    logText  = `[${currentStep}] HOLD`;
   }
 
   currentStep++;
@@ -543,7 +575,6 @@ function step(action) {
 
   if (done) {
     const finalReturn = (curTotal - INITIAL_CAPITAL) / INITIAL_CAPITAL;
-    logText += ` ✓ 終局 ${(finalReturn * 100).toFixed(2)}%`;
     setStatus(`Ep ${episodeCount} 結束 | 報酬率 ${(finalReturn * 100).toFixed(2)}%`);
   }
 
@@ -551,7 +582,6 @@ function step(action) {
   equityHistory.push(curTotal);
 
   updateUI(price, curTotal);
-  addLog(logText, logClass);
 
   sendToRR({
     type:      'reward_state',
@@ -633,20 +663,6 @@ function updateUI(price, total) {
 
 function setStatus(msg) {
   document.getElementById('status-text').textContent = msg;
-}
-
-function addLog(text, cls = 'hold') {
-  const log = document.getElementById('action-log');
-  const div = document.createElement('div');
-  div.className = `log-entry ${cls}`;
-  div.textContent = text;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
-  while (log.children.length > 100) log.removeChild(log.firstChild);
-}
-
-function clearLog() {
-  document.getElementById('action-log').innerHTML = '';
 }
 
 // ── Canvas 繪圖 ────────────────────────────────────────
