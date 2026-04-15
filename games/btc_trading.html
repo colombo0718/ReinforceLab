@@ -40,7 +40,6 @@
     min-height: 0;
   }
 
-  /* 左側：K線圖 + 資產曲線 */
   #left-panel {
     display: flex;
     flex-direction: column;
@@ -67,7 +66,6 @@
     display: block;
   }
 
-  /* 右側：狀態面板 */
   #right-panel {
     display: flex;
     flex-direction: column;
@@ -107,7 +105,7 @@
   /* CNN 狀態燈 */
   #state-display {
     text-align: center;
-    padding: 8px 0;
+    padding: 6px 0;
   }
   .state-badge {
     display: inline-block;
@@ -117,11 +115,9 @@
     font-weight: bold;
     margin-top: 4px;
   }
-  .s0 { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
-  .s1 { background: #1a2e1a; color: #7ee787; border: 1px solid #7ee787; }
-  .s2 { background: #2a2a1a; color: #d29922; border: 1px solid #d29922; }
-  .s3 { background: #2e1a1a; color: #f85149; border: 1px solid #f85149; }
-  .s4 { background: #3a1a1a; color: #ff7b72; border: 1px solid #ff7b72; }
+  .sig-up   { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
+  .sig-down { background: #3a1a1a; color: #f85149; border: 1px solid #f85149; }
+  .sig-neu  { background: #2a2a1a; color: #d29922; border: 1px solid #d29922; }
 
   /* 持倉格 */
   #position-grid {
@@ -152,18 +148,6 @@
   .log-entry.hold { color: #58a6ff; }
   .log-entry.err  { color: #d29922; }
 
-  /* 閾值輸入框 */
-  .th-input {
-    width: 60px;
-    background: #21262d;
-    border: 1px solid #30363d;
-    color: #e6edf3;
-    border-radius: 3px;
-    padding: 2px 4px;
-    font-size: 11px;
-    text-align: right;
-  }
-
   /* 進度條 */
   #progress-bar-wrap {
     background: #21262d;
@@ -185,6 +169,29 @@
     color: #8b949e;
     margin-top: 4px;
   }
+
+  /* 模式切換按鈕 */
+  .mode-btn {
+    width: 100%; padding: 5px; border-radius: 4px;
+    cursor: pointer; font-size: 12px; font-weight: bold;
+    border: 1.5px solid; margin-bottom: 4px;
+  }
+  .mode-train    { background: #1a2e1a; color: #3fb950; border-color: #3fb950; }
+  .mode-validate { background: #1a1a3a; color: #58a6ff; border-color: #58a6ff; }
+  #mode-desc { font-size: 10px; color: #8b949e; text-align: center; }
+
+  /* 市場篩選 */
+  .market-radio { display: flex; gap: 4px; margin-top: 6px; }
+  .market-label {
+    flex: 1; text-align: center;
+    font-size: 11px; color: #8b949e; cursor: pointer;
+    padding: 3px 0; border-radius: 10px;
+    border: 1px solid #30363d; background: #21262d;
+  }
+  .market-label input { display: none; }
+  .active-all  { border-color: #8b949e !important; color: #e6edf3 !important; }
+  .active-bull { background: #1a3a2a !important; border-color: #3fb950 !important; color: #3fb950 !important; }
+  .active-bear { background: #2e1a1a !important; border-color: #f85149 !important; color: #f85149 !important; }
 </style>
 </head>
 <body>
@@ -208,41 +215,35 @@
   <!-- 右側 -->
   <div id="right-panel">
 
-    <!-- 閾值設定 -->
+    <!-- 模式切換 -->
     <div class="panel">
-      <div class="panel-title">State Thresholds (%)</div>
-      <div style="font-size:11px;color:#8b949e;margin-bottom:6px;">
-        pred_return_pct 切分成 5 種狀態
+      <div class="panel-title">Mode</div>
+      <button id="btn-mode" class="mode-btn mode-train">📈 訓練模式</button>
+      <div id="mode-desc">使用 phase=train 資料訓練 Q-table</div>
+    </div>
+
+    <!-- 市場篩選 -->
+    <div class="panel" id="panel-market">
+      <div class="panel-title">Market Filter</div>
+      <div class="market-radio">
+        <label class="market-label active-all" id="lbl-all">
+          <input type="radio" name="market" value="all" checked> 全部
+        </label>
+        <label class="market-label" id="lbl-bull">
+          <input type="radio" name="market" value="bull"> 牛市
+        </label>
+        <label class="market-label" id="lbl-bear">
+          <input type="radio" name="market" value="bear"> 熊市
+        </label>
       </div>
-      <div class="stat-row">
-        <span class="stat-label">大漲 (&gt;)</span>
-        <input id="th-big-up"   class="th-input" type="number" value="1.0"  step="0.1">
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">小漲 (&gt;)</span>
-        <input id="th-small-up" class="th-input" type="number" value="0.3"  step="0.1">
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">小跌 (&gt;)</span>
-        <input id="th-small-dn" class="th-input" type="number" value="-0.3" step="0.1">
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">大跌 (&gt;)</span>
-        <input id="th-big-dn"   class="th-input" type="number" value="-1.0" step="0.1">
-      </div>
-      <button id="btn-apply" style="width:100%;margin-top:6px;padding:3px;
-        background:#21262d;border:1px solid #30363d;color:#58a6ff;
-        border-radius:4px;cursor:pointer;font-size:11px;">
-        套用（重置 Episode）
-      </button>
     </div>
 
     <!-- CNN 狀態 -->
     <div class="panel">
       <div class="panel-title">CNN Signal</div>
       <div id="state-display">
-        <div style="color:#8b949e;font-size:11px;">市場狀態</div>
-        <div id="state-badge" class="state-badge s2">持平</div>
+        <div style="color:#8b949e;font-size:11px;">pred_return_pct</div>
+        <div id="state-badge" class="state-badge sig-neu">0.00%</div>
       </div>
     </div>
 
@@ -274,9 +275,7 @@
     <!-- 持倉 -->
     <div class="panel">
       <div class="panel-title">Position (0~10格)</div>
-      <div id="position-grid">
-        <!-- JS 動態產生 10 格 -->
-      </div>
+      <div id="position-grid"></div>
     </div>
 
     <!-- 進度 -->
@@ -303,7 +302,6 @@
 //    { type: 'questInfo', sessionId }  → 回傳 gameInfo，觸發 reset
 //    { type: 'action', action: 0|1|2 } → 執行一步
 //    { type: 'pause' }  → toggle 暫停
-//    { type: 'accel' }  → toggle 加速（預留）
 //
 //  Game → RR:
 //    { type: 'gameInfo', players: [{ stateInfo, actionInfo }] }
@@ -311,44 +309,28 @@
 // ═══════════════════════════════════════════════════════
 
 // ── 常數 ──────────────────────────────────────────────
-const INITIAL_CAPITAL = 10000;  // USDT
-const MAX_POSITION    = 10;     // 最大持倉格數
-const UNIT_FRACTION   = 1 / MAX_POSITION;  // 每格 = 1/10 總資產
-const FEE_RATE        = 0.001;  // 手續費 0.1%（幣安現貨）
-
-const STATE_LABEL = ['大漲▲▲', '小漲▲', '持平─', '小跌▼', '大跌▼▼'];
-const STATE_CLASS  = ['s0', 's1', 's2', 's3', 's4'];
-
-// ── 閾值（由 UI 控制）─────────────────────────────────
-function getThresholds() {
-  return {
-    bigUp:   parseFloat(document.getElementById('th-big-up').value)   ||  1.0,
-    smallUp: parseFloat(document.getElementById('th-small-up').value) ||  0.3,
-    smallDn: parseFloat(document.getElementById('th-small-dn').value) || -0.3,
-    bigDn:   parseFloat(document.getElementById('th-big-dn').value)   || -1.0,
-  };
-}
-
-function predReturnToState(pred_return_pct) {
-  const t = getThresholds();
-  if (pred_return_pct >  t.bigUp)   return 0; // 大漲
-  if (pred_return_pct >  t.smallUp) return 1; // 小漲
-  if (pred_return_pct >= t.smallDn) return 2; // 持平
-  if (pred_return_pct >= t.bigDn)   return 3; // 小跌
-  return 4;                                    // 大跌
-}
+const INITIAL_CAPITAL = 10000;
+const MAX_POSITION    = 10;
+const UNIT_FRACTION   = 1 / MAX_POSITION;
+const FEE_RATE        = 0.001;
+const CNN_MIN         = -1.5;
+const CNN_MAX         =  1.5;
 
 // ── 環境狀態 ───────────────────────────────────────────
-let statesData    = [];   // btc_states.json 的 data 陣列
+let statesData       = [];
+let activeData       = [];   // 當前使用的資料段（依模式+市場篩選）
+let currentMode      = 'train';   // 'train' | 'validate'
+let currentMarket    = 'all';     // 'all' | 'bull' | 'bear'
+
 let currentStep   = 0;
 let cash          = INITIAL_CAPITAL;
-let btcHeld       = 0;    // 持有 BTC 數量（浮點）
-let position      = 0;    // 持倉格數（0~10）
+let btcHeld       = 0;
+let position      = 0;
 let prevTotal     = INITIAL_CAPITAL;
 let episodeCount  = 0;
 let equityHistory = [];
 let priceHistory  = [];
-let actionHistory = [];   // { step, action, price }
+let actionHistory = [];
 let envReady      = false;
 let currentSessionId = null;
 let isPaused      = false;
@@ -359,7 +341,6 @@ const equityCanvas = document.getElementById('equity-canvas');
 const chartCtx     = chartCanvas.getContext('2d');
 const equityCtx    = equityCanvas.getContext('2d');
 
-// 初始化持倉格
 const posGrid = document.getElementById('position-grid');
 for (let i = 0; i < MAX_POSITION; i++) {
   const cell = document.createElement('div');
@@ -368,13 +349,30 @@ for (let i = 0; i < MAX_POSITION; i++) {
   posGrid.appendChild(cell);
 }
 
+// ── 資料篩選 ──────────────────────────────────────────
+function buildActiveData() {
+  if (currentMode === 'train') {
+    activeData = statesData.filter(d => {
+      if (d.phase !== 'train') return false;
+      if (currentMarket === 'bull') return d.market === 'bull';
+      if (currentMarket === 'bear') return d.market === 'bear';
+      return true;
+    });
+  } else {
+    activeData = statesData.filter(d => d.phase === 'test');
+  }
+}
+
 // ── 載入 btc_states.json ───────────────────────────────
 async function loadData() {
   try {
     const res  = await fetch('btc_states.json');
     const json = await res.json();
     statesData = json.data;
-    setStatus(`資料載入完成：${statesData.length} 步，等待 RR 連線...`);
+    buildActiveData();
+    const trainCount = statesData.filter(d => d.phase === 'train').length;
+    const testCount  = statesData.filter(d => d.phase === 'test').length;
+    setStatus(`資料載入完成：train=${trainCount} / test=${testCount}，等待 RR 連線...`);
     envReady = true;
   } catch (e) {
     setStatus('⚠ 找不到 btc_states.json，使用 Demo 資料');
@@ -388,8 +386,8 @@ function sendGameInfo() {
     type: 'gameInfo',
     players: [{
       stateInfo: [
-        { name: 'CNN信號', min: 0, max: 4 },
-        { name: '持倉格數', min: 0, max: 10 },
+        { name: 'CNN信號', min: CNN_MIN, max: CNN_MAX },
+        { name: '持倉格數', min: 0, max: MAX_POSITION },
       ],
       actionInfo: [{
         type: 'switch',
@@ -402,21 +400,24 @@ function sendGameInfo() {
 
 function useDemoData() {
   statesData = Array.from({ length: 300 }, (_, i) => ({
-    step:  i,
-    date:  '',
-    price: 90000 + Math.sin(i / 20) * 5000 + (Math.random() - 0.5) * 2000,
-    state: Math.floor(Math.random() * 5),
+    step:            i,
+    date:            '',
+    price:           90000 + Math.sin(i / 20) * 5000 + (Math.random() - 0.5) * 2000,
+    pred_return_pct: (Math.random() - 0.5) * 3,
+    phase:           'train',
+    market:          Math.random() > 0.5 ? 'bull' : 'bear',
   }));
+  buildActiveData();
   envReady = true;
-  setStatus(`[Demo] 假資料 ${statesData.length} 步，等待 RR 連線...`);
+  setStatus(`[Demo] ${statesData.length} 步，等待 RR 連線...`);
 }
 
 // ── 環境核心函數 ───────────────────────────────────────
 
 function getStateVector() {
-  // 從 pred_return_pct 即時計算 cnn_signal
-  const row = statesData[Math.min(currentStep, statesData.length - 1)];
-  const cnnSignal = row ? predReturnToState(row.pred_return_pct) : 2;
+  const row = activeData[Math.min(currentStep, activeData.length - 1)];
+  const raw = row ? row.pred_return_pct : 0;
+  const cnnSignal = Math.max(CNN_MIN, Math.min(CNN_MAX, raw));
   return [cnnSignal, position];
 }
 
@@ -438,7 +439,6 @@ function resetEnv() {
   updateUI();
   clearLog();
 
-  // 送出初始 reward_state（reward=0, done=false）
   sendToRR({
     type:      'reward_state',
     reward:    0,
@@ -450,12 +450,12 @@ function resetEnv() {
 
 function step(action) {
   if (!envReady) return;
-  if (currentStep >= statesData.length) {
+  if (currentStep >= activeData.length) {
     resetEnv();
     return;
   }
 
-  const row   = statesData[currentStep];
+  const row   = activeData[currentStep];
   const price = row.price;
   priceHistory.push(price);
 
@@ -463,9 +463,7 @@ function step(action) {
   let logClass = 'hold';
   let logText  = '';
 
-  // ── 執行動作 ──
   if (action === 0) {
-    // 買入：用 1/10 初始資本買 BTC（買入時用現金）
     if (position >= MAX_POSITION) {
       logClass = 'err';
       logText  = `[${currentStep}] BUY → 滿倉`;
@@ -486,7 +484,6 @@ function step(action) {
       }
     }
   } else if (action === 2) {
-    // 賣出：賣掉 1/10 的 BTC
     if (position <= 0) {
       logClass = 'err';
       logText  = `[${currentStep}] SELL → 空倉`;
@@ -503,18 +500,15 @@ function step(action) {
       actionHistory.push({ step: currentStep, action: 2, price });
     }
   } else {
-    // 持有
     logClass = 'hold';
     logText  = `[${currentStep}] HOLD`;
   }
 
   currentStep++;
-  const done = currentStep >= statesData.length;
+  const done = currentStep >= activeData.length;
 
-  // ── 計算 Reward ──
   const curTotal = getTotal(price);
   if (reward === 0) {
-    // 每步 reward = 資產絕對變化（USDT），累積值直接等於總損益
     reward = curTotal - prevTotal;
   }
 
@@ -527,13 +521,9 @@ function step(action) {
   prevTotal = curTotal;
   equityHistory.push(curTotal);
 
-  // 箭頭標記已在各成交分支內記錄，非法動作不畫箭頭
-
-  // 更新 UI
   updateUI(price, curTotal);
   addLog(logText, logClass);
 
-  // 送出 reward_state 給 RR
   sendToRR({
     type:      'reward_state',
     reward:    reward,
@@ -569,20 +559,24 @@ window.addEventListener('message', (e) => {
 // ── UI 更新 ────────────────────────────────────────────
 
 function updateUI(price, total) {
-  const p   = price ?? statesData[0]?.price ?? 0;
+  const p   = price ?? activeData[0]?.price ?? 0;
   const tot = total ?? INITIAL_CAPITAL;
   const ret = (tot - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100;
 
   // episode label
+  const modeLabel   = currentMode === 'train'
+    ? `訓練${currentMarket === 'all' ? '' : currentMarket === 'bull' ? '(牛)' : '(熊)'}`
+    : '驗證';
   document.getElementById('episode-label').textContent =
-    `Episode: ${episodeCount} | Step: ${currentStep} / ${statesData.length}`;
+    `${modeLabel} | Ep: ${episodeCount} | Step: ${currentStep} / ${activeData.length}`;
 
-  // CNN 狀態（從 pred_return_pct 即時算）
-  const curRow = statesData[Math.min(currentStep, statesData.length - 1)];
-  const cnnSig = curRow ? predReturnToState(curRow.pred_return_pct) : 2;
-  const badge  = document.getElementById('state-badge');
-  badge.textContent  = STATE_LABEL[cnnSig];
-  badge.className    = `state-badge ${STATE_CLASS[cnnSig]}`;
+  // CNN 信號（連續值）
+  const curRow = activeData[Math.min(currentStep, activeData.length - 1)];
+  const raw    = curRow ? curRow.pred_return_pct : 0;
+  const clamped = Math.max(CNN_MIN, Math.min(CNN_MAX, raw));
+  const badge   = document.getElementById('state-badge');
+  badge.textContent = `${clamped >= 0 ? '+' : ''}${clamped.toFixed(3)}%`;
+  badge.className   = `state-badge ${clamped > 0.3 ? 'sig-up' : clamped < -0.3 ? 'sig-down' : 'sig-neu'}`;
 
   // 帳戶
   document.getElementById('val-price').textContent  = `$${p.toLocaleString('en', {maximumFractionDigits: 0})}`;
@@ -601,10 +595,9 @@ function updateUI(price, total) {
   }
 
   // 進度條
-  const pct = statesData.length > 0 ? (currentStep / statesData.length * 100) : 0;
+  const pct = activeData.length > 0 ? (currentStep / activeData.length * 100) : 0;
   document.getElementById('progress-bar').style.width = `${pct}%`;
 
-  // 畫圖
   drawChart();
   drawEquity();
 }
@@ -620,7 +613,6 @@ function addLog(text, cls = 'hold') {
   div.textContent = text;
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
-  // 只保留最近 100 條
   while (log.children.length > 100) log.removeChild(log.firstChild);
 }
 
@@ -648,7 +640,6 @@ function drawChart() {
 
   ctx.clearRect(0, 0, W, H);
 
-  // 顯示最近 120 步的價格
   const SHOW = 120;
   const prices = priceHistory.slice(-SHOW);
   if (prices.length < 2) return;
@@ -661,7 +652,6 @@ function drawChart() {
   const px = (i) => PAD.l + i * scaleX;
   const py = (p) => H - PAD.b - (p - minP) * scaleY;
 
-  // 格線
   ctx.strokeStyle = '#21262d';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
@@ -676,7 +666,6 @@ function drawChart() {
 
   const offset = priceHistory.length > SHOW ? priceHistory.length - SHOW : 0;
 
-  // 價格線
   ctx.beginPath();
   ctx.strokeStyle = '#58a6ff';
   ctx.lineWidth = 1.5;
@@ -685,7 +674,6 @@ function drawChart() {
   });
   ctx.stroke();
 
-  // 買賣箭頭（只標記 BUY/SELL，不畫背景）
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
   actionHistory.forEach(({ step, action }) => {
@@ -701,7 +689,6 @@ function drawChart() {
     }
   });
 
-  // 標題
   ctx.fillStyle = '#8b949e';
   ctx.font = '11px Courier New';
   ctx.textAlign = 'left';
@@ -727,7 +714,6 @@ function drawEquity() {
   const px = (i) => PAD.l + i * scaleX;
   const py = (v) => H - PAD.b - (v - minE) * scaleY;
 
-  // 基準線（初始資金）
   const baseY = py(INITIAL_CAPITAL);
   ctx.strokeStyle = '#30363d';
   ctx.lineWidth = 1;
@@ -735,13 +721,11 @@ function drawEquity() {
   ctx.beginPath(); ctx.moveTo(PAD.l, baseY); ctx.lineTo(W - PAD.r, baseY); ctx.stroke();
   ctx.setLineDash([]);
 
-  // Y 軸標籤
   ctx.fillStyle = '#8b949e';
   ctx.font = '10px Courier New';
   ctx.textAlign = 'right';
   ctx.fillText(`$${(INITIAL_CAPITAL / 1000).toFixed(0)}K`, PAD.l - 4, baseY + 4);
 
-  // 資產曲線（漸層填充）
   const grad = ctx.createLinearGradient(0, PAD.t, 0, H - PAD.b);
   const lastVal = eq[eq.length - 1];
   const color   = lastVal >= INITIAL_CAPITAL ? '#3fb950' : '#f85149';
@@ -762,7 +746,6 @@ function drawEquity() {
   eq.forEach((v, i) => i === 0 ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v)));
   ctx.stroke();
 
-  // 標題
   const ret = (lastVal - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100;
   ctx.fillStyle = '#8b949e';
   ctx.font = '11px Courier New';
@@ -773,9 +756,40 @@ function drawEquity() {
 // ── 視窗 resize ────────────────────────────────────────
 window.addEventListener('resize', () => { drawChart(); drawEquity(); });
 
-// ── 閾值套用按鈕 ──────────────────────────────────────
-document.getElementById('btn-apply').addEventListener('click', () => {
+// ── 模式切換 ──────────────────────────────────────────
+document.getElementById('btn-mode').addEventListener('click', () => {
+  currentMode = currentMode === 'train' ? 'validate' : 'train';
+  const btn         = document.getElementById('btn-mode');
+  const desc        = document.getElementById('mode-desc');
+  const marketPanel = document.getElementById('panel-market');
+
+  if (currentMode === 'train') {
+    btn.textContent   = '📈 訓練模式';
+    btn.className     = 'mode-btn mode-train';
+    desc.textContent  = '使用 phase=train 資料訓練 Q-table';
+    marketPanel.style.display = '';
+  } else {
+    btn.textContent   = '✅ 驗證模式';
+    btn.className     = 'mode-btn mode-validate';
+    desc.textContent  = '使用 phase=test 驗收策略績效';
+    marketPanel.style.display = 'none';
+  }
+
+  buildActiveData();
   if (envReady) resetEnv();
+});
+
+// ── 市場篩選 ──────────────────────────────────────────
+document.querySelectorAll('input[name="market"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    currentMarket = e.target.value;
+    ['all', 'bull', 'bear'].forEach(v => {
+      const lbl = document.getElementById(`lbl-${v}`);
+      lbl.className = `market-label${currentMarket === v ? ` active-${v}` : ''}`;
+    });
+    buildActiveData();
+    if (envReady) resetEnv();
+  });
 });
 
 // ── 啟動 ──────────────────────────────────────────────
