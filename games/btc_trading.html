@@ -102,6 +102,17 @@
   .stat-value.down { color: #f85149; }
   .stat-value.neu  { color: #d29922; }
 
+  /* 圖表選項 */
+  .chart-toggle { display: flex; gap: 4px; }
+  .chart-btn {
+    flex: 1; padding: 3px 0; font-size: 10px; cursor: pointer;
+    border-radius: 4px; border: 1px solid #30363d;
+    background: #21262d; color: #8b949e;
+  }
+  .chart-btn.on-price  { border-color: #58a6ff; color: #58a6ff; background: #0d1f2e; }
+  .chart-btn.on-pred   { border-color: #f0883e; color: #f0883e; background: #2a1a0a; }
+  .chart-btn.on-candle { border-color: #3fb950; color: #3fb950; background: #0d1f12; }
+
   /* CNN 狀態燈 */
   #state-display {
     text-align: center;
@@ -238,6 +249,16 @@
       </div>
     </div>
 
+    <!-- 圖表選項 -->
+    <div class="panel">
+      <div class="panel-title">Chart</div>
+      <div class="chart-toggle">
+        <button id="btn-price"  class="chart-btn on-price">Price</button>
+        <button id="btn-pred"   class="chart-btn">Pred</button>
+        <button id="btn-candle" class="chart-btn">K線</button>
+      </div>
+    </div>
+
     <!-- CNN 狀態 -->
     <div class="panel">
       <div class="panel-title">CNN Signal</div>
@@ -322,6 +343,8 @@ let activeData       = [];   // 當前使用的資料段（依模式+市場篩�
 let currentMode      = 'train';   // 'train' | 'validate'
 let currentMarket    = 'all';     // 'all' | 'bull' | 'bear'
 
+let chartOpts = { priceLine: true, predLine: false, candles: false };
+
 let currentStep   = 0;
 let cash          = INITIAL_CAPITAL;
 let btcHeld       = 0;
@@ -330,6 +353,8 @@ let prevTotal     = INITIAL_CAPITAL;
 let episodeCount  = 0;
 let equityHistory = [];
 let priceHistory  = [];
+let ohlcHistory   = [];   // { o, h, l, c } per step
+let predHistory   = [];   // CNN predicted price for next step
 let actionHistory = [];
 let envReady      = false;
 let currentSessionId = null;
@@ -433,6 +458,8 @@ function resetEnv() {
   prevTotal     = INITIAL_CAPITAL;
   equityHistory = [INITIAL_CAPITAL];
   priceHistory  = [];
+  ohlcHistory   = [];
+  predHistory   = [];
   actionHistory = [];
   episodeCount++;
 
@@ -458,6 +485,8 @@ function step(action) {
   const row   = activeData[currentStep];
   const price = row.price;
   priceHistory.push(price);
+  ohlcHistory.push({ o: row.open ?? price, h: row.high ?? price, l: row.low ?? price, c: price });
+  predHistory.push(price * (1 + (row.pred_return_pct ?? 0) / 100));
 
   let reward = 0;
   let logClass = 'hold';
@@ -640,18 +669,34 @@ function drawChart() {
 
   ctx.clearRect(0, 0, W, H);
 
-  const SHOW = 120;
-  const prices = priceHistory.slice(-SHOW);
-  if (prices.length < 2) return;
+  const SHOW = 80;
+  const showPrice  = chartOpts.priceLine && priceHistory.length >= 2;
+  const showPred   = chartOpts.predLine  && predHistory.length  >= 2;
+  const showCandle = chartOpts.candles   && ohlcHistory.length  >= 2;
+  if (!showPrice && !showPred && !showCandle) return;
 
-  const minP = Math.min(...prices) * 0.999;
-  const maxP = Math.max(...prices) * 1.001;
-  const scaleX = (W - PAD.l - PAD.r) / (prices.length - 1);
+  const recentPrice  = priceHistory.slice(-SHOW);
+  const recentPred   = predHistory.slice(-SHOW);
+  const recentOhlc   = ohlcHistory.slice(-SHOW);
+  const N = Math.max(recentPrice.length, recentOhlc.length);
+  const offset = priceHistory.length > SHOW ? priceHistory.length - SHOW : 0;
+
+  // 計算價格範圍
+  let allP = [];
+  if (showPrice)  allP = allP.concat(recentPrice);
+  if (showPred)   allP = allP.concat(recentPred);
+  if (showCandle) recentOhlc.forEach(c => allP.push(c.h, c.l));
+  if (allP.length < 2) return;
+
+  const minP  = Math.min(...allP) * 0.999;
+  const maxP  = Math.max(...allP) * 1.001;
+  const scaleX = (W - PAD.l - PAD.r) / Math.max(N - 1, 1);
   const scaleY = (H - PAD.t - PAD.b) / (maxP - minP);
 
   const px = (i) => PAD.l + i * scaleX;
   const py = (p) => H - PAD.b - (p - minP) * scaleY;
 
+  // 格線
   ctx.strokeStyle = '#21262d';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
@@ -664,35 +709,68 @@ function drawChart() {
     ctx.fillText(`$${Math.round(val / 1000)}K`, PAD.l - 4, y + 4);
   }
 
-  const offset = priceHistory.length > SHOW ? priceHistory.length - SHOW : 0;
+  // K 線蠟燭圖（台灣：漲紅跌綠）
+  if (showCandle) {
+    const cw = Math.max(scaleX * 0.6, 1.5);
+    recentOhlc.forEach((c, i) => {
+      const isUp  = c.c >= c.o;
+      const color = isUp ? '#f85149' : '#3fb950';
+      ctx.strokeStyle = color;
+      ctx.fillStyle   = color;
+      ctx.lineWidth   = 1;
+      // 燭芯
+      ctx.beginPath();
+      ctx.moveTo(px(i), py(c.h));
+      ctx.lineTo(px(i), py(c.l));
+      ctx.stroke();
+      // 實體
+      const top = py(Math.max(c.o, c.c));
+      const bot = py(Math.min(c.o, c.c));
+      const bodyH = Math.max(bot - top, 1);
+      ctx.fillRect(px(i) - cw / 2, top, cw, bodyH);
+    });
+  }
 
-  ctx.beginPath();
-  ctx.strokeStyle = '#58a6ff';
-  ctx.lineWidth = 1.5;
-  prices.forEach((p, i) => {
-    i === 0 ? ctx.moveTo(px(i), py(p)) : ctx.lineTo(px(i), py(p));
-  });
-  ctx.stroke();
+  // 真實收盤價藍線
+  if (showPrice) {
+    ctx.beginPath();
+    ctx.strokeStyle = '#58a6ff';
+    ctx.lineWidth = 1.5;
+    recentPrice.forEach((p, i) => i === 0 ? ctx.moveTo(px(i), py(p)) : ctx.lineTo(px(i), py(p)));
+    ctx.stroke();
+  }
 
+  // CNN 預測線（橘色虛線）
+  if (showPred) {
+    ctx.beginPath();
+    ctx.strokeStyle = '#f0883e';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 3]);
+    recentPred.forEach((p, i) => i === 0 ? ctx.moveTo(px(i), py(p)) : ctx.lineTo(px(i), py(p)));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // 買賣標記
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
   actionHistory.forEach(({ step, action }) => {
-    const localIdx = step - offset;
-    if (localIdx < 0 || localIdx >= prices.length) return;
-    const x = px(localIdx), y = py(prices[localIdx]);
-    if (action === 0) {
-      ctx.fillStyle = '#3fb950';
-      ctx.fillText('▲', x, y + 14);
-    } else if (action === 2) {
-      ctx.fillStyle = '#f85149';
-      ctx.fillText('▼', x, y - 5);
-    }
+    const li = step - offset;
+    if (li < 0 || li >= N) return;
+    const baseY = recentPrice[li] ? py(recentPrice[li]) : py(recentOhlc[li]?.c ?? 0);
+    if (action === 0) { ctx.fillStyle = '#3fb950'; ctx.fillText('▲', px(li), baseY + 14); }
+    else if (action === 2) { ctx.fillStyle = '#f85149'; ctx.fillText('▼', px(li), baseY - 5); }
   });
 
+  // 標題
+  const labels = [];
+  if (showCandle) labels.push('K線');
+  if (showPrice)  labels.push('Price');
+  if (showPred)   labels.push('Pred');
   ctx.fillStyle = '#8b949e';
   ctx.font = '11px Courier New';
   ctx.textAlign = 'left';
-  ctx.fillText('BTC Price (最近 120 步)', PAD.l, 14);
+  ctx.fillText(`BTC  ${labels.join(' + ')}  (最近 ${SHOW} 步)`, PAD.l, 14);
 }
 
 function drawEquity() {
@@ -789,6 +867,21 @@ document.querySelectorAll('input[name="market"]').forEach(radio => {
     });
     buildActiveData();
     if (envReady) resetEnv();
+  });
+});
+
+// ── 圖表切換 ──────────────────────────────────────────
+const chartBtnCfg = [
+  { id: 'btn-price',  key: 'priceLine', cls: 'on-price'  },
+  { id: 'btn-pred',   key: 'predLine',  cls: 'on-pred'   },
+  { id: 'btn-candle', key: 'candles',   cls: 'on-candle' },
+];
+chartBtnCfg.forEach(({ id, key, cls }) => {
+  document.getElementById(id).addEventListener('click', () => {
+    chartOpts[key] = !chartOpts[key];
+    const btn = document.getElementById(id);
+    btn.className = `chart-btn${chartOpts[key] ? ' ' + cls : ''}`;
+    drawChart();
   });
 });
 
