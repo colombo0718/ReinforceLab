@@ -550,12 +550,15 @@ button:hover {
   position: absolute;
   left: 0;
   top: 0;
-  width: 22px;
-  height: 30px;
-  transform: translate(72px, 72px) scale(1);
-  transform-origin: 0 0;
+  width: 42px;
+  height: 42px;
+  transform: translate(51px, 66px) scale(1);
+  transform-origin: 21px 6px;
   transition: transform 0.5s ease;
   will-change: transform;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #rr-agent-visualizer .av-cursor.is-moving {
@@ -563,32 +566,16 @@ button:hover {
 }
 
 #rr-agent-visualizer .av-cursor.is-pressing {
-  filter: brightness(1.08);
+  filter: brightness(1.05) saturate(1.08);
 }
 
-#rr-agent-visualizer .av-cursor-arrow {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-top: 0 solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 27px solid #fff;
-  border-left: 13px solid #fff;
-  filter: drop-shadow(0 0 0 #000) drop-shadow(1px 2px 4px rgba(0, 0, 0, 0.45));
-  transform: rotate(-24deg);
-}
-
-#rr-agent-visualizer .av-cursor-dot {
-  position: absolute;
-  left: 7px;
-  top: 17px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #f44;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+#rr-agent-visualizer .av-cursor-glyph {
+  display: inline-block;
+  font-size: 34px;
+  line-height: 1;
+  transform: translate(-2px, -3px) rotate(-8deg);
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.32));
+  user-select: none;
 }
 
 #rr-agent-visualizer .av-focus-box,

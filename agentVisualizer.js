@@ -8,9 +8,11 @@
       this.cursorX = 72;
       this.cursorY = 72;
       this.cursorScale = 1;
+      this.cursorEmoji = "👆";
       this.lastMoveMs = 0;
       this.root = null;
       this.cursor = null;
+      this.cursorGlyph = null;
       this.focusBox = null;
       this.hoverBox = null;
       this.rippleLayer = null;
@@ -34,8 +36,7 @@
         '<div class="av-hover-box"></div>',
         '<div class="av-ripple-layer"></div>',
         '<div class="av-cursor">',
-        '<div class="av-cursor-arrow"></div>',
-        '<div class="av-cursor-dot"></div>',
+        '<span class="av-cursor-glyph" role="img" aria-label="agent cursor">👆</span>',
         "</div>",
       ].join("");
 
@@ -43,6 +44,7 @@
 
       this.root = root;
       this.cursor = root.querySelector(".av-cursor");
+      this.cursorGlyph = root.querySelector(".av-cursor-glyph");
       this.focusBox = root.querySelector(".av-focus-box");
       this.hoverBox = root.querySelector(".av-hover-box");
       this.rippleLayer = root.querySelector(".av-ripple-layer");
@@ -73,6 +75,15 @@
       }
       this.speed = value;
       return this.speed;
+    }
+
+    setCursorEmoji(emoji) {
+      if (typeof emoji !== "string" || !emoji.trim()) {
+        throw new Error("AgentVisualizer.setCursorEmoji requires a non-empty string.");
+      }
+      this.cursorEmoji = emoji;
+      this.cursorGlyph.textContent = emoji;
+      return this.cursorEmoji;
     }
 
     async moveTo(x, y, options = {}) {
@@ -123,10 +134,14 @@
       const box = this.normalizeRect(rect, options);
       this.applyBox(this.hoverBox, box);
       this.hoverBox.classList.add("is-visible");
-      return box;
+      if (this._hoverTimer) { clearTimeout(this._hoverTimer); this._hoverTimer = null; }
+      if (options.duration > 0) {
+        this._hoverTimer = setTimeout(() => this.clearHover(), options.duration);
+      }
     }
 
     clearHover() {
+      if (this._hoverTimer) { clearTimeout(this._hoverTimer); this._hoverTimer = null; }
       this.hoverBox.classList.remove("is-visible");
       return true;
     }
@@ -136,10 +151,14 @@
       const box = this.normalizeRect(rect, options);
       this.applyBox(this.focusBox, box);
       this.focusBox.classList.add("is-visible");
-      return box;
+      if (this._focusTimer) { clearTimeout(this._focusTimer); this._focusTimer = null; }
+      if (options.duration > 0) {
+        this._focusTimer = setTimeout(() => this.clearFocus(), options.duration);
+      }
     }
 
     clearFocus() {
+      if (this._focusTimer) { clearTimeout(this._focusTimer); this._focusTimer = null; }
       this.focusBox.classList.remove("is-visible");
       return true;
     }
@@ -290,8 +309,13 @@
     }
 
     renderCursor(x, y, scale = 1) {
+      // Cursor box is 42×42 px with the emoji flexbox-centered inside.
+      // Hotspot: finger tip of 👆 is at roughly center-x (21 px) and near the top (6 px).
+      // Subtract the hotspot offset so the finger tip aligns with (x, y).
+      const tx = (x - 21).toFixed(1);
+      const ty = (y - 6).toFixed(1);
       this.cursor.style.transform =
-        "translate(" + x.toFixed(1) + "px, " + y.toFixed(1) + "px) scale(" + Number(scale).toFixed(3) + ")";
+        "translate(" + tx + "px, " + ty + "px) scale(" + Number(scale).toFixed(3) + ")";
     }
 
     resolveDuration(baseMs) {

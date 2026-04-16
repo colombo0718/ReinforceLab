@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-04-15｜**AgentVisualizer + 教學影片產線**
+
+### 里程碑
+- `AgentVisualizer`（`agentVisualizer.js`）正式落地，可供 Playwright / 未來 LLM 呼叫，將操作可視化
+- 英文版 RR 平台介紹影片自動化產線打通（截圖 → 錄影 → TTS 旁白 → 字幕 → ffmpeg 合成 `.mp4`）
+
+### 新增
+- `agentVisualizer.js`：假游標（👆）、紅框 focus、藍框 hover、點擊波紋、拖曳路徑，全掛在 `window.AgentVisualizer`
+- `agent_outputs/playwright_rr_ui_tour/`：截圖巡覽、錄影、英文成片三支腳本
+- `docs/AgentVisualizer與Playwright快速上手.md`：使用說明（含 Playwright 搭配模式）
+- `docs/RR教學影片製作SOP與心得.md`：完整製作流程與踩坑紀錄
+
+### 優化（2026-04-15 同日）
+- 游標熱點修正：`renderCursor` 加入 hotspot offset（-21px, -6px），指尖對齊目標點
+- `focusRect` / `hoverRect` / `focusElement` / `highlightElement` 改為回傳 Promise，resolve 時 CSS transition 已完成，避免截圖截到動畫中途
+- `style.css`：cursor `transform-origin` 改為 `21px 6px`，scale 從指尖展開
+
+---
+
 ## 2026-04-05｜**v1.0.0 正式版**
 
 ### 里程碑
