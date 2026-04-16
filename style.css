@@ -532,3 +532,149 @@ button:hover {
 .q-btn:hover{
   background:#e6e6e6;
 }
+
+#rr-agent-visualizer {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+#rr-agent-visualizer.is-enabled {
+  opacity: 1;
+}
+
+#rr-agent-visualizer .av-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 42px;
+  height: 42px;
+  transform: translate(51px, 66px) scale(1);
+  transform-origin: 21px 6px;
+  transition: transform 0.5s ease;
+  will-change: transform;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#rr-agent-visualizer .av-cursor.is-moving {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#rr-agent-visualizer .av-cursor.is-pressing {
+  filter: brightness(1.05) saturate(1.08);
+}
+
+#rr-agent-visualizer .av-cursor-glyph {
+  display: inline-block;
+  font-size: 34px;
+  line-height: 1;
+  transform: translate(-2px, -3px) rotate(-8deg);
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.32));
+  user-select: none;
+}
+
+#rr-agent-visualizer .av-focus-box,
+#rr-agent-visualizer .av-hover-box {
+  position: absolute;
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    left 0.25s ease,
+    top 0.25s ease,
+    width 0.25s ease,
+    height 0.25s ease;
+}
+
+#rr-agent-visualizer .av-focus-box.is-visible,
+#rr-agent-visualizer .av-hover-box.is-visible {
+  opacity: 1;
+}
+
+#rr-agent-visualizer .av-focus-box {
+  border: 3px solid rgba(255, 64, 64, 0.95);
+  box-shadow:
+    0 0 0 9999px rgba(255, 64, 64, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.85) inset,
+    0 0 18px rgba(255, 64, 64, 0.35);
+  animation: avFocusPulse 1.1s ease-in-out infinite;
+}
+
+#rr-agent-visualizer .av-hover-box {
+  border: 2px solid rgba(72, 174, 255, 0.95);
+  background: rgba(72, 174, 255, 0.10);
+  box-shadow: 0 0 14px rgba(72, 174, 255, 0.25);
+}
+
+#rr-agent-visualizer .av-ripple-layer {
+  position: absolute;
+  inset: 0;
+}
+
+#rr-agent-visualizer .av-ripple {
+  position: absolute;
+  border: 3px solid rgba(255, 84, 84, 0.9);
+  border-radius: 999px;
+  transform: translate(-50%, -50%) scale(0.28);
+  animation: avRipple 0.65s ease-out forwards;
+  box-shadow: 0 0 14px rgba(255, 84, 84, 0.35);
+}
+
+#rr-agent-visualizer .av-trail-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+#rr-agent-visualizer .av-trail-layer.is-visible {
+  opacity: 1;
+}
+
+#rr-agent-visualizer .av-trail-layer.is-fading {
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+#rr-agent-visualizer .av-trail-path {
+  fill: none;
+  stroke: rgba(72, 174, 255, 0.88);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 10 8;
+  filter: drop-shadow(0 0 6px rgba(72, 174, 255, 0.25));
+}
+
+@keyframes avRipple {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.28);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+}
+
+@keyframes avFocusPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 9999px rgba(255, 64, 64, 0.04),
+      0 0 0 1px rgba(255, 255, 255, 0.85) inset,
+      0 0 16px rgba(255, 64, 64, 0.28);
+  }
+  50% {
+    box-shadow:
+      0 0 0 9999px rgba(255, 64, 64, 0.05),
+      0 0 0 1px rgba(255, 255, 255, 0.9) inset,
+      0 0 26px rgba(255, 64, 64, 0.44);
+  }
+}
