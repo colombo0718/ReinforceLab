@@ -135,8 +135,9 @@ function renderActionColorWheel(actionInfo) {
   const host = document.getElementById("p1-acti-color");
   if (!host) return;
 
+  const _L = window.CHART_TEXT?.[window.chartLang ?? "en"];
   host.innerHTML = `
-    <div class="title">動作色環</div>
+    <div class="title">${_L?.actionColors ?? "Action Colors"}</div>
     <div class="wheel"></div>
     <div class="center"></div>
   `;
@@ -250,7 +251,8 @@ function generateWhiteOverlayMatrix() {
 }
 
 function dimLabel(dim) {
-  return stateInfo[dim]?.name ?? `維度 ${dim}`;
+  const L = window.CHART_TEXT?.[window.chartLang ?? "en"];
+  return stateInfo[dim]?.name ?? `${L?.dimPrefix ?? "Dim"} ${dim}`;
 }
 
 
@@ -299,6 +301,7 @@ function generateActionHeatmap() {
     text.push(textRow);
   }
 
+  const L_ah = window.CHART_TEXT?.[window.chartLang ?? "en"];
   Plotly.newPlot('p1-diff-value', [
     { x: xvals, y: yvals, z, type: 'heatmap',
       colorscale: generateDiscreteColorscale(action_size), hoverinfo: 'text', text,
@@ -307,9 +310,9 @@ function generateActionHeatmap() {
       colorscale: [[0, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,1)']],
       zmin: 0, zmax: 1, showscale: false, hoverinfo: 'skip' }
   ], {
-    title: '動作選擇熱力圖',
-    xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
-    yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
+    title: L_ah?.actionHeatmap ?? "Policy Heatmap",
+    xaxis: { title: hasX ? dimLabel(cutX) : (L_ah?.noStateDim ?? "(no state dim)") },
+    yaxis: { title: hasY ? dimLabel(cutY) : (L_ah?.noStateDim ?? "(no state dim)") },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
 }
@@ -351,14 +354,15 @@ function generateMaxQHeatmap() {
     texts.push(textRow);
   }
 
+  const L_mxq = window.CHART_TEXT?.[window.chartLang ?? "en"];
   Plotly.newPlot('p1-maxi-value', [{
     x: xvals, y: yvals, z: zvals, type: 'heatmap',
     colorscale: [[0, 'cyan'], [0.5, 'white'], [1, 'orange']],
     zmid: 0, text: texts, hoverinfo: 'text'
   }], {
-    title: '最大 Q 值熱力圖',
-    xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
-    yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
+    title: L_mxq?.maxQHeatmap ?? "Max Q Heatmap",
+    xaxis: { title: hasX ? dimLabel(cutX) : (L_mxq?.noStateDim ?? "(no state dim)") },
+    yaxis: { title: hasY ? dimLabel(cutY) : (L_mxq?.noStateDim ?? "(no state dim)") },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
 }
@@ -400,14 +404,15 @@ function generateMinQHeatmap() {
     texts.push(textRow);
   }
 
+  const L_mnq = window.CHART_TEXT?.[window.chartLang ?? "en"];
   Plotly.newPlot('p1-mini-value', [{
     x: xvals, y: yvals, z: zvals, type: 'heatmap',
     colorscale: [[0, 'blue'], [0.5, 'white'], [1, 'red']],
     zmid: 0, text: texts, hoverinfo: 'text'
   }], {
-    title: '最小 Q 值熱力圖',
-    xaxis: { title: hasX ? dimLabel(cutX) : '（無狀態維度）' },
-    yaxis: { title: hasY ? dimLabel(cutY) : '（無狀態維度）' },
+    title: L_mnq?.minQHeatmap ?? "Min Q Heatmap",
+    xaxis: { title: hasX ? dimLabel(cutX) : (L_mnq?.noStateDim ?? "(no state dim)") },
+    yaxis: { title: hasY ? dimLabel(cutY) : (L_mnq?.noStateDim ?? "(no state dim)") },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
 }
@@ -436,10 +441,11 @@ function generateQLineSlice() {
     });
   }
 
+  const L_ql = window.CHART_TEXT?.[window.chartLang ?? "en"];
   Plotly.newPlot('p1-line-value', data, {
-    title: '狀態價值折線圖',
+    title: L_ql?.qLineSlice ?? "Q-Value Slice",
     xaxis: { title: dimLabel(cutX) },
-    yaxis: { title: '評估價值' },
+    yaxis: { title: L_ql?.qValueAxis ?? "Q-Value" },
     showlegend: false,
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
@@ -485,11 +491,12 @@ function generateQBarSlice() {
     });
   }
 
+  const L_qb = window.CHART_TEXT?.[window.chartLang ?? "en"];
   Plotly.newPlot('p1-bars-value', traces, {
-    title: '動作價值與選擇機率',
-    xaxis: { title: '動作', tickvals: qArr.map((_, i) => i), ticktext: tickText },
-    yaxis:  { title: '價值評估' },
-    yaxis2: { title: '選擇機率', overlaying: 'y', side: 'right',
+    title: L_qb?.qBarSlice ?? "Action Values & Probability",
+    xaxis: { title: L_qb?.actionAxis ?? "Action", tickvals: qArr.map((_, i) => i), ticktext: tickText },
+    yaxis:  { title: L_qb?.qValueBar ?? "Q-Value" },
+    yaxis2: { title: L_qb?.probAxis ?? "Probability", overlaying: 'y', side: 'right',
               range: [0, 1], showgrid: false },
     barmode: 'overlay', showlegend: false,
     margin: { t: 30, b: 40, l: 50, r: 50 }

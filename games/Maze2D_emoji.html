@@ -316,7 +316,7 @@
     // 更新玩家狀態資訊（像素座標）
     function updateState() {
       let pos = gridToPixel(playerGrid);
-      currentState = [ pos.x.toFixed(2), pos.y.toFixed(2) ];
+      currentState = [ pos.x, pos.y ];
     }
 
     // 處理來自父頁面的訊息（例如 RL）

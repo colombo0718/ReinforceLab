@@ -132,9 +132,9 @@
             <br>
             <!-- 環境超參數 -->
             <label for="optimism-slider">樂觀值 (ψ):</label>
-            <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="0"
+            <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="1"
                   oninput="updateValue('Psi', this.value)">
-            <span class="value-display" id="psi-value">0</span>
+            <span class="value-display" id="psi-value">1</span>
             <br><br>
 
             <label for="delay-slider">延遲量(ms):</label>
@@ -482,7 +482,7 @@
     let Gamma   = 0.95;
     let Epsilon = 0.1;
     let Tau     = 5.0;
-    let Psi     = 0;
+    let Psi     = 1;
 
     let basicDelayTime = 50, delayTime = 50;
 
@@ -943,7 +943,15 @@
       document.getElementById("stat-cover").textContent   = `${coverage}%`;
     }
 
+    // ── ?game= URL 參數自動載入 ────────────────────────────────────────────────
+    (function () {
+      const params   = new URLSearchParams(window.location.search);
+      const gameParam = params.get("game");
+      if (gameParam) loadGame(gameParam);
+    })();
+
   </script>
+  <script>window.chartLang = window.chartLang ?? "en";</script>
   <script src="./generalCharts.js"></script>
   <script src="./qualityCharts.js"></script>
   <script src="./reinforceEngine.js"></script>
