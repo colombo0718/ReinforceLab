@@ -17,9 +17,39 @@
 
 
 /***************************************************
- * [A] 配色方案
- * Reward 系列：藍綠色；Steps 系列：橙色
+ * [A] 語言字典 & 配色方案
  ***************************************************/
+window.chartLang = window.chartLang ?? "en";
+
+window.CHART_TEXT = {
+  zh: {
+    rewardPerSec: "每秒獲得獎勵",  stepsPerSec:  "每秒輸出步數",
+    rewardPerEp:  "每回合獲得獎勵", stepsPerEp:   "每回合輸出步數",
+    timeAxis:     "時間(秒)",       episodeAxis:  "回合數 (Episode)",
+    rewardAxis:   "獎勵",           stepsAxis:    "步數",    stepsAxisEp: "步數 (Steps)",
+    actionHeatmap:"動作選擇熱力圖", maxQHeatmap:  "最大 Q 值熱力圖",
+    minQHeatmap:  "最小 Q 值熱力圖",qLineSlice:   "狀態價值折線圖",
+    qBarSlice:    "動作價值與選擇機率",
+    noStateDim:   "（無狀態維度）", actionAxis:   "動作",
+    qValueAxis:   "評估價值",       qValueBar:    "價值評估",
+    probAxis:     "選擇機率",       actionColors: "動作色環",
+    statePrefix:  "狀態",           dimPrefix:    "維度",
+  },
+  en: {
+    rewardPerSec: "Reward / Second", stepsPerSec:  "Steps / Second",
+    rewardPerEp:  "Reward / Episode", stepsPerEp:   "Steps / Episode",
+    timeAxis:     "Time (s)",         episodeAxis:  "Episode",
+    rewardAxis:   "Reward",           stepsAxis:    "Steps", stepsAxisEp: "Steps",
+    actionHeatmap:"Policy Heatmap",   maxQHeatmap:  "Max Q Heatmap",
+    minQHeatmap:  "Min Q Heatmap",    qLineSlice:   "Q-Value Slice",
+    qBarSlice:    "Action Values & Probability",
+    noStateDim:   "(no state dim)",   actionAxis:   "Action",
+    qValueAxis:   "Q-Value",          qValueBar:    "Q-Value",
+    probAxis:     "Probability",      actionColors: "Action Colors",
+    statePrefix:  "State",            dimPrefix:    "Dim",
+  }
+};
+
 const rewardLineColor   = 'rgba(75, 192, 192, 1)';
 const rewardMarkerColor = 'rgba(75, 192, 192, 0.7)';
 
@@ -42,6 +72,7 @@ const stepsMarkerColor  = 'rgba(255, 159, 64, 0.7)';
  *   更新完後把 secondReward / secondSteps 歸零
  ***************************************************/
 function initSecondChart() {
+  const L = window.CHART_TEXT[window.chartLang ?? "en"];
   Plotly.newPlot('p1-second-reward', [{
     x: rewardLabels,
     y: rewardData,
@@ -49,9 +80,9 @@ function initSecondChart() {
     fill: 'tozeroy',
     line: { color: rewardLineColor }
   }], {
-    title: '每秒獲得獎勵',
-    xaxis: { title: '時間(秒)' },
-    yaxis: { title: '獎勵' },
+    title: L.rewardPerSec,
+    xaxis: { title: L.timeAxis },
+    yaxis: { title: L.rewardAxis },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
 
@@ -62,9 +93,9 @@ function initSecondChart() {
     fill: 'tozeroy',
     line: { color: stepsLineColor }
   }], {
-    title: '每秒輸出步數',
-    xaxis: { title: '時間 (秒)' },
-    yaxis: { title: '步數' },
+    title: L.stepsPerSec,
+    xaxis: { title: L.timeAxis },
+    yaxis: { title: L.stepsAxis },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
 }
@@ -102,15 +133,16 @@ function updateSecondChart() {
  *   超過 100 筆後移除最舊資料（滑動視窗）
  ***************************************************/
 function initEpisodeChart() {
+  const L = window.CHART_TEXT[window.chartLang ?? "en"];
   Plotly.newPlot("p1-episode-reward", [{
     x: episodeIndex,
     y: episodeRewardData,
     type: 'bar',
     marker: { color: rewardMarkerColor }
   }], {
-    title: { text: "每回合獲得獎勵", font: { size: 18 }, yanchor: "top", y: 0.95, pad: { b: 0 } },
-    xaxis: { title: "回合數 (Episode)" },
-    yaxis: { title: "獎勵" },
+    title: { text: L.rewardPerEp, font: { size: 18 }, yanchor: "top", y: 0.95, pad: { b: 0 } },
+    xaxis: { title: L.episodeAxis },
+    yaxis: { title: L.rewardAxis },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
 
@@ -120,9 +152,9 @@ function initEpisodeChart() {
     type: 'bar',
     marker: { color: stepsMarkerColor }
   }], {
-    title: { text: "每回合輸出步數", font: { size: 18 }, yanchor: "top", y: 0.95, pad: { b: 0 } },
-    xaxis: { title: "回合數 (Episode)" },
-    yaxis: { title: "步數 (Steps)" },
+    title: { text: L.stepsPerEp, font: { size: 18 }, yanchor: "top", y: 0.95, pad: { b: 0 } },
+    xaxis: { title: L.episodeAxis },
+    yaxis: { title: L.stepsAxisEp },
     margin: { t: 30, b: 40, l: 50, r: 20 }
   }, { displayModeBar: false });
 }
