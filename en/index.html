@@ -318,6 +318,9 @@
       resetGeneralCharts();
       dqnWorker.postMessage({ type: 'resetQTable' });
       dqnFitted     = false;
+      window.rrLog.game     = url;
+      window.rrLog.params   = { alpha: Alpha, gamma: Gamma, epsilon: Epsilon, bins: numBins };
+      window.rrLog.episodes = [];
     }
 
     loadGameBtn.addEventListener("click", () => {
@@ -691,6 +694,8 @@
 
         if (message.done === true) {
           if (plotGeneralCharts) updateEpisodeChart();
+          window.rrLog.episodes.push({ ep: episodeCount, reward: episodeReward, steps: episodeSteps });
+          window.rrLog.params = { alpha: Alpha, gamma: Gamma, epsilon: Epsilon, bins: numBins };
           episodeCount  += 1;
           episodeReward  = 0;
           episodeSteps   = 0;
@@ -743,6 +748,18 @@
     let episodeCount  = 1;
     let episodeReward = 0;
     let episodeSteps  = 0;
+
+    // Experiment log — readable by Playwright via page.evaluate(() => window.rrLog)
+    window.rrLog = {
+      game:     null,
+      params:   {},
+      episodes: []
+    };
+    window.rrLogSnapshot = () => ({
+      game:     window.rrLog.game,
+      params:   { ...window.rrLog.params },
+      episodes: window.rrLog.episodes.slice()
+    });
 
 
     /***************************************************
