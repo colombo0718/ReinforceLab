@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>10×10 Grid Map</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <link rel="stylesheet" href="game-info.css">
+  <style>
+    body { margin: 0; padding: 0; }
+    #game-container {
+      width: 500px;
+      height: 500px;
+      margin: auto;
+    }
+    #level-select {
+      text-align: center;
+      margin: 20px;
+    }
+    #level-select label {
+      margin: 0 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container"></div>
+
+  <div id="level-select">
+    <h3>Select Level:</h3>
+    <label><input type="radio" name="level" value="0" onclick="changeLevel(0)" checked> Open Field</label>
+    <label><input type="radio" name="level" value="1" onclick="changeLevel(1)"> Walled In</label>
+    <label><input type="radio" name="level" value="2" onclick="changeLevel(2)"> Coins Added</label>
+    <label><input type="radio" name="level" value="3" onclick="changeLevel(3)"> Detour Rewards</label>
+    <label><input type="radio" name="level" value="4" onclick="changeLevel(4)"> Watch the Fire</label>
+    <label><input type="radio" name="level" value="5" onclick="changeLevel(5)"> False Shortcut</label>
+  </div>
+
+  <div id="info">
+    <h3>Task Description</h3>
+    <p>The agent navigates a 10×10 grid map, starting from a spawn point and finding a path to the goal. The map may contain walls, coins, hazards, and rockets that teleport directly to the goal.</p>
+
+    <details>
+      <summary>🎯 Reward</summary>
+      <ul>
+        <li>Reach goal 🏆: +10, episode ends</li>
+        <li>Pick up coin 💰: small positive reward</li>
+        <li>Step on bomb 💣 / fire 🔥: negative reward, episode ends</li>
+        <li>Step on rocket 🚀: teleport to goal</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>🧭 State</summary>
+      <ul>
+        <li><code>playerX</code>: agent X position (0 ~ 500)</li>
+        <li><code>playerY</code>: agent Y position (0 ~ 500)</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>🕹️ Actions</summary>
+      <ul>
+        <li><code>0</code>: none (stay)</li>
+        <li><code>1</code>: right ／ <code>2</code>: down ／ <code>3</code>: left ／ <code>4</code>: up</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>⚙️ Suggested Parameters</summary>
+      <div class="param-grid">
+        <div class="param-col">
+          <h4>Beginner</h4>
+          <ul>
+            <li>bins = 10, ε = 0.3</li>
+            <li>α = 0.5, γ = 0.9</li>
+            <li>Start with Open Field</li>
+          </ul>
+        </div>
+        <div class="param-col">
+          <h4>Advanced</h4>
+          <ul>
+            <li>Try levels with obstacles</li>
+            <li>Observe the Q-Table heatmap</li>
+            <li>Compare convergence speed across levels</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <script>
+    const gridSize = 10;
+    const cellSize = 50;
+    const canvasSize = 500;
+
+    let currentLevel = 0;
+    let playerGrid = { x: 0, y: 0 };
+    const goalGrid = { x: 9, y: 9 };
+
+    let rewardBuffer = 0;
+    let currentState = [];
+    let currentSessionId = 0;
+
+    const levels = [
+      [
+        "P.........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        ".........T"
+      ],
+      [
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "....######",
+        "....#P....",
+        "....#.....",
+        "....#.....",
+        "....#.....",
+        "....#....T"
+      ],
+      [
+        "P.........",
+        "..........",
+        "..........",
+        "...G......",
+        "..........",
+        "..........",
+        "......G...",
+        "..........",
+        "..........",
+        ".........T"
+      ],
+      [
+        "P.........",
+        "..........",
+        "..........",
+        "G.........",
+        "..........",
+        "..........",
+        "G.........",
+        "..........",
+        "..........",
+        "G..G..G..T"
+      ],
+      [
+        "P..F..F..T",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        ".........."
+      ],
+      [
+        "G.........",
+        "..........",
+        "..........",
+        "...P......",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        ".........T"
+      ],
+    ];
+
+    function setup() {
+      let canvas = createCanvas(canvasSize, canvasSize);
+      canvas.parent('game-container');
+      textAlign(CENTER, CENTER);
+      textSize(32);
+      initLevel();
+      updateState();
+      noLoop();
+    }
+
+    function draw() {
+      push();
+      translate(0, height);
+      scale(1, -1);
+      background(240);
+      drawGrid();
+      drawLevel();
+      pop();
+    }
+
+    function drawGrid() {
+      stroke(180);
+      strokeWeight(1);
+      for (let i = 0; i <= gridSize; i++) {
+        let x = i * cellSize;
+        line(x, 0, x, canvasSize);
+      }
+      for (let j = 0; j <= gridSize; j++) {
+        let y = j * cellSize;
+        line(0, y, canvasSize, y);
+      }
+    }
+
+    function gridToPixel(grid) {
+      return {
+        x: grid.x * cellSize + cellSize / 2,
+        y: grid.y * cellSize + cellSize / 2
+      };
+    }
+
+    function drawEmoji(emoji, pos) {
+      push();
+      translate(pos.x, pos.y);
+      scale(1, -1);
+      text(emoji, 0, 0);
+      pop();
+    }
+
+    let level = [];
+    function initLevel() {
+      level = levels[currentLevel].slice();
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          if (level[y][x] === 'P') {
+            playerGrid = { x: x, y: y };
+            return;
+          }
+        }
+      }
+    }
+
+    function drawLevel() {
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          let pos = gridToPixel({ x, y });
+          if (x === playerGrid.x && y === playerGrid.y) {
+            drawEmoji("🧑", pos);
+            continue;
+          }
+          let char = level[y][x];
+          switch (char) {
+            case 'P':
+              break;
+            case 'T':
+              drawEmoji("🚪", pos);
+              break;
+            case '#':
+              drawEmoji("🚧", pos);
+              break;
+            case 'G':
+              drawEmoji("💰", pos);
+              break;
+            case 'F':
+              drawEmoji("🔥", pos);
+              break;
+            case 'B':
+              drawEmoji("💣", pos);
+              break;
+            case 'S':
+              drawEmoji("🚀", pos);
+              break;
+            case 'C':
+              drawEmoji("🍬", pos);
+              break;
+            case 'L':
+              drawEmoji("⚡", pos);
+              break;
+            default:
+              break;
+          }
+        }
+      }
+    }
+
+    function changeLevel(levelIndex) {
+      currentLevel = levelIndex;
+      initLevel();
+      updateState();
+      redraw();
+    }
+
+    function updateState() {
+      let pos = gridToPixel(playerGrid);
+      currentState = [ pos.x, pos.y ];
+    }
+
+    function handleMessage(event) {
+      let message = event.data;
+      if (message.type === "action") {
+        processAction(message.action);
+        updateState();
+        sendRewardState();
+        redraw();
+      } else if (message.type === "questInfo") {
+        currentSessionId = message.sessionId;
+
+        let gameInfo = {
+          type: "gameInfo",
+          players: [{
+            stateInfo: [
+              { name: 'playerX', min: 0, max: canvasSize, bin: 10 },
+              { name: 'playerY', min: 0, max: canvasSize, bin: 10 }
+            ],
+            actionInfo: [
+              { type: "switch", level: 5, name: ['❌', '➡️', '⬇️', '⬅️', '⬆️'] }
+            ]
+          }]
+        };
+        window.parent.postMessage(gameInfo, "*");
+      }
+    }
+    window.addEventListener("message", handleMessage);
+
+    function keyPressed() {
+      let action = 0;
+      if (key === 'w' || key === 'W') action = 1;
+      else if (key === 's' || key === 'S') action = 2;
+      else if (key === 'a' || key === 'A') action = 3;
+      else if (key === 'd' || key === 'D') action = 4;
+      processAction(action);
+      updateState();
+      sendRewardState();
+      redraw();
+    }
+
+    function sendRewardState() {
+      window.parent.postMessage({
+        type: "reward_state",
+        reward: rewardBuffer,
+        state: currentState,
+        done: episodeDone,
+        sessionId: currentSessionId
+      }, "*");
+      rewardBuffer = 0;
+      if (episodeDone) {
+        initLevel();
+        episodeDone = false;
+      }
+    }
+
+    function processAction(action) {
+      let proposedGrid = { x: playerGrid.x, y: playerGrid.y };
+
+      if (action === 1 && playerGrid.x < gridSize - 1) {
+        proposedGrid.x++;
+      } else if (action === 2 && playerGrid.y > 0) {
+        proposedGrid.y--;
+      } else if (action === 3 && playerGrid.x > 0) {
+        proposedGrid.x--;
+      } else if (action === 4 && playerGrid.y < gridSize - 1) {
+        proposedGrid.y++;
+      }
+
+      let newPlayerGrid = evaluateProposedMove(proposedGrid);
+      playerGrid = newPlayerGrid;
+
+      processCellEffect(playerGrid.x, playerGrid.y);
+    }
+
+    function evaluateProposedMove(proposedGrid) {
+      let cellChar = level[proposedGrid.y][proposedGrid.x];
+      switch (cellChar) {
+        case '#':
+          return { x: playerGrid.x, y: playerGrid.y };
+        case 'S':
+          console.log("Rocket! Teleporting to goal.");
+          return { x: goalGrid.x, y: goalGrid.y };
+        default:
+          return proposedGrid;
+      }
+    }
+
+    function processCellEffect(x, y) {
+      let cellChar = level[y][x];
+      switch (cellChar) {
+        case 'G':
+          rewardBuffer += 10;
+          updateLevelCell(x, y, '.');
+          break;
+        case 'F':
+          rewardBuffer -= 10;
+          updateLevelCell(x, y, '.');
+          break;
+        case 'T':
+          rewardBuffer += 100;
+          updateLevelCell(x, y, '.');
+          endTurn();
+          break;
+        case 'B':
+          rewardBuffer -= 100;
+          updateLevelCell(x, y, '.');
+          endTurn();
+          break;
+        default:
+          break;
+      }
+    }
+
+    let episodeDone = false;
+
+    function endTurn() {
+      episodeDone = true;
+    }
+
+    function updateLevelCell(x, y, newChar) {
+      let row = level[y].split('');
+      row[x] = newChar;
+      level[y] = row.join('');
+    }
+  </script>
+</body>
+</html>
