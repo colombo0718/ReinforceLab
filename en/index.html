@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🕹️ Reinforce Lab 🧪</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='75'>🤖</text></svg>">
+  <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <!-- plotly.js -->
+  <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+
+  <!-- Blockly -->
+  <!-- <script src="https://unpkg.com/blockly/blockly.min.js"></script> -->
+
+
+  <link rel="stylesheet" href="../style.css">
+
+</head>
+
+<body>
+  <!-- Left: Game Area -->
+  <div id="leftPanel">
+    <!-- Top Controls -->
+    <div id="controls">
+      <button id="toggleFullscreen">🕹️Fullscreen</button>
+      <input id="gameUrlInput" type="text" value="/games/Maze1D_en.html"
+             placeholder="Enter game URL" />
+      <button id="loadGame">♻️Load</button>
+      <button id="togglePause">⏸️Pause</button>
+      <button id="toggleAccel">🚀Accel</button>
+    </div>
+
+    <!-- iframe: for sub-games -->
+    <iframe id="game-iframe" src="/games/Maze1D_en.html"></iframe>
+
+    <!-- Bottom Action Buttons -->
+    <div id="actions">
+      <button>⬜None </button>
+      <button>⬅️Left</button>
+      <button>➡️Right</button>
+    </div>
+  </div>
+
+  <!-- Right: Parent Platform -->
+  <div id="rightPanel">
+
+    <!-- Tabs Buttons -->
+    <div class="sub-tab-buttons">
+      <button class="sub-tab-link active" data-subtab="tutorial">🧭Guide</button>
+      <button class="sub-tab-link" data-subtab="offical-games">🎮Games</button>
+      <button class="sub-tab-link" data-subtab="privacy-policy">ℹ️About</button>
+      <!-- Agent 1 -->
+      <span class="agent-label">Agent 1:</span>
+      <button id='me' class="sub-tab-link" data-subtab="p1-config">📊Dashboard</button>
+      <button class="sub-tab-link" data-subtab="p1-qtable">🔬Analysis</button>
+      <!-- <button class="sub-tab-link" data-subtab="p1-replay">📽️Replay</button> -->
+      <!-- <button class="sub-tab-link" data-subtab="p1-blocks">🧩Blocks</button> -->
+
+
+      <!-- Agent 2 UI
+      <span class="agent-label">Agent 2:</span>
+      <button class="sub-tab-link" data-subtab="p2-config">📊Dashboard</button>
+      <button class="sub-tab-link" data-subtab="p2-qtable">🔬Analysis</button>
+      -->
+      <span class="rr-version">RR Platform v1.0.0</span>
+    </div>
+
+    <!-- Tabs Content -->
+    <div id="tutorial" class="sub-tab-content active" >
+    </div>
+    
+    <div id="offical-games" class="sub-tab-content"> 
+    </div>
+
+    <div id="privacy-policy" class="sub-tab-content">
+    </div>
+
+
+
+
+    <!-- 1. p1-config -->
+    <div id="p1-config" class="sub-tab-content " >
+      <div class="grid-container"> 
+          <div> 
+            <h4>Algorithm Selection</h4>
+            <!-- Learning Method Selection -->
+            <label>Learning Method:</label><br>
+            <input type="radio" id="algorithm-qtable" name="algorithm" value="Qtable" checked onchange="handleSelection()">
+            <label for="algorithm-qtable">Q-Table</label>
+            <input type="radio" id="algorithm-dqn" name="algorithm" value="DQN" onchange="handleSelection()">
+            <label for="algorithm-dqn">DQN</label>
+            <br><br>
+            
+            <!-- Strategy Selection -->
+            <label>Strategy:</label><br>
+            <input type="radio" id="strategy-egreedy" name="strategy" value="egreedy" checked onchange="handleStrategySelection()">
+            <label for="strategy-egreedy">ε-greedy</label>
+            <input type="radio" id="strategy-softmax" name="strategy" value="softmax" onchange="handleStrategySelection()">
+            <label for="strategy-softmax">Softmax</label>
+            <br><br>
+
+          </div>
+          <!-- <label>Q-Learning Update Formula:</label><br>
+          <img src="../q_learning_formula.png" alt="Q-learning Update Formula">
+          <br><br> -->
+          <div>
+            <h4>Hyperparameters</h4>
+            <label for="learning-rate-slider">Learning Rate (α):</label>
+            <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0.5"
+                  oninput="updateValue('Alpha', this.value)">
+            <span class="value-display" id="alpha-value">0.5</span>
+            <br>
+
+            <label for="discount-factor-slider">Discount Factor (γ):</label>
+            <input id="discount-factor-slider" type="range" min="0" max="0.95" step="0.05" value="0.95"
+                  oninput="updateValue('Gamma', this.value)">
+            <span class="value-display" id="gamma-value">0.95</span>
+            <br>
+
+            <div id="epsilon-row">
+            <label for="exploration-rate-slider">Exploration Rate (ε):</label>
+            <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.05" value="0.2"
+                  oninput="updateValue('Epsilon', this.value)">
+            <span class="value-display" id="epsilon-value">0.2</span>
+            </div>
+            <div id="tau-row" style="opacity:0.4">
+            <label for="temperature-slider">Temperature (τ):</label>
+            <input id="temperature-slider" type="range" min="0.1" max="20" step="0.1" value="5" disabled
+                  oninput="updateValue('Tau', this.value)">
+            <span class="value-display" id="tau-value">5.0</span>
+            </div>
+            <br>
+            <!-- Environment Hyperparameters -->
+            <label for="optimism-slider">Optimism (ψ):</label>
+            <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="1"
+                  oninput="updateValue('Psi', this.value)">
+            <span class="value-display" id="psi-value">1</span>
+            <br><br>
+
+            <label for="delay-slider">Delay (ms):</label>
+            <input id="delay-slider" type="range" min="0" max="100" step="10" value="50"
+                  oninput="updateValue('delayTime', this.value)">
+            <span class="value-display" id="delaytime-value">50</span>
+          </div>
+      <!-- Section 1: Cumulative Reward Chart -->
+      
+            <div id="p1-second-reward" class="chart"></div>  <!-- Top Left -->
+            <div id="p1-second-steps" class="chart"></div>   <!-- Top Right -->
+            <div id="p1-episode-reward" class="chart"></div> <!-- Bottom Left -->
+            <div id="p1-episode-steps" class="chart"></div>  <!-- Bottom Right -->
+      </div>
+    </div>
+    <!-- 2. p1-blocks -->
+    <div id="p1-qtable" class="sub-tab-content">
+
+      <div class="grid-container">
+        <div style="width: 100%; " id="p1-ui1">
+          <h4>Q-Table Stats</h4>
+
+          <button class="q-btn" onclick="exportQtable()">💾 Export</button>
+
+          <label class="q-btn">
+            📂 Import
+            <input type="file" id="importQtableInput" accept=".json,.txt"
+                  onchange="importQtable(event)" hidden>
+          </label>
+
+          <button class="q-btn" onclick="clearQtable()">🧹 Clear</button>
+          <div class="q-stats">
+            <div>State Bins <span id="stat-bins">[10×10]</span></div>
+            <div>Actions <span id="stat-actions">[5]</span></div>
+            <div>Total Data <span id="stat-total">102 / 500</span></div>
+            <div>Coverage <span id="stat-cover">20.4%</span></div>
+            <div>Sync <span id="stat-sync">Syncing...</span></div>
+          </div>
+        </div>
+        
+        <div id="p1-ui2">
+          <h4>Chart Controls</h4>
+
+          <!-- Source: Select Q-Table or DQN network valuation source -->
+          <label>Source:</label><br>
+          <input type="radio" id="chart-src-qtable" name="chart-source" value="qtable" checked onchange="handleChartSourceSelection()">
+          <label for="chart-src-qtable">Q-Table</label>
+          &nbsp;&nbsp;
+          <input type="radio" id="chart-src-dqn" name="chart-source" value="dqn" onchange="handleChartSourceSelection()">
+          <label for="chart-src-dqn">DQN</label>
+          <br><br>
+
+          <!-- Projection: Select which two dimensions to expand into X/Y axes -->
+          <label>Projection:</label><br>
+          <label>X-axis:</label><select id="x-axis"></select>
+          &nbsp;&nbsp;
+          <label>Y-axis:</label><select id="y-axis"></select>
+          <br><br>
+
+          <!-- Slice Position: Which value section to observe for other dimensions -->
+          <label>Slice Pos:</label><br>
+          <input type="radio" id="tracking-live"   name="tracking" value="live" checked
+                 onchange="document.getElementById('sliders-detail').removeAttribute('open')">
+          <label for="tracking-live">Live</label>
+          &nbsp;&nbsp;
+          <input type="radio" id="tracking-slider" name="tracking" value="slider"
+                 onchange="document.getElementById('sliders-detail').setAttribute('open','')">
+          <label for="tracking-slider">Manual</label>
+
+          <!-- Dimension Sliders -->
+          <details id="sliders-detail">
+            <summary style="cursor:pointer; color:#888; font-size:0.9em; margin-top:4px;">Sliders</summary>
+            <table id="dim-sliders-table" style="border-spacing: 4px 6px;"></table>
+          </details>
+
+        </div>
+        
+        <div id="p1-acti-color" class="chart"></div>
+        <div id="p1-bars-value" class="chart"></div>
+        
+        <div id="p1-line-value" class="chart"></div>
+        <div id="p1-diff-value" class="chart"></div>
+        
+        <div id="p1-maxi-value" class="chart"></div>
+        <div id="p1-mini-value" class="chart"></div>
+
+      </div>
+    </div>
+
+    <div id="p1-blocks" class="sub-tab-content">
+        <div id="p1-blocklyDiv"></div>
+    </div>
+    <!-- 4. p1-logs -->
+    <div id="p1-logs" class="sub-tab-content">
+
+    </div>
+
+
+
+
+
+    <!-- 4. p2-blocks -->
+    <div id="p2-blocks" class="sub-tab-content" >
+      <div id="p2-blocklyDiv"></div>
+    </div>
+    <!-- 5. p2-config -->
+    <div id="p2-config" class="sub-tab-content" >
+      <div style="width:100%; height: 33%">
+        <canvas id="p2-rewards-chart"></canvas>
+
+      </div>
+
+      <div style="width:100%; height: 33%">
+        <canvas id="p2-qValues-chart"></canvas>
+      </div>
+    </div>
+    <!-- 6. p2-logs -->
+    <div id="p2-logs" class="sub-tab-content" >
+    </div>
+
+
+  </div>
+
+  <!-- (Optional) jQuery UI Dialog for Q-value chart popup -->
+
+
+  <!-- ================================ -->
+  <!-- JS Sections: Fullscreen, Tabs, Q-Learning, DQN Worker Bridge -->
+  <!-- ================================ -->
+  <script src="../agentVisualizer.js"></script>
+  <script>
+
+    /***************************************************
+     * [1] Fullscreen / Normal Switch
+     ***************************************************/
+    const leftPanel = document.getElementById("leftPanel");
+    const rightPanel = document.getElementById("rightPanel");
+    const fullscreenButton = document.getElementById("toggleFullscreen");
+
+    fullscreenButton.addEventListener("click", () => {
+      if (leftPanel.classList.contains("fullscreen")) {
+        leftPanel.classList.remove("fullscreen");
+        rightPanel.style.display = "flex";
+        fullscreenButton.textContent = "🕹️Fullscreen";
+      } else {
+        leftPanel.classList.add("fullscreen");
+        rightPanel.style.display = "none";
+        fullscreenButton.textContent = "🧪Normal";
+      }
+    });
+
+
+    /***************************************************
+     * [2] Game Control: Load / Pause / Accel
+     ***************************************************/
+    const loadGameBtn    = document.getElementById("loadGame");
+    const gameUrlInput   = document.getElementById("gameUrlInput");
+    const gameIframe     = document.getElementById("game-iframe");
+    const togglePauseBtn = document.getElementById("togglePause");
+    const toggleAccelBtn = document.getElementById("toggleAccel");
+
+    let currentSessionId = 1;
+
+    function cancelPendingFit() {
+      if (pendingFitResolve) {
+        pendingFitResolve(null);
+        pendingFitResolve = null;
+      }
+      fitInProgress = false;
+      document.getElementById('stat-sync').textContent = 'Syncing...';
+    }
+
+    function loadGame(url) {
+      cancelPendingFit();
+      currentSessionId += 1;
+      console.log(currentSessionId);
+      gameUrlInput.value = url;
+      gameIframe.src = url;
+      isPaused = false;
+      togglePauseBtn.textContent = "⏸️Pause";
+      resetGeneralCharts();
+      dqnWorker.postMessage({ type: 'resetQTable' });
+      dqnFitted     = false;
+    }
+
+    loadGameBtn.addEventListener("click", () => {
+      loadGame(gameUrlInput.value.trim());
+    });
+
+    let isPaused = false;
+    togglePauseBtn.addEventListener("click", () => {
+      if (!isPaused) {
+        gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
+        togglePauseBtn.textContent = "▶️Resume";
+        runPausedDistillation();
+      } else {
+        gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
+        gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
+        togglePauseBtn.textContent = "⏸️Pause";
+      }
+      isPaused = !isPaused;
+    });
+
+    async function runPausedDistillation() {
+      while (isPaused) {
+        if (!fitInProgress) {
+          fitInProgress = true;
+          syncQTableToWorker();
+          await requestFit();
+        } else {
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+    }
+
+    let isAccel = false;
+    toggleAccelBtn.addEventListener("click", () => {
+      if (!isAccel) {
+        gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
+        toggleAccelBtn.textContent = "🐇Normal";
+        delayTime = basicDelayTime / 5;
+      } else {
+        gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
+        toggleAccelBtn.textContent = "🚀Accel";
+        delayTime = basicDelayTime;
+      }
+      isAccel = !isAccel;
+    });
+
+    function setActiveActionButton(actionIndex) {
+      const btns = document.querySelectorAll("#actions button");
+      for (const b of btns) b.classList.remove("flash");
+      if (btns[actionIndex]) btns[actionIndex].classList.add("flash");
+    }
+
+
+    /***************************************************
+     * [3] Tabs Switch
+     ***************************************************/
+    const subTabLinks    = document.querySelectorAll(".sub-tab-link");
+    const subTabContents = document.querySelectorAll(".sub-tab-content");
+
+    subTabLinks.forEach(link => {
+      link.addEventListener("click", () => {
+        subTabLinks.forEach(l => l.classList.remove("active"));
+        subTabContents.forEach(c => c.classList.remove("active"));
+        link.classList.add("active");
+        const target = link.getAttribute("data-subtab");
+        document.getElementById(target).classList.add("active");
+        if (target === "p1-blocks" && workspace1) Blockly.svgResize(workspace1);
+        if (target === "p2-blocks" && workspace2) Blockly.svgResize(workspace2);
+      });
+    });
+
+    document.addEventListener('click', function(e) {
+      const button = e.target.closest('.quick-load-button');
+      if (!button) return;
+      loadGame(button.getAttribute('data-url'));
+    });
+
+
+    /***************************************************
+     * [4] Doc Loading
+     ***************************************************/
+    let plotGeneralCharts = true;
+    let plotQualityCharts = true;
+
+    function loadDoc(target, file) {
+      fetch(file)
+        .then(res => res.text())
+        .then(html => { document.getElementById(target).innerHTML = html; });
+    }
+
+    loadDoc("tutorial",       "../docs/tutorial.html");
+    loadDoc("offical-games",  "../docs/gamelist.html");
+    loadDoc("privacy-policy", "../docs/about.html");
+
+
+    /***************************************************
+     * [5] Algorithm & Strategy Selection
+     ***************************************************/
+    let currentAlgorithm = 'Qtable';
+    let currentStrategy  = 'egreedy';
+
+    function handleSelection() {
+      currentAlgorithm = document.querySelector('input[name="algorithm"]:checked').value;
+    }
+
+    function handleStrategySelection() {
+      currentStrategy = document.querySelector('input[name="strategy"]:checked').value;
+      const isEgreedy = currentStrategy === 'egreedy';
+      document.getElementById('epsilon-row').style.opacity = isEgreedy ? '1' : '0.4';
+      document.getElementById('exploration-rate-slider').disabled = !isEgreedy;
+      document.getElementById('tau-row').style.opacity    = isEgreedy ? '0.4' : '1';
+      document.getElementById('temperature-slider').disabled = isEgreedy;
+    }
+
+
+    /***************************************************
+     * [6] Hyperparameters
+     ***************************************************/
+    let QTable  = {};
+    let Alpha   = 0.5;
+    let Gamma   = 0.95;
+    let Epsilon = 0.1;
+    let Tau     = 5.0;
+    let Psi     = 1;
+
+    let basicDelayTime = 50, delayTime = 50;
+
+    function updateValue(parameter, value) {
+      value = parseFloat(value);
+      switch (parameter) {
+        case "Alpha":     Alpha = value; break;
+        case "Gamma":     Gamma = value; break;
+        case "Epsilon":   Epsilon = value; break;
+        case "Tau":       Tau = value; document.getElementById('tau-value').textContent = value.toFixed(1); break;
+        case "Psi":       Psi = value; break;
+        case "delayTime":
+          basicDelayTime = value;
+          delayTime = isAccel ? basicDelayTime / 5 : basicDelayTime;
+          break;
+        default: console.warn(`Unknown parameter: ${parameter}`);
+      }
+      const targetSpan = document.getElementById(parameter.toLowerCase() + "-value");
+      if (targetSpan) targetSpan.textContent = value;
+      console.log(`${parameter} updated to ${value}`);
+    }
+
+
+    /***************************************************
+     * [7] gameInfo
+     ***************************************************/
+    let stateInfo;
+    let actionInfo;
+    let state_size;
+    let action_size;
+
+    gameIframe.addEventListener("load", () => {
+      gameIframe.contentWindow.postMessage({ type: "questInfo", sessionId: currentSessionId }, "*");
+    });
+
+    window.addEventListener("message", (event) => {
+      const message = event.data;
+      if (message.type !== "gameInfo") return;
+
+      console.log(message);
+      stateInfo   = message.players[0].stateInfo;
+      actionInfo  = message.players[0].actionInfo;
+      state_size  = stateInfo.length;
+      action_size = actionInfo[0].level;
+      console.log(stateInfo, actionInfo);
+
+      const actionsDiv = document.getElementById("actions");
+      const names = actionInfo?.[0]?.name || [];
+      actionsDiv.innerHTML = "";
+      for (let i = 0; i < names.length; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = names[i];
+        actionsDiv.appendChild(btn);
+      }
+      renderActionColorWheel(actionInfo);
+
+      QTable     = {};
+      stateRange = [];
+      numBins    = [];
+      stateInfo.forEach((info) => {
+        stateRange.push({ min: info.min, max: info.max });
+        numBins.push(info.bin ?? 10);
+      });
+
+      syncStateInfoToWorker();
+      dqnWorker.postMessage({ type: 'initModel', stateDim: stateInfo.length, actionCount: action_size });
+      initChartControls();
+      gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
+    });
+
+
+    /***************************************************
+     * [8] Pipeline: Evaluate -> Strategy -> Action
+     ***************************************************/
+    let prevAction, prevState;
+    let nextAction, nextState;
+    let reward;
+
+    async function evaluateQuality(State) {
+      if (currentAlgorithm === 'DQN' && dqnFitted) {
+        return new Promise((resolve) => {
+          pendingPredictResolve = resolve;
+          dqnWorker.postMessage({ type: 'predict', data: State });
+        });
+      }
+      return getQArrayFromTable(State);
+    }
+
+    function planningStrategy(qArray) {
+      if (currentStrategy === 'softmax') return softmaxStrategy(qArray);
+      return eGreedyStrategy(qArray);
+    }
+
+    function learnOneStep(prevState, prevAction, reward, nextState, nextAction, nextQArray = null) {
+      if (Number.isInteger(prevAction)) {
+        qTableUpdate(prevState, prevAction, reward, nextState, nextAction, nextQArray);
+      }
+    }
+
+
+    /***************************************************
+     * [9] Trace
+     ***************************************************/
+    const traceLength = 5;
+    let trace = [];
+
+    function recordStep(prevState, prevAction, reward, nextState, nextAction, nextQArray = null) {
+      trace.unshift([prevState, prevAction, reward, nextState, nextAction, nextQArray]);
+      if (trace.length > traceLength) trace.pop();
+    }
+
+    function learnFromTrace() {
+      for (let i = 0; i < trace.length; i++) {
+        const [prevState, prevAction, reward, nextState, nextAction, nextQArray] = trace[i];
+        learnOneStep(prevState, prevAction, reward, nextState, nextAction, nextQArray);
+      }
+    }
+
+
+    /***************************************************
+     * [10] DQN Web Worker Bridge
+     ***************************************************/
+    const dqnWorker = new Worker('../dqnWebWorker.js');
+
+    let dqnFitted             = false;
+    let pendingPredictResolve = null;
+    let pendingFitResolve     = null;
+    let fitInProgress         = false;
+    let chartDataSource       = 'qtable';
+    let dqnPreviewTable       = {};
+
+    function syncQTableToWorker() {
+      dqnWorker.postMessage({ type: 'updateQTable', data: { ...QTable } });
+    }
+
+    function syncStateInfoToWorker() {
+      dqnWorker.postMessage({ type: 'updateStateInfo', data: { stateRange, numBins } });
+    }
+
+    function requestFit() {
+      return new Promise((resolve) => {
+        pendingFitResolve = resolve;
+        dqnWorker.postMessage({ type: 'fit' });
+      });
+    }
+
+    function requestBatchPredict() {
+      if (!dqnFitted) return;
+      dqnWorker.postMessage({ type: 'batchPredict', keys: Object.keys(QTable) });
+    }
+
+    function handleChartSourceSelection() {
+      chartDataSource = document.querySelector('input[name="chart-source"]:checked')?.value ?? 'qtable';
+      if (chartDataSource === 'dqn') requestBatchPredict();
+    }
+
+    function getQArrayForChart(state) {
+      if (chartDataSource === 'dqn' && dqnFitted) {
+        const key = getStateKey(state);
+        return dqnPreviewTable[key] ?? Array(action_size).fill(0);
+      }
+      return getQArrayFromTable(state);
+    }
+
+    dqnWorker.onmessage = (event) => {
+      if (event.data.type === 'log') {
+        console.log("[Worker Log]:", event.data.message);
+      } else if (event.data.type === 'predictResult') {
+        if (pendingPredictResolve) {
+          pendingPredictResolve(event.data.qValues);
+          pendingPredictResolve = null;
+        }
+      } else if (event.data.type === 'fitDone') {
+        dqnFitted     = true;
+        fitInProgress = false;
+        const loss = event.data.loss;
+        const syncRate = event.data.syncRate;
+        console.log(`[DQN] fit done, loss=${loss?.toFixed(4)}`);
+        if (syncRate != null) {
+          document.getElementById('stat-sync').textContent = `${(syncRate * 100).toFixed(1)}%`;
+        }
+        if (pendingFitResolve) {
+          pendingFitResolve(loss);
+          pendingFitResolve = null;
+        }
+        if (chartDataSource === 'dqn') requestBatchPredict();
+      } else if (event.data.type === 'batchPredictResult') {
+        dqnPreviewTable = event.data.results;
+      }
+    };
+
+    dqnWorker.onerror = (error) => {
+      console.error("Web Worker Error:", error);
+    };
+
+    async function runQtDistillationLoop() {
+      while (true) {
+        if (currentAlgorithm !== 'DQN' && !fitInProgress && Object.keys(QTable).length > 0) {
+          fitInProgress = true;
+          syncQTableToWorker();
+          await requestFit();
+        } else {
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+    }
+    runQtDistillationLoop();
+
+
+    /***************************************************
+     * [11] reward_state Training Loop
+     ***************************************************/
+    let frameNumber = 0;
+
+    window.addEventListener("message", async (event) => {
+      const message = event.data;
+
+      if (message.type === "reward_state") {
+
+        if (!message.sessionId) return;
+        if (message.sessionId !== currentSessionId) return;
+
+        reward    = message.reward;
+        nextState = message.state;
+
+        secondReward  += reward;
+        secondSteps   += 1;
+        episodeReward += reward;
+        episodeSteps  += 1;
+
+        let qArray   = await evaluateQuality(nextState);
+        let strategy = planningStrategy(qArray);
+        nextAction   = selectAction(strategy);
+
+        recordStep(prevState, prevAction, reward, nextState, nextAction, qArray);
+        if (reward !== 0) {
+          learnFromTrace();
+        } else {
+          learnOneStep(prevState, prevAction, reward, nextState, nextAction, qArray);
+        }
+
+        updateQtableStats();
+
+        prevState  = nextState;
+        prevAction = nextAction;
+        frameNumber = 0;
+
+        if (message.done === true) {
+          if (plotGeneralCharts) updateEpisodeChart();
+          episodeCount  += 1;
+          episodeReward  = 0;
+          episodeSteps   = 0;
+
+          if (currentAlgorithm === 'DQN') {
+            syncQTableToWorker();
+            fitInProgress = true;
+            await requestFit();
+          }
+        }
+
+        if (isPaused) return;
+        setTimeout(() => {
+          gameIframe.contentWindow.postMessage({ type: "action", action: nextAction }, "*");
+          setActiveActionButton(nextAction);
+        }, delayTime);
+      }
+
+      if (message.type === "frame") {
+        frameNumber += 1;
+      }
+
+      if (message.type === "endEpisode") {
+        console.log('endEpisode');
+        if (plotGeneralCharts) updateEpisodeChart();
+        episodeCount  += 1;
+        episodeReward  = 0;
+        episodeSteps   = 0;
+      }
+    });
+
+
+    /***************************************************
+     * [12] Chart Variables
+     ***************************************************/
+    let secondReward = 0;
+    let secondSteps  = 0;
+
+    let rewardData   = [];
+    let rewardLabels = [];
+    let stepsData    = [];
+    let stepsLabels  = [];
+
+    let startTime = Date.now();
+
+    let episodeIndex      = [];
+    let episodeRewardData = [];
+    let episodeStepsData  = [];
+
+    let episodeCount  = 1;
+    let episodeReward = 0;
+    let episodeSteps  = 0;
+
+
+    /***************************************************
+     * [13] QTable Export / Import
+     ***************************************************/
+    function exportQtable() {
+      const dataStr = JSON.stringify(QTable, null, 2);
+      const blob    = new Blob([dataStr], { type: "application/json" });
+      const url     = URL.createObjectURL(blob);
+      const link    = document.createElement("a");
+      link.href     = url;
+      link.download = "Qtable.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearQtable() {
+      QTable = {};
+      dqnFitted     = false;
+      fitInProgress = false;
+      dqnPreviewTable = {};
+      dqnWorker.postMessage({ type: 'resetQTable' });
+      dqnWorker.postMessage({ type: 'initModel', stateDim: stateInfo?.length ?? 1, actionCount: action_size ?? 1 });
+      document.getElementById('stat-sync').textContent = 'Syncing...';
+      updateQtableStats();
+    }
+
+    function importQtable(evt) {
+      const file = evt.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          QTable = JSON.parse(e.target.result);
+          dqnFitted     = false;
+          fitInProgress = false;
+          dqnPreviewTable = {};
+          document.getElementById('stat-sync').textContent = 'Syncing...';
+          syncQTableToWorker();
+          updateQtableStats();
+          console.log("QTable imported successfully:", Object.keys(QTable).length, "entries");
+        } catch (error) {
+          console.error("Error parsing QTable file", error);
+        }
+      };
+      reader.readAsText(file, "utf-8");
+      evt.target.value = '';
+    }
+
+
+    /***************************************************
+     * [14] QTable Stats
+     ***************************************************/
+    function updateQtableStats() {
+      const stateBins       = stateInfo.map(s => s.bin);
+      const totalStates     = stateBins.reduce((a, b) => a * b, 1);
+      const actionLevels    = actionInfo.map(a => a.level);
+      const actionsPerState = actionLevels.reduce((a, b) => a * b, 1);
+      const totalCells      = totalStates * actionsPerState;
+
+      let visitedCells = 0;
+      for (const stateKey in QTable) {
+        for (const q of QTable[stateKey]) {
+          if (Math.abs(q) > 0) visitedCells++;
+        }
+      }
+
+      const coverage = (visitedCells / totalCells * 100).toFixed(1);
+
+      document.getElementById("stat-bins").textContent    = `[${stateBins.join("×")}]`;
+      document.getElementById("stat-actions").textContent = `[${actionLevels.join(",")}]`;
+      document.getElementById("stat-total").textContent   = `${visitedCells} / ${totalCells}`;
+      document.getElementById("stat-cover").textContent   = `${coverage}%`;
+    }
+
+    // --- ?game= URL parameter ---
+    (function () {
+      const params   = new URLSearchParams(window.location.search);
+      const gameParam = params.get("game");
+      if (gameParam) loadGame(gameParam);
+    })();
+
+  </script>
+  <script>window.chartLang = window.chartLang ?? "en";</script>
+  <script src="../generalCharts.js"></script>
+  <script src="../qualityCharts.js"></script>
+  <script src="../reinforceEngine.js"></script>
+</body>
+</html>
