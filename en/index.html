@@ -674,6 +674,7 @@
         secondSteps   += 1;
         episodeReward += reward;
         episodeSteps  += 1;
+        window.rrStepCount = (window.rrStepCount ?? 0) + 1;
 
         let qArray   = await evaluateQuality(nextState);
         let strategy = planningStrategy(qArray);

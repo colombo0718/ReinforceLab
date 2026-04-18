@@ -779,6 +779,7 @@
         secondSteps   += 1;
         episodeReward += reward;
         episodeSteps  += 1;
+        window.rrStepCount = (window.rrStepCount ?? 0) + 1;
 
         // 演算法管線
         let qArray   = await evaluateQuality(nextState);  // 1. 評估價值（DQN 模式為非同步）
