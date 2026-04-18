@@ -31,7 +31,7 @@
  ***************************************************/
 let focusState;
 let cutX = 0, cutY = 1;
-const gapMax = 10;
+const gapMax = 1.0; // 下限：防止訓練初期 Q 值都接近 0 時誤判為「高確信」
 
 
 /***************************************************
@@ -228,24 +228,30 @@ function generateWhiteOverlayMatrix() {
   const hasY     = stateInfo.length >= 2;
   const numBinsX = hasX ? numBins[cutX] : 10;
   const numBinsY = hasY ? numBins[cutY] : 10;
-  const overlay  = [];
+  const gaps = [], cells = [];
+
   for (let j = 0; j < numBinsY; j++) {
-    const row = [];
-    const activeY = hasY ? true : (j === 0);
     for (let i = 0; i < numBinsX; i++) {
       const activeX = hasX ? true : (i === 0);
+      const activeY = hasY ? true : (j === 0);
       if (activeX && activeY) {
         const state = [...focusState];
         if (hasX) state[cutX] = stateInfo[cutX].min + (i + 0.5) * (stateInfo[cutX].max - stateInfo[cutX].min) / numBinsX;
         if (hasY) state[cutY] = stateInfo[cutY].min + (j + 0.5) * (stateInfo[cutY].max - stateInfo[cutY].min) / numBinsY;
         const sorted = getQArrayForChart(state).slice().sort((a, b) => b - a);
-        const gap    = sorted[0] - (sorted[1] ?? sorted[0]);
-        row.push(1 - Math.min(gap / gapMax, 1));
+        const gap = sorted[0] - (sorted[1] ?? sorted[0]);
+        gaps.push(gap);
+        cells.push({ i, j, gap });
       } else {
-        row.push(NaN); // 非有效維度格子：留白不渲染
+        cells.push({ i, j, gap: null });
       }
     }
-    overlay.push(row);
+  }
+
+  const dynMax = Math.max(gapMax, ...gaps);
+  const overlay = Array.from({ length: numBinsY }, () => Array(numBinsX).fill(NaN));
+  for (const { i, j, gap } of cells) {
+    if (gap !== null) overlay[j][i] = 1 - Math.min(gap / dynMax, 1);
   }
   return overlay;
 }
