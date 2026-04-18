@@ -53,9 +53,11 @@ function bucketToReal(dim, bucketIdx) {
 }
 
 function initChartControls() {
-  // 填入 x-axis / y-axis 選項，格式「狀態N-name」
+  const _Lc = window.CHART_TEXT?.[window.chartLang ?? "en"];
+  const _sp  = _Lc?.statePrefix ?? "State";
+  const _dp  = _Lc?.dimPrefix   ?? "Dim";
   const dimOptions = stateInfo.map((info, i) =>
-    `<option value="${i}">狀態${i + 1}-${info.name ?? '維度' + i}</option>`
+    `<option value="${i}">${_sp}${i + 1}-${info.name ?? _dp + i}</option>`
   ).join('');
   document.getElementById('x-axis').innerHTML = dimOptions;
   document.getElementById('y-axis').innerHTML = dimOptions;
@@ -77,7 +79,7 @@ function initChartControls() {
 
     // 標籤欄
     const tdLabel = document.createElement('td');
-    tdLabel.textContent = `狀態${dim + 1}-${info.name ?? '維度' + dim}`;
+    tdLabel.textContent = `${_sp}${dim + 1}-${info.name ?? _dp + dim}`;
     tdLabel.style.whiteSpace = 'nowrap';
     tdLabel.style.paddingRight = '6px';
 
