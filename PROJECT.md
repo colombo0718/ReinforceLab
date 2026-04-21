@@ -63,13 +63,12 @@ games/              各遊戲 HTML 環境
 |------|----------|------|
 | MAB.html | 新（done 欄位） | 多臂拉霸 |
 | Maze1D.html | 新 | 一維迷宮 |
-| Maze2D_emoji.html | 新 | 二維迷宮，emoji 渲染 |
+| Maze2D_emoji.html | 新 | 二維迷宮，emoji 渲染，6 關卡 |
 | heli.html | 新 | 直升機，p5.js，即時制 |
-| CartPole.html | 新 | Matter.js 物理，4D state |
+| fighter.html | 新 | 戰鬥機，連續狀態 |
 
-CartPole 額外特性：
-- State 直接送原始物理值，無任何前處理（歸一化交由平台處理）
-- stateInfo 宣告真實物理範圍：cartX [0,600]、cartVelX [-10,10]、poleAngle [-1.57,1.57]、poleAngularVel [-6,6]
+英文版（`_en.html`）：MAB、Maze1D、Maze2D_emoji、heli、fighter 各有對應英文版，位於 `games/` 目錄。
+英文子平台：`/en/`（`en/index.html` + `en/docs/`），JS/CSS 共用主版本（`../` 相對路徑）。
 
 ---
 
@@ -82,6 +81,23 @@ CartPole 額外特性：
 - **getBucketIndex()**：在 `reinforceEngine.js`，等距離散化
 
 DQN 為 Q-Table 蒸餾式架構，已完整實作。設計細節見 `Q表蒸餾式DQN：設計心法.md`。
+
+---
+
+## 實驗數據介面（Playwright 用）
+
+`index.html` 和 `en/index.html` 均暴露以下 window 變數，供外部腳本（Playwright）自動讀取訓練結果：
+
+```js
+window.rrLog          // { game, params, episodes: [{ep, reward, steps}] }
+window.rrLogSnapshot()// 上面的深拷貝，避免讀到寫入中的陣列
+window.rrStepCount    // 累計步數，用於防止 infinite episode 的安全閥
+```
+
+- `loadGame()` 呼叫時自動重置 `rrLog.episodes = []`
+- 每回合 `done: true` 時 push 一筆，同步更新 `params`
+- 使用說明：`docs/rr-experiment-agent-guide.md`
+- 實驗觀察紀錄：`docs/rr_experiment_findings.md`
 
 ---
 
