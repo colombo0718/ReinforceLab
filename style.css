@@ -678,3 +678,92 @@ button:hover {
       0 0 26px rgba(255, 64, 64, 0.44);
   }
 }
+
+/************************************************************
+ * 豎屏模式 (RWD Portrait)
+ ************************************************************/
+
+/* 浮動全屏鈕：預設隱藏，portrait 才顯示 */
+#portrait-fs-btn {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  /* 整體：左右切分 → 上下切分 */
+  body {
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  /* 遊戲區：上半 50% */
+  #leftPanel {
+    width: 100%;
+    height: 50dvh;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+    position: relative;
+  }
+
+  /* 隱藏 header 列與動作按鈕列（淺綠色區域） */
+  #controls,
+  #actions {
+    display: none;
+  }
+
+  /* iframe 撐滿整個遊戲區 */
+  #leftPanel iframe {
+    flex-grow: 1;
+    height: 100%;
+  }
+
+  /* 浮動全屏鈕 */
+  #portrait-fs-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  /* 控制區：下半 50% */
+  #rightPanel {
+    width: 100%;
+    height: 50dvh;
+    overflow-y: auto;
+  }
+
+  /* Tab 列：只保留遊戲、儀錶 */
+  .sub-tab-link[data-subtab="tutorial"],
+  .sub-tab-link[data-subtab="privacy-policy"],
+  .sub-tab-link[data-subtab="p1-qtable"],
+  .agent-label,
+  .rr-version {
+    display: none;
+  }
+
+  /* 演算法選擇區隱藏 */
+  #algo-selection {
+    display: none;
+  }
+
+  /* Steps 圖隱藏，只留 reward 圖 */
+  #p1-second-steps,
+  #p1-episode-reward,
+  #p1-episode-steps {
+    display: none;
+  }
+
+  /* Reward 圖撐滿整欄 */
+  #p1-second-reward {
+    grid-column: 1 / -1;
+  }
+}

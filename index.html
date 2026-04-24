@@ -33,6 +33,9 @@
     <!-- 中段 iframe：用於嵌入子遊戲 -->
     <iframe id="game-iframe" src="/games/Maze1D.html"></iframe>
 
+    <!-- 豎屏浮動全屏鈕（portrait only） -->
+    <button id="portrait-fs-btn" onclick="document.getElementById('toggleFullscreen').click()">⛶</button>
+
     <!-- 下段 動作按鈕 -->
     <div id="actions">
       <button>⬜無 </button>
@@ -80,8 +83,8 @@
 
     <!-- 1. p1-config -->
     <div id="p1-config" class="sub-tab-content " >
-      <div class="grid-container"> 
-          <div> 
+      <div class="grid-container">
+          <div id="algo-selection">
             <h4>演算法選擇</h4>
             <!-- 學習方法選擇 -->
             <label>學習方式:</label><br>
@@ -955,5 +958,20 @@
   <script src="./generalCharts.js"></script>
   <script src="./qualityCharts.js"></script>
   <script src="./reinforceEngine.js"></script>
+
+  <script>
+    // 豎屏模式：若當前 active tab 在 portrait 下被隱藏，自動切到遊戲 tab
+    const PORTRAIT_HIDDEN_TABS = ['tutorial', 'privacy-policy', 'p1-qtable'];
+    function handlePortraitTabSwitch() {
+      if (!window.matchMedia('(orientation: portrait)').matches) return;
+      const active = document.querySelector('.sub-tab-content.active');
+      if (active && PORTRAIT_HIDDEN_TABS.includes(active.id)) {
+        document.querySelector('.sub-tab-link[data-subtab="offical-games"]').click();
+      }
+    }
+    window.addEventListener('orientationchange', handlePortraitTabSwitch);
+    window.addEventListener('resize', handlePortraitTabSwitch);
+    handlePortraitTabSwitch();
+  </script>
 </body>
 </html>
