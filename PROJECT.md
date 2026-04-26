@@ -63,13 +63,23 @@ games/              各遊戲 HTML 環境
 |------|----------|------|
 | MAB.html | 新（done 欄位） | 多臂拉霸 |
 | Maze1D.html | 新 | 一維迷宮 |
-| Maze2D_emoji.html | 新 | 二維迷宮，emoji 渲染 |
+| Maze2D_emoji.html | 新 | 二維迷宮，emoji 渲染，6 關卡 |
 | heli.html | 新 | 直升機，p5.js，即時制 |
+| fighter.html | 新 | 戰鬥機，連續狀態，5D state |
 | CartPole.html | 新 | Matter.js 物理，4D state |
 
-CartPole 額外特性：
-- State 直接送原始物理值，無任何前處理（歸一化交由平台處理）
-- stateInfo 宣告真實物理範圍：cartX [0,600]、cartVelX [-10,10]、poleAngle [-1.57,1.57]、poleAngularVel [-6,6]
+英文版（`_en.html`）：MAB、Maze1D、Maze2D_emoji、heli、fighter 各有對應英文版，位於 `games/` 目錄。
+英文子平台：`/en/`（`en/index.html` + `en/docs/`），JS/CSS 共用主版本（`../` 相對路徑）。
+**`en/index.html` 目前封存，論文實驗教學進行中，不納入任何改動。**
+
+### 旗艦應用（外部專案）
+
+| 專案 | 網址 | 說明 |
+|------|------|------|
+| TradeTrail (TT) | `https://tradetrail.leaflune.org` | 金融市場 RL 訓練環境，源自 btc_trading.html |
+| CubicCraft 2D (CC2D) | `https://cubiccraft.leaflune.org/2D/` | 太空機體競技，物理引擎完成 |
+
+兩者已從 gamelist 以外部連結形式嵌入，不存放於 `games/` 目錄。
 
 ---
 
@@ -85,9 +95,37 @@ DQN 為 Q-Table 蒸餾式架構，已完整實作。設計細節見 `Q表蒸餾�
 
 ---
 
+## 實驗數據介面（Playwright 用）
+
+`index.html` 暴露以下 window 變數，供外部腳本（Playwright）自動讀取訓練結果：
+
+```js
+window.rrLog          // { game, params, episodes: [{ep, reward, steps}] }
+window.rrLogSnapshot()// 上面的深拷貝，避免讀到寫入中的陣列
+window.rrStepCount    // 累計步數，用於防止 infinite episode 的安全閥
+```
+
+- `loadGame()` 呼叫時自動重置 `rrLog.episodes = []`
+- 每回合 `done: true` 時 push 一筆，同步更新 `params`
+- 使用說明：`docs/rr-experiment-agent-guide.md`
+- 實驗觀察紀錄：`docs/rr_experiment_findings.md`
+
+---
+
+## 分支策略
+
+```
+master          ← 正式版（reinroom.leaflune.org 自動部署）
+dev             ← 整合測試（Cloudflare Pages 預覽 URL）
+feature/xxx     ← 功能開發，完成後 merge dev，穩定後 merge master
+```
+
+**`en/index.html` 論文實驗封存期間禁止任何改動。**
+
+---
+
 ## 開發規範
 
-- 這個平台短期（1.0 版）以截圖和論文用途為主，**避免大幅改動**
 - 遊戲自己負責 state 表示（前處理在遊戲端，不在平台端）
 - 提交訊息用中文或英文都可以，但要清楚說明改了什麼
 
