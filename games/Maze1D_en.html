@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1D Maze</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <link rel="stylesheet" href="game-info.css">
+  <style>
+    body {
+      max-width: 600px;
+      margin: auto;
+      padding: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container"></div>
+
+<div id="controls">
+  <label for="startPos">Starting Position:</label>
+  <input type="range" id="startPos" min="1" max="8" value="4" oninput="updateStartPos(this.value)" />
+  <span id="startPosValue">4</span>
+  <br/>
+
+  <label>Minor Feedback Mode:</label>
+  <input type="radio" name="feedback" value="none" checked onchange="updateFeedback(this.value)"> None
+  <input type="radio" name="feedback" value="positive" onchange="updateFeedback(this.value)"> Tailwind
+  <input type="radio" name="feedback" value="negative" onchange="updateFeedback(this.value)"> Headwind
+  <input type="radio" name="feedback" value="pie" onchange="updateFeedback(this.value)"> False Promise
+</div>
+
+<div id="info">
+  <h3>Task Description</h3>
+  <p>The agent moves along a 10-cell corridor. The goal is to reach the trophy 🏆 and collect the reward while avoiding the bomb 💣. Switch modes to change the feedback along the path and observe how different environments affect learning.</p>
+
+  <details>
+    <summary>🎯 Reward</summary>
+    <ul>
+      <li>Reach 🏆: +10, episode ends</li>
+      <li>Hit 💣: -10, episode ends</li>
+      <li>Tailwind mode: 🍬 small positive feedback along the path</li>
+      <li>Headwind mode: 🔥 small negative feedback along the path</li>
+      <li>False Promise mode: goal becomes 🍕, only gives +2</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>🧭 State</summary>
+    <ul>
+      <li><code>playerPos</code>: current cell index (0 ~ 9)</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>🕹️ Actions</summary>
+    <ul>
+      <li><code>0</code>: none (stay)</li>
+      <li><code>1</code>: right (move one cell right)</li>
+      <li><code>2</code>: left (move one cell left)</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>⚙️ Suggested Parameters</summary>
+    <div class="param-grid">
+      <div class="param-col">
+        <h4>Beginner</h4>
+        <ul>
+          <li>bins = 10, ε = 0.3</li>
+          <li>α = 0.5, γ = 0.9</li>
+          <li>Recommended: None mode</li>
+        </ul>
+      </div>
+      <div class="param-col">
+        <h4>Advanced</h4>
+        <ul>
+          <li>Switch Tailwind / Headwind modes</li>
+          <li>Observe how path feedback affects convergence</li>
+          <li>Compare "False Promise" vs normal goal</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+const gridSize = 10;
+const cellSize = 50;
+const canvasWidth = gridSize * cellSize;
+const canvasHeight = 50;
+let gameMap = ["💣", "", "", "", "", "", "", "", "", "🏆"];
+let playerPos = 4;
+let rewardBuffer = 0;
+let currentState = [];
+let gameOver = false;
+let feedbackMode = 'none';
+
+function setup() {
+  let canvas = createCanvas(canvasWidth, canvasHeight);
+  canvas.parent('game-container');
+  textSize(cellSize - 10);
+  updateState();
+  updateGameMap();
+}
+
+function draw() {
+  background(255);
+  drawMaze();
+}
+
+function drawMaze() {
+  for (let i = 0; i < gridSize; i++) {
+    let x = i * cellSize;
+    let y = 0;
+    fill(i === playerPos ? 'lightgreen' : 'white');
+    stroke(0);
+    rect(x, y, cellSize, cellSize, 0);
+    noStroke();
+    text(i === playerPos ? "🧑" : gameMap[i], x, 40);
+  }
+}
+
+function processAction(action) {
+  if (gameOver) return;
+  let prevPos = playerPos;
+  if (action === 2 && playerPos > 0) playerPos--;
+  else if (action === 1 && playerPos < gridSize - 1) playerPos++;
+
+  if (feedbackMode === 'positive') {
+    if (playerPos > prevPos && playerPos < 9) rewardBuffer += 1;
+    if (playerPos < prevPos && playerPos > 0) rewardBuffer -= 1;
+  } else if (feedbackMode === 'negative' || feedbackMode === 'pie') {
+    if (playerPos > prevPos && playerPos < 9) rewardBuffer -= 1;
+    if (playerPos < prevPos && playerPos > 0) rewardBuffer += 1;
+  }
+
+  updateGameMap();
+  updateState();
+  checkGameState();
+}
+
+function checkGameState() {
+  if (gameMap[playerPos] === "💣") {
+    rewardBuffer -= 10;
+    gameOver = true;
+  } else if (gameMap[playerPos] === "🏆") {
+    rewardBuffer += 10;
+    gameOver = true;
+  } else if (gameMap[playerPos] === "🍕") {
+    rewardBuffer += 2;
+    gameOver = true;
+  }
+}
+
+function resetGame() {
+  playerPos = parseInt(document.getElementById('startPos').value);
+  gameOver = false;
+  updateGameMap();
+  updateState();
+}
+
+function updateGameMap() {
+  const goalEmoji = (feedbackMode === 'pie') ? "🍕" : "🏆";
+  gameMap = ["💣", "", "", "", "", "", "", "", "", goalEmoji];
+
+  if (feedbackMode === 'positive') {
+    for (let i = 1; i < playerPos; i++) gameMap[i] = "🔥";
+    for (let i = playerPos + 1; i < 9; i++) gameMap[i] = "🍬";
+  } else if (feedbackMode === 'negative' || feedbackMode === 'pie') {
+    for (let i = 1; i < playerPos; i++) gameMap[i] = "🍬";
+    for (let i = playerPos + 1; i < 9; i++) gameMap[i] = "🔥";
+  }
+}
+
+function updateState() {
+  currentState = [playerPos];
+}
+
+function sendRewardState(done = false) {
+  window.parent.postMessage({
+    type: "reward_state",
+    reward: rewardBuffer,
+    state: currentState,
+    done: done,
+    sessionId: currentSessionId
+  }, "*");
+  rewardBuffer = 0;
+}
+
+function updateStartPos(value) {
+  document.getElementById('startPosValue').textContent = value;
+}
+
+function updateFeedback(mode) {
+  feedbackMode = mode;
+  updateGameMap();
+}
+
+
+let currentSessionId = 0;
+window.addEventListener("message", (event) => {
+  let msg = event.data;
+  if (msg.type === "action") {
+    processAction(msg.action);
+    sendRewardState(gameOver);
+    if (gameOver) resetGame();
+  } else if (msg.type === "questInfo") {
+    currentSessionId = msg.sessionId;
+    window.parent.postMessage({
+      type: "gameInfo",
+      players: [{
+        stateInfo: [{ name: 'playerPos', min: 0, max: gridSize - 1, bin: gridSize }],
+        actionInfo: [{ type: "switch", level: 3, name: ['❌', '➡️', '⬅️'] }]
+      }]
+    }, "*");
+  }
+});
+
+function keyPressed() {
+  let action = 0;
+  if (key === 'a' || keyCode === LEFT_ARROW) action = 2;
+  else if (key === 'd' || keyCode === RIGHT_ARROW) action = 1;
+  processAction(action);
+}
+</script>
+</body>
+</html>

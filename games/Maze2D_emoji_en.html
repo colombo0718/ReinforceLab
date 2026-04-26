@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>10×10 棋盤地圖遊戲 - p5.js 版</title>
-  <!-- 載入 p5.js 函式庫 -->
+  <title>10×10 Grid Map</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
   <link rel="stylesheet" href="game-info.css">
   <style>
@@ -26,68 +25,65 @@
 </head>
 <body>
 
-  <!-- 遊戲畫布容器 -->
   <div id="game-container"></div>
 
-  <!-- 關卡選擇區，使用 radio 按鈕 -->
   <div id="level-select">
-    <h3>選擇關卡：</h3>
-    <label><input type="radio" name="level" value="0" onclick="changeLevel(0)" checked> 原始地圖</label>
-    <label><input type="radio" name="level" value="1" onclick="changeLevel(1)"> 限縮範圍</label>
-    <label><input type="radio" name="level" value="2" onclick="changeLevel(2)"> 加入金幣</label>
-    <label><input type="radio" name="level" value="3" onclick="changeLevel(3)"> 遠路獎勵</label>
-    <label><input type="radio" name="level" value="4" onclick="changeLevel(4)"> 小心有火</label>
-    <label><input type="radio" name="level" value="5" onclick="changeLevel(5)"> 反向誘惑</label>
+    <h3>Select Level:</h3>
+    <label><input type="radio" name="level" value="0" onclick="changeLevel(0)" checked> Open Field</label>
+    <label><input type="radio" name="level" value="1" onclick="changeLevel(1)"> Walled In</label>
+    <label><input type="radio" name="level" value="2" onclick="changeLevel(2)"> Coins Added</label>
+    <label><input type="radio" name="level" value="3" onclick="changeLevel(3)"> Detour Rewards</label>
+    <label><input type="radio" name="level" value="4" onclick="changeLevel(4)"> Watch the Fire</label>
+    <label><input type="radio" name="level" value="5" onclick="changeLevel(5)"> False Shortcut</label>
   </div>
 
-  <!-- 遊戲說明區 -->
   <div id="info">
-    <h3>任務說明</h3>
-    <p>智能體在 10×10 的棋盤地圖上移動，從起點出發，找出通往目標的路徑。地圖中可能有牆壁阻擋、金幣獎勵、危險物件，以及能直接送達目標的火箭。</p>
+    <h3>Task Description</h3>
+    <p>The agent navigates a 10×10 grid map, starting from a spawn point and finding a path to the goal. The map may contain walls, coins, hazards, and rockets that teleport directly to the goal.</p>
 
     <details>
-      <summary>🎯 獎勵機制</summary>
+      <summary>🎯 Reward</summary>
       <ul>
-        <li>到達目標 🏆：+10，回合結束</li>
-        <li>撿到金幣 💰：小正回饋</li>
-        <li>踩到炸彈 💣 / 火焰 🔥：負回饋，回合結束</li>
-        <li>踩到火箭 🚀：直接傳送到目標</li>
+        <li>Reach goal 🏆: +10, episode ends</li>
+        <li>Pick up coin 💰: small positive reward</li>
+        <li>Step on bomb 💣 / fire 🔥: negative reward, episode ends</li>
+        <li>Step on rocket 🚀: teleport to goal</li>
       </ul>
     </details>
 
     <details>
-      <summary>🧭 狀態描述</summary>
+      <summary>🧭 State</summary>
       <ul>
-        <li><code>playerX</code>：角色 X 座標（0 ~ 500）</li>
-        <li><code>playerY</code>：角色 Y 座標（0 ~ 500）</li>
+        <li><code>playerX</code>: agent X position (0 ~ 500)</li>
+        <li><code>playerY</code>: agent Y position (0 ~ 500)</li>
       </ul>
     </details>
 
     <details>
-      <summary>🕹️ 動作功能</summary>
+      <summary>🕹️ Actions</summary>
       <ul>
-        <li><code>0</code>：none（不動作）</li>
-        <li><code>1</code>：up ／ <code>2</code>：down ／ <code>3</code>：left ／ <code>4</code>：right</li>
+        <li><code>0</code>: none (stay)</li>
+        <li><code>1</code>: right ／ <code>2</code>: down ／ <code>3</code>: left ／ <code>4</code>: up</li>
       </ul>
     </details>
 
     <details>
-      <summary>⚙️ 參數建議</summary>
+      <summary>⚙️ Suggested Parameters</summary>
       <div class="param-grid">
         <div class="param-col">
-          <h4>新手</h4>
+          <h4>Beginner</h4>
           <ul>
-            <li>bins = 10，ε = 0.3</li>
-            <li>α = 0.5，γ = 0.9</li>
-            <li>從關卡 1 開始</li>
+            <li>bins = 10, ε = 0.3</li>
+            <li>α = 0.5, γ = 0.9</li>
+            <li>Start with Open Field</li>
           </ul>
         </div>
         <div class="param-col">
-          <h4>進階</h4>
+          <h4>Advanced</h4>
           <ul>
-            <li>挑戰有障礙物的關卡</li>
-            <li>觀察 Q-Table 熱力圖</li>
-            <li>比較各關卡收斂速度</li>
+            <li>Try levels with obstacles</li>
+            <li>Observe the Q-Table heatmap</li>
+            <li>Compare convergence speed across levels</li>
           </ul>
         </div>
       </div>
@@ -95,21 +91,18 @@
   </div>
 
   <script>
-    // ===== 全域參數 =====
-    const gridSize = 10;          // 10×10 棋盤
-    const cellSize = 50;          // 每格 50×50 px
-    const canvasSize = 500;       // 畫布 500×500 px
+    const gridSize = 10;
+    const cellSize = 50;
+    const canvasSize = 500;
 
-    let currentLevel = 0;         // 當前關卡索引
-    let playerGrid = { x: 0, y: 0 };  // 玩家所在棋盤格子座標
-    const goalGrid = { x: 9, y: 9 };    // 目標位置 (假設固定在右上角)
+    let currentLevel = 0;
+    let playerGrid = { x: 0, y: 0 };
+    const goalGrid = { x: 9, y: 9 };
 
-    let rewardBuffer = 0;         // 獎勵暫存
-    let currentState = [];        // 狀態資訊（玩家像素座標）
+    let rewardBuffer = 0;
+    let currentState = [];
     let currentSessionId = 0;
 
-    // 關卡資料，每個關卡為一個字串陣列，代表棋盤各行：
-    // 'P'：玩家初始位置、'G'：目標、'#'：牆壁、'C'：金錢、'F'：火焰、'B'：炸彈、'S'：火箭
     const levels = [
       [
         "P.........",
@@ -182,24 +175,21 @@
         "..........",
         "..........",
         ".........T"
-      ],      
+      ],
     ];
 
-    // ===== p5.js 設定 =====
     function setup() {
       let canvas = createCanvas(canvasSize, canvasSize);
       canvas.parent('game-container');
       textAlign(CENTER, CENTER);
       textSize(32);
-      // 初始化關卡與玩家位置
       initLevel();
       updateState();
-      noLoop();  // 採用 redraw() 進行手動刷新
+      noLoop();
     }
 
     function draw() {
       push();
-      // 翻轉畫布，讓 (0,0) 變為左下角
       translate(0, height);
       scale(1, -1);
       background(240);
@@ -208,9 +198,6 @@
       pop();
     }
 
-    // ===== 畫面繪製相關 =====
-
-    // 畫棋盤網格
     function drawGrid() {
       stroke(180);
       strokeWeight(1);
@@ -224,7 +211,6 @@
       }
     }
 
-    // 將棋盤座標轉換成畫布像素座標（取格子中心）
     function gridToPixel(grid) {
       return {
         x: grid.x * cellSize + cellSize / 2,
@@ -232,7 +218,6 @@
       };
     }
 
-    // 為讓 emoji 正向顯示（因為畫布整體翻轉），局部再翻轉回來
     function drawEmoji(emoji, pos) {
       push();
       translate(pos.x, pos.y);
@@ -241,9 +226,6 @@
       pop();
     }
 
-    // ===== 關卡初始化與繪製 =====
-
-    // 初始化關卡：從關卡資料中找到 'P'，並設定玩家初始位置
     let level = [];
     function initLevel() {
       level = levels[currentLevel].slice();
@@ -257,55 +239,49 @@
       }
     }
 
-    // 畫出關卡物件與背景（玩家位置優先）
     function drawLevel() {
       for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
           let pos = gridToPixel({ x, y });
-          // 若該格為玩家所在位置，優先畫出玩家 emoji
           if (x === playerGrid.x && y === playerGrid.y) {
             drawEmoji("🧑", pos);
             continue;
           }
           let char = level[y][x];
           switch (char) {
-            case 'P': // 初始玩家位置（已由 playerGrid 處理）
+            case 'P':
               break;
-            case 'T': // 目標
+            case 'T':
               drawEmoji("🚪", pos);
               break;
-            case '#': // 牆壁
+            case '#':
               drawEmoji("🚧", pos);
               break;
-            case 'G': // 金錢
+            case 'G':
               drawEmoji("💰", pos);
               break;
-            case 'F': // 火焰
+            case 'F':
               drawEmoji("🔥", pos);
               break;
-            case 'B': // 炸彈
+            case 'B':
               drawEmoji("💣", pos);
               break;
-            case 'S': // 火箭
+            case 'S':
               drawEmoji("🚀", pos);
               break;
-            case 'C': // 糖果
+            case 'C':
               drawEmoji("🍬", pos);
               break;
-            case 'L': // 閃電
+            case 'L':
               drawEmoji("⚡", pos);
               break;
             default:
-              // 空白不繪製
               break;
           }
         }
       }
     }
 
-    // ===== 關卡與玩家移動處理 =====
-
-    // 當關卡改變時，更新 currentLevel 並重新初始化關卡
     function changeLevel(levelIndex) {
       currentLevel = levelIndex;
       initLevel();
@@ -313,13 +289,11 @@
       redraw();
     }
 
-    // 更新玩家狀態資訊（像素座標）
     function updateState() {
       let pos = gridToPixel(playerGrid);
       currentState = [ pos.x, pos.y ];
     }
 
-    // 處理來自父頁面的訊息（例如 RL）
     function handleMessage(event) {
       let message = event.data;
       if (message.type === "action") {
@@ -330,7 +304,6 @@
       } else if (message.type === "questInfo") {
         currentSessionId = message.sessionId;
 
-        // 回傳遊戲資訊
         let gameInfo = {
           type: "gameInfo",
           players: [{
@@ -348,7 +321,6 @@
     }
     window.addEventListener("message", handleMessage);
 
-    // 鍵盤控制：使用 WASD 對應移動方向
     function keyPressed() {
       let action = 0;
       if (key === 'w' || key === 'W') action = 1;
@@ -361,7 +333,6 @@
       redraw();
     }
 
-    // 傳送狀態與獎勵給父頁面
     function sendRewardState() {
       window.parent.postMessage({
         type: "reward_state",
@@ -377,13 +348,9 @@
       }
     }
 
-    // 處理玩家動作：
-    // 先計算預計移動位置，再依據該格物件決定最終玩家位置
     function processAction(action) {
-      // 複製目前位置為預計位置
       let proposedGrid = { x: playerGrid.x, y: playerGrid.y };
 
-      // 根據動作更新預計位置
       if (action === 1 && playerGrid.x < gridSize - 1) {
         proposedGrid.x++;
       } else if (action === 2 && playerGrid.y > 0) {
@@ -394,57 +361,46 @@
         proposedGrid.y++;
       }
 
-      // 檢查預計位置上的物件效應，決定最終位置
       let newPlayerGrid = evaluateProposedMove(proposedGrid);
       playerGrid = newPlayerGrid;
 
-      // 執行該格物件效果（包含金錢、火焰、門G、炸彈B等）
       processCellEffect(playerGrid.x, playerGrid.y);
     }
 
-    // 根據預計移動位置上的物件決定最終位置
     function evaluateProposedMove(proposedGrid) {
       let cellChar = level[proposedGrid.y][proposedGrid.x];
       switch (cellChar) {
-        case '#': // 遇到牆壁，不允許移動
-          // console.log("遇到牆壁，無法移動");
+        case '#':
           return { x: playerGrid.x, y: playerGrid.y };
-        case 'S': // 遇到火箭，直接傳送到目標位置
-          console.log("踩到火箭，傳送至目標點！");
+        case 'S':
+          console.log("Rocket! Teleporting to goal.");
           return { x: goalGrid.x, y: goalGrid.y };
         default:
-          // 其他情況正常移動
           return proposedGrid;
       }
     }
 
-    // 處理玩家所在格子的物件效果
     function processCellEffect(x, y) {
       let cellChar = level[y][x];
       switch (cellChar) {
-        case 'G': // gold
+        case 'G':
           rewardBuffer += 10;
-          console.log("撿到金錢，獎勵 +5");
-          updateLevelCell(x, y, '.');  // 收集後清除
+          updateLevelCell(x, y, '.');
           break;
-        case 'F': // fire
+        case 'F':
           rewardBuffer -= 10;
-          console.log("經過火焰，獎勵 -3");
-          updateLevelCell(x, y, '.');  // 火焰消失
+          updateLevelCell(x, y, '.');
           break;
-        case 'T': // target
+        case 'T':
           rewardBuffer += 100;
-          console.log("走到門，獎勵 +10");
-          updateLevelCell(x, y, '.');  // 門清除
+          updateLevelCell(x, y, '.');
           endTurn();
           break;
-        case 'B': //bomb
+        case 'B':
           rewardBuffer -= 100;
-          console.log("走到炸彈B，獎勵 -10");
-          updateLevelCell(x, y, '.');  // 炸彈清除
+          updateLevelCell(x, y, '.');
           endTurn();
           break;
-        // 可擴充其他物件效果
         default:
           break;
       }
@@ -452,13 +408,10 @@
 
     let episodeDone = false;
 
-    // 結束回合：標記終局，由 sendRewardState 送出後再重置
     function endTurn() {
       episodeDone = true;
-      console.log("結束回合，重置關卡！");
     }
 
-    // 更新關卡資料中指定格子的內容（例如收集後變成空白）
     function updateLevelCell(x, y, newChar) {
       let row = level[y].split('');
       row[x] = newChar;

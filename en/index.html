@@ -1,74 +1,71 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>🕹️ Reinforce Lab 🧪</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='75'>🤖</text></svg>">
-  <!-- 引入 TensorFlow.js -->
+  <!-- TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <!-- 引入 plotly.js -->
+  <!-- plotly.js -->
   <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
 
   <!-- Blockly -->
   <!-- <script src="https://unpkg.com/blockly/blockly.min.js"></script> -->
 
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../style.css">
 
 </head>
 
 <body>
-  <!-- 左側：子遊戲區 (可全屏/半屏切換) -->
+  <!-- Left: Game Area -->
   <div id="leftPanel">
-    <!-- 上方控制列 (如：載入網址、暫停、全屏等) -->
+    <!-- Top Controls -->
     <div id="controls">
-      <button id="toggleFullscreen">🕹️全屏</button>
-      <input id="gameUrlInput" type="text" value="/games/Maze1D.html"
-             placeholder="輸入遊戲網址" />
-      <button id="loadGame">♻️載入</button>
-      <button id="togglePause">⏸️暫停</button>
-      <button id="toggleAccel">🚀加速</button>
+      <button id="toggleFullscreen">🕹️Fullscreen</button>
+      <input id="gameUrlInput" type="text" value="/games/Maze1D_en.html"
+             placeholder="Enter game URL" />
+      <button id="loadGame">♻️Load</button>
+      <button id="togglePause">⏸️Pause</button>
+      <button id="toggleAccel">🚀Accel</button>
     </div>
 
-    <!-- 中段 iframe：用於嵌入子遊戲 -->
-    <iframe id="game-iframe" src="/games/Maze1D.html"></iframe>
+    <!-- iframe: for sub-games -->
+    <iframe id="game-iframe" src="/games/Maze1D_en.html"></iframe>
 
-    <!-- 豎屏浮動全屏鈕（portrait only） -->
-    <button id="portrait-fs-btn" onclick="document.getElementById('toggleFullscreen').click()">⛶</button>
-
-    <!-- 下段 動作按鈕 -->
+    <!-- Bottom Action Buttons -->
     <div id="actions">
-      <button>⬜無 </button>
-      <button>⬅️左</button>
-      <button>➡️右</button>
+      <button>⬜None </button>
+      <button>⬅️Left</button>
+      <button>➡️Right</button>
     </div>
   </div>
 
-  <!-- 右側：父平台 (多智能體、多 Tabs) -->
+  <!-- Right: Parent Platform -->
   <div id="rightPanel">
 
-    <!-- Tabs 按鈕列 -->
+    <!-- Tabs Buttons -->
     <div class="sub-tab-buttons">
-      <button class="sub-tab-link active" data-subtab="tutorial">🧭指南</button>
-      <button class="sub-tab-link" data-subtab="offical-games">🎮遊戲</button>
-      <button class="sub-tab-link" data-subtab="privacy-policy">ℹ️關於</button>
-      <!-- 智能體1 -->
-      <span class="agent-label">智能體 1:</span>
-      <button id='me' class="sub-tab-link" data-subtab="p1-config">📊儀錶</button>
-      <button class="sub-tab-link" data-subtab="p1-qtable">🔬分析</button>
-      <!-- <button class="sub-tab-link" data-subtab="p1-replay">📽️錄放</button> -->
-      <!-- <button class="sub-tab-link" data-subtab="p1-blocks">🧩程式</button> -->
+      <button class="sub-tab-link active" data-subtab="tutorial">🧭Guide</button>
+      <button class="sub-tab-link" data-subtab="offical-games">🎮Games</button>
+      <button class="sub-tab-link" data-subtab="privacy-policy">ℹ️About</button>
+      <!-- Agent 1 -->
+      <span class="agent-label">Agent 1:</span>
+      <button id='me' class="sub-tab-link" data-subtab="p1-config">📊Dashboard</button>
+      <button class="sub-tab-link" data-subtab="p1-qtable">🔬Analysis</button>
+      <!-- <button class="sub-tab-link" data-subtab="p1-replay">📽️Replay</button> -->
+      <!-- <button class="sub-tab-link" data-subtab="p1-blocks">🧩Blocks</button> -->
 
 
-      <!-- 智能體2 UI — 暫時隱藏，待實作多智能體自動建立後啟用
-      <span class="agent-label">智能體 2:</span>
-      <button class="sub-tab-link" data-subtab="p2-config">📊儀錶</button>
-      <button class="sub-tab-link" data-subtab="p2-qtable">🔬分析</button>
+      <!-- Agent 2 UI
+      <span class="agent-label">Agent 2:</span>
+      <button class="sub-tab-link" data-subtab="p2-config">📊Dashboard</button>
+      <button class="sub-tab-link" data-subtab="p2-qtable">🔬Analysis</button>
       -->
       <span class="rr-version">RR Platform v1.0.0</span>
     </div>
 
-    <!-- Tabs 對應的內容區 (共6塊) -->
+    <!-- Tabs Content -->
     <div id="tutorial" class="sub-tab-content active" >
     </div>
     
@@ -83,19 +80,19 @@
 
     <!-- 1. p1-config -->
     <div id="p1-config" class="sub-tab-content " >
-      <div class="grid-container">
-          <div id="algo-selection">
-            <h4>演算法選擇</h4>
-            <!-- 學習方法選擇 -->
-            <label>學習方式:</label><br>
+      <div class="grid-container"> 
+          <div> 
+            <h4>Algorithm Selection</h4>
+            <!-- Learning Method Selection -->
+            <label>Learning Method:</label><br>
             <input type="radio" id="algorithm-qtable" name="algorithm" value="Qtable" checked onchange="handleSelection()">
             <label for="algorithm-qtable">Q-Table</label>
             <input type="radio" id="algorithm-dqn" name="algorithm" value="DQN" onchange="handleSelection()">
             <label for="algorithm-dqn">DQN</label>
             <br><br>
             
-            <!-- 探索策略選擇 -->
-            <label>抉擇策略:</label><br>
+            <!-- Strategy Selection -->
+            <label>Strategy:</label><br>
             <input type="radio" id="strategy-egreedy" name="strategy" value="egreedy" checked onchange="handleStrategySelection()">
             <label for="strategy-egreedy">ε-greedy</label>
             <input type="radio" id="strategy-softmax" name="strategy" value="softmax" onchange="handleStrategySelection()">
@@ -103,54 +100,54 @@
             <br><br>
 
           </div>
-          <!-- <label>Q-Learning 更新公式：</label><br>
-          <img src="q_learning_formula.png" alt="Q-learning 更新公式">
+          <!-- <label>Q-Learning Update Formula:</label><br>
+          <img src="../q_learning_formula.png" alt="Q-learning Update Formula">
           <br><br> -->
           <div>
-            <h4>超參數設置</h4>
-            <label for="learning-rate-slider">學習率 (α):</label>
+            <h4>Hyperparameters</h4>
+            <label for="learning-rate-slider">Learning Rate (α):</label>
             <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0.5"
                   oninput="updateValue('Alpha', this.value)">
             <span class="value-display" id="alpha-value">0.5</span>
             <br>
 
-            <label for="discount-factor-slider">回朔率 (γ):</label>
+            <label for="discount-factor-slider">Discount Factor (γ):</label>
             <input id="discount-factor-slider" type="range" min="0" max="0.95" step="0.05" value="0.95"
                   oninput="updateValue('Gamma', this.value)">
             <span class="value-display" id="gamma-value">0.95</span>
             <br>
 
             <div id="epsilon-row">
-            <label for="exploration-rate-slider">探索率 (ε):</label>
+            <label for="exploration-rate-slider">Exploration Rate (ε):</label>
             <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.05" value="0.2"
                   oninput="updateValue('Epsilon', this.value)">
             <span class="value-display" id="epsilon-value">0.2</span>
             </div>
             <div id="tau-row" style="opacity:0.4">
-            <label for="temperature-slider">熱力值 (τ):</label>
+            <label for="temperature-slider">Temperature (τ):</label>
             <input id="temperature-slider" type="range" min="0.1" max="20" step="0.1" value="5" disabled
                   oninput="updateValue('Tau', this.value)">
             <span class="value-display" id="tau-value">5.0</span>
             </div>
             <br>
-            <!-- 環境超參數 -->
-            <label for="optimism-slider">樂觀值 (ψ):</label>
+            <!-- Environment Hyperparameters -->
+            <label for="optimism-slider">Optimism (ψ):</label>
             <input id="optimism-slider" type="range" min="-1" max="1" step="0.1" value="1"
                   oninput="updateValue('Psi', this.value)">
             <span class="value-display" id="psi-value">1</span>
             <br><br>
 
-            <label for="delay-slider">延遲量(ms):</label>
+            <label for="delay-slider">Delay (ms):</label>
             <input id="delay-slider" type="range" min="0" max="100" step="10" value="50"
                   oninput="updateValue('delayTime', this.value)">
             <span class="value-display" id="delaytime-value">50</span>
           </div>
-      <!-- 第一區：Cumulative Reward Chart -->
+      <!-- Section 1: Cumulative Reward Chart -->
       
-            <div id="p1-second-reward" class="chart"></div>  <!-- 左上 -->
-            <div id="p1-second-steps" class="chart"></div>   <!-- 右上 -->
-            <div id="p1-episode-reward" class="chart"></div> <!-- 左下 -->
-            <div id="p1-episode-steps" class="chart"></div>  <!-- 右下 -->
+            <div id="p1-second-reward" class="chart"></div>  <!-- Top Left -->
+            <div id="p1-second-steps" class="chart"></div>   <!-- Top Right -->
+            <div id="p1-episode-reward" class="chart"></div> <!-- Bottom Left -->
+            <div id="p1-episode-steps" class="chart"></div>  <!-- Bottom Right -->
       </div>
     </div>
     <!-- 2. p1-blocks -->
@@ -158,58 +155,58 @@
 
       <div class="grid-container">
         <div style="width: 100%; " id="p1-ui1">
-          <h4>價值表概況</h4>
+          <h4>Q-Table Stats</h4>
 
-          <button class="q-btn" onclick="exportQtable()">💾 導出</button>
+          <button class="q-btn" onclick="exportQtable()">💾 Export</button>
 
           <label class="q-btn">
-            📂 載入
+            📂 Import
             <input type="file" id="importQtableInput" accept=".json,.txt"
                   onchange="importQtable(event)" hidden>
           </label>
 
-          <button class="q-btn" onclick="clearQtable()">🧹 清空</button>
+          <button class="q-btn" onclick="clearQtable()">🧹 Clear</button>
           <div class="q-stats">
-            <div>狀態池化　<span id="stat-bins">[10×10]</span></div>
-            <div>動作數量　<span id="stat-actions">[5]</span></div>
-            <div>資料總數　<span id="stat-total">102 / 500</span></div>
-            <div>經驗覆蓋　<span id="stat-cover">20.4%</span></div>
-            <div>知識同步　<span id="stat-sync">神經網路建立中</span></div>
+            <div>State Bins <span id="stat-bins">[10×10]</span></div>
+            <div>Actions <span id="stat-actions">[5]</span></div>
+            <div>Total Data <span id="stat-total">102 / 500</span></div>
+            <div>Coverage <span id="stat-cover">20.4%</span></div>
+            <div>Sync <span id="stat-sync">Syncing...</span></div>
           </div>
         </div>
         
         <div id="p1-ui2">
-          <h4>圖表控制</h4>
+          <h4>Chart Controls</h4>
 
-          <!-- 繪製資料：選 Q-Table 或 DQN 網路的估值來源（與訓練模式無關） -->
-          <label>繪製資料：</label><br>
+          <!-- Source: Select Q-Table or DQN network valuation source -->
+          <label>Source:</label><br>
           <input type="radio" id="chart-src-qtable" name="chart-source" value="qtable" checked onchange="handleChartSourceSelection()">
-          <label for="chart-src-qtable">價值表格（Q-Table）</label>
+          <label for="chart-src-qtable">Q-Table</label>
           &nbsp;&nbsp;
           <input type="radio" id="chart-src-dqn" name="chart-source" value="dqn" onchange="handleChartSourceSelection()">
-          <label for="chart-src-dqn">價值網路（DQN）</label>
+          <label for="chart-src-dqn">DQN</label>
           <br><br>
 
-          <!-- 展開狀態：選哪兩個維度鋪開成 X/Y 軸（選項由 initChartControls 動態填入） -->
-          <label>展開狀態：</label><br>
-          <label>X 軸：</label><select id="x-axis"></select>
+          <!-- Projection: Select which two dimensions to expand into X/Y axes -->
+          <label>Projection:</label><br>
+          <label>X-axis:</label><select id="x-axis"></select>
           &nbsp;&nbsp;
-          <label>Y 軸：</label><select id="y-axis"></select>
+          <label>Y-axis:</label><select id="y-axis"></select>
           <br><br>
 
-          <!-- 切片位置：其他維度要在哪個值截面觀察 -->
-          <label>切片位置：</label><br>
+          <!-- Slice Position: Which value section to observe for other dimensions -->
+          <label>Slice Pos:</label><br>
           <input type="radio" id="tracking-live"   name="tracking" value="live" checked
                  onchange="document.getElementById('sliders-detail').removeAttribute('open')">
-          <label for="tracking-live">跟隨當下</label>
+          <label for="tracking-live">Live</label>
           &nbsp;&nbsp;
           <input type="radio" id="tracking-slider" name="tracking" value="slider"
                  onchange="document.getElementById('sliders-detail').setAttribute('open','')">
-          <label for="tracking-slider">手動控制</label>
+          <label for="tracking-slider">Manual</label>
 
-          <!-- 維度滑桿：跟隨當下時收起，手動控制時展開 -->
+          <!-- Dimension Sliders -->
           <details id="sliders-detail">
-            <summary style="cursor:pointer; color:#888; font-size:0.9em; margin-top:4px;">維度滑桿</summary>
+            <summary style="cursor:pointer; color:#888; font-size:0.9em; margin-top:4px;">Sliders</summary>
             <table id="dim-sliders-table" style="border-spacing: 4px 6px;"></table>
           </details>
 
@@ -261,18 +258,17 @@
 
   </div>
 
-  <!-- (可選) jQuery UI Dialog 用於顯示 Q 值圖表的彈窗 (若要用彈窗) -->
+  <!-- (Optional) jQuery UI Dialog for Q-value chart popup -->
 
 
   <!-- ================================ -->
-  <!-- JS 區段：全屏切換、Tabs 控制、Q-Learning 主邏輯、DQN Worker 橋接 -->
+  <!-- JS Sections: Fullscreen, Tabs, Q-Learning, DQN Worker Bridge -->
   <!-- ================================ -->
-  <script src="./agentVisualizer.js"></script>
+  <script src="../agentVisualizer.js"></script>
   <script>
 
     /***************************************************
-     * [1] 全屏 / 半屏 切換
-     * 點擊後隱藏右側面板，讓遊戲 iframe 佔滿全寬
+     * [1] Fullscreen / Normal Switch
      ***************************************************/
     const leftPanel = document.getElementById("leftPanel");
     const rightPanel = document.getElementById("rightPanel");
@@ -282,26 +278,17 @@
       if (leftPanel.classList.contains("fullscreen")) {
         leftPanel.classList.remove("fullscreen");
         rightPanel.style.display = "flex";
-        fullscreenButton.textContent = "🕹️全屏";
+        fullscreenButton.textContent = "🕹️Fullscreen";
       } else {
         leftPanel.classList.add("fullscreen");
         rightPanel.style.display = "none";
-        fullscreenButton.textContent = "🧪半屏";
+        fullscreenButton.textContent = "🧪Normal";
       }
     });
 
 
     /***************************************************
-     * [2] 遊戲控制：載入 / 暫停 / 加速
-     *
-     * loadGame(url)
-     *   遞增 currentSessionId（讓舊訊息被過濾），設定 iframe src，重置暫停狀態
-     *
-     * togglePause
-     *   送 pause toggle 給遊戲；繼續時補送 action:0 讓遊戲重啟訊息循環
-     *
-     * toggleAccel
-     *   送 accel toggle 給遊戲；同步縮短 / 還原本地 delayTime
+     * [2] Game Control: Load / Pause / Accel
      ***************************************************/
     const loadGameBtn    = document.getElementById("loadGame");
     const gameUrlInput   = document.getElementById("gameUrlInput");
@@ -311,28 +298,26 @@
 
     let currentSessionId = 1;
 
-    // 主動取消任何掛住的 requestFit() Promise，不等 Worker 回應
-    // 必須在 loadGame() 最先執行，切斷迴圈對 Worker 的依賴
     function cancelPendingFit() {
       if (pendingFitResolve) {
         pendingFitResolve(null);
         pendingFitResolve = null;
       }
       fitInProgress = false;
-      document.getElementById('stat-sync').textContent = '神經網路建立中';
+      document.getElementById('stat-sync').textContent = 'Syncing...';
     }
 
     function loadGame(url) {
-      cancelPendingFit();                                      // 主動解開任何 pending requestFit()
+      cancelPendingFit();
       currentSessionId += 1;
       console.log(currentSessionId);
       gameUrlInput.value = url;
       gameIframe.src = url;
       isPaused = false;
-      togglePauseBtn.textContent = "⏸️暫停";
-      resetGeneralCharts();                                    // 刷新四張通用圖表
-      dqnWorker.postMessage({ type: 'resetQTable' });          // 清空 Worker 的 Q-Table 副本
-      dqnFitted     = false;                                   // 重置 DQN 信任旗標
+      togglePauseBtn.textContent = "⏸️Pause";
+      resetGeneralCharts();
+      dqnWorker.postMessage({ type: 'resetQTable' });
+      dqnFitted     = false;
       window.rrLog.game     = url;
       window.rrLog.params   = { alpha: Alpha, gamma: Gamma, epsilon: Epsilon, bins: numBins };
       window.rrLog.episodes = [];
@@ -346,26 +331,24 @@
     togglePauseBtn.addEventListener("click", () => {
       if (!isPaused) {
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
-        togglePauseBtn.textContent = "▶️繼續";
-        runPausedDistillation(); // 暫停時讓 NN 繼續向 Q-Table 學習
+        togglePauseBtn.textContent = "▶️Resume";
+        runPausedDistillation();
       } else {
         gameIframe.contentWindow.postMessage({ type: "pause" }, "*");
         gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
-        togglePauseBtn.textContent = "⏸️暫停";
-        // isPaused = false 後，runPausedDistillation 的 while 迴圈自然退出
+        togglePauseBtn.textContent = "⏸️Pause";
       }
       isPaused = !isPaused;
     });
 
-    // 暫停期間自動蒸餾：讓 NN 持續向 Q-Table 學習，直到遊戲恢復
     async function runPausedDistillation() {
       while (isPaused) {
         if (!fitInProgress) {
           fitInProgress = true;
           syncQTableToWorker();
-          await requestFit(); // fitDone handler 會重置 fitInProgress
+          await requestFit();
         } else {
-          await new Promise(r => setTimeout(r, 200)); // 等前一次 fit 結束
+          await new Promise(r => setTimeout(r, 200));
         }
       }
     }
@@ -374,17 +357,16 @@
     toggleAccelBtn.addEventListener("click", () => {
       if (!isAccel) {
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
-        toggleAccelBtn.textContent = "🐇正常";
+        toggleAccelBtn.textContent = "🐇Normal";
         delayTime = basicDelayTime / 5;
       } else {
         gameIframe.contentWindow.postMessage({ type: "accel" }, "*");
-        toggleAccelBtn.textContent = "🚀加速";
+        toggleAccelBtn.textContent = "🚀Accel";
         delayTime = basicDelayTime;
       }
       isAccel = !isAccel;
     });
 
-    // 動作按鈕高亮（highlight 當前動作對應的按鈕）
     function setActiveActionButton(actionIndex) {
       const btns = document.querySelectorAll("#actions button");
       for (const b of btns) b.classList.remove("flash");
@@ -393,9 +375,7 @@
 
 
     /***************************************************
-     * [3] Tabs 切換
-     * 點擊 sub-tab-link 切換對應的 sub-tab-content
-     * Blockly 面板需要在顯示時觸發 svgResize 才能正確渲染
+     * [3] Tabs Switch
      ***************************************************/
     const subTabLinks    = document.querySelectorAll(".sub-tab-link");
     const subTabContents = document.querySelectorAll(".sub-tab-content");
@@ -412,7 +392,6 @@
       });
     });
 
-    // 遊戲清單的「快速載入」按鈕（動態注入到 gamelist.html，用事件代理捕捉）
     document.addEventListener('click', function(e) {
       const button = e.target.closest('.quick-load-button');
       if (!button) return;
@@ -421,9 +400,7 @@
 
 
     /***************************************************
-     * [4] 文件動態載入
-     * docs/ 下三個頁面用 fetch 注入到對應的空 div
-     * 注意：gamelist.html 不是獨立頁面，只是 HTML 片段
+     * [4] Doc Loading
      ***************************************************/
     let plotGeneralCharts = true;
     let plotQualityCharts = true;
@@ -434,24 +411,13 @@
         .then(html => { document.getElementById(target).innerHTML = html; });
     }
 
-    loadDoc("tutorial",       "./docs/tutorial.html");
-    loadDoc("offical-games",  "./docs/gamelist.html");
-    loadDoc("privacy-policy", "./docs/about.html");
+    loadDoc("tutorial",       "docs/tutorial.html");
+    loadDoc("offical-games",  "docs/gamelist.html");
+    loadDoc("privacy-policy", "docs/about.html");
 
 
     /***************************************************
-     * [5] 演算法與策略選擇
-     *
-     * currentAlgorithm：'Qtable' | 'DQN'
-     *   控制 evaluateQuality() 的行為：
-     *     Qtable → 查 Q-Table（同步）
-     *     DQN    → 向 Worker 發 predict（非同步，待實作）
-     *   同時控制 qTableUpdate() 的 Bellman max Q(s') 來源
-     *
-     * currentStrategy：'egreedy' | 'softmax'
-     *   控制 planningStrategy() 使用哪種探索策略
-     *
-     * handleSelection() / handleStrategySelection() 由 HTML radio onchange 呼叫
+     * [5] Algorithm & Strategy Selection
      ***************************************************/
     let currentAlgorithm = 'Qtable';
     let currentStrategy  = 'egreedy';
@@ -471,17 +437,7 @@
 
 
     /***************************************************
-     * [6] 超參數全局變數與 UI 同步
-     *
-     * Alpha：學習率（Bellman 更新步長）
-     * Gamma：折扣因子（未來獎勵的衰減率）
-     * Epsilon：探索率（ε-greedy 中隨機探索的比例）
-     * Tau：溫度參數（Softmax 中控制動作機率分散程度，τ↑→越均等，τ↓→越貪婪）
-     * Psi：樂觀初始化值（控制 targetQ 在 max/actual/min 之間的混合）
-     * basicDelayTime：滑桿設定的基礎延遲（ms）
-     * delayTime：實際使用的延遲，加速模式下為 basicDelayTime/5
-     *
-     * updateValue() 由各滑桿的 oninput 呼叫，同步更新變數與顯示 span
+     * [6] Hyperparameters
      ***************************************************/
     let QTable  = {};
     let Alpha   = 0.5;
@@ -502,29 +458,18 @@
         case "Psi":       Psi = value; break;
         case "delayTime":
           basicDelayTime = value;
-          // 同步更新實際延遲（加速模式下也要跟著變）
           delayTime = isAccel ? basicDelayTime / 5 : basicDelayTime;
           break;
-        default: console.warn(`未知參數: ${parameter}`);
+        default: console.warn(`Unknown parameter: ${parameter}`);
       }
       const targetSpan = document.getElementById(parameter.toLowerCase() + "-value");
       if (targetSpan) targetSpan.textContent = value;
-      console.log(`${parameter} 更新為 ${value}`);
+      console.log(`${parameter} updated to ${value}`);
     }
 
 
     /***************************************************
-     * [7] postMessage 通訊 Part A：gameInfo（遊戲初始化）
-     *
-     * 流程：
-     *   iframe load → 送 questInfo（帶 currentSessionId）
-     *   → 遊戲回傳 gameInfo → 解析 stateInfo / actionInfo
-     *   → 重置 QTable + stateRange + numBins
-     *   → 同步給 Worker（syncStateInfoToWorker）
-     *   → 送 action:0 讓遊戲進入第一步
-     *
-     * 注意：此 addEventListener 與主訓練迴圈（[11]）是兩個獨立的 message 監聽，
-     *       各自只處理自己關心的 type，互不影響
+     * [7] gameInfo
      ***************************************************/
     let stateInfo;
     let actionInfo;
@@ -546,7 +491,6 @@
       action_size = actionInfo[0].level;
       console.log(stateInfo, actionInfo);
 
-      // 重新生成動作 UI 按鈕
       const actionsDiv = document.getElementById("actions");
       const names = actionInfo?.[0]?.name || [];
       actionsDiv.innerHTML = "";
@@ -557,42 +501,29 @@
       }
       renderActionColorWheel(actionInfo);
 
-      // 重置 Q-Table 與狀態離散化設定
       QTable     = {};
       stateRange = [];
       numBins    = [];
       stateInfo.forEach((info) => {
         stateRange.push({ min: info.min, max: info.max });
-        numBins.push(info.bin ?? 10); // 遊戲未宣告 bin 時預設 10 桶
+        numBins.push(info.bin ?? 10);
       });
 
       syncStateInfoToWorker();
       dqnWorker.postMessage({ type: 'initModel', stateDim: stateInfo.length, actionCount: action_size });
-      initChartControls(); // 更新分析頁的維度選單與滑桿範圍
+      initChartControls();
       gameIframe.contentWindow.postMessage({ type: "action", action: 0 }, "*");
     });
 
 
     /***************************************************
-     * [8] 演算法管線：評估 → 策略 → 動作
-     *
-     * evaluateQuality(state) → qArray（各動作的估值）
-     *   Q-Table 模式：同步查表（getQArrayFromTable）
-     *   DQN 模式：非同步 Worker predict（dqnFitted 前仍走 Q-Table 作為暖機）
-     *
-     * planningStrategy(qArray) → strategy（各動作的機率分配）
-     *   根據 currentStrategy 分流 ε-greedy 或 Softmax
-     *
-     * learnOneStep() — 單步 Q-Table Bellman 更新
-     *   由主迴圈（零 reward 時）或 learnFromTrace 呼叫
+     * [8] Pipeline: Evaluate -> Strategy -> Action
      ***************************************************/
     let prevAction, prevState;
     let nextAction, nextState;
     let reward;
 
     async function evaluateQuality(State) {
-      // DQN 模式：透過 Worker predict 取估值（非同步）
-      // dqnFitted 確保第一次訓練前不使用垃圾估值
       if (currentAlgorithm === 'DQN' && dqnFitted) {
         return new Promise((resolve) => {
           pendingPredictResolve = resolve;
@@ -604,7 +535,7 @@
 
     function planningStrategy(qArray) {
       if (currentStrategy === 'softmax') return softmaxStrategy(qArray);
-      return eGreedyStrategy(qArray); // 預設 ε-greedy
+      return eGreedyStrategy(qArray);
     }
 
     function learnOneStep(prevState, prevAction, reward, nextState, nextAction, nextQArray = null) {
@@ -615,14 +546,7 @@
 
 
     /***************************************************
-     * [9] Trace 機制（回溯更新）
-     *
-     * 每步把 (s, a, r, s', a') 推入 trace 頭部，最多保留 traceLength 筆
-     * 收到非零 reward 時，對整段 trace 做等權回溯更新
-     *
-     * 設計動機：標準 Q-Learning 每局只往前推一步，稀疏 reward 傳播極慢
-     * 類似 TD(λ) 的 Eligibility Trace，固定 N=5 步、等權，更簡單直觀
-     * DQN 有空間擴散（內插泛化）但沒有時間回溯，兩者互補
+     * [9] Trace
      ***************************************************/
     const traceLength = 5;
     let trace = [];
@@ -641,29 +565,17 @@
 
 
     /***************************************************
-     * [10] DQN Web Worker 橋接
-     *
-     * Worker（dqnWebWorker.js）在獨立執行緒中持有 Q-Table 副本，
-     * 定期 fit 神經網路（Q-Table 蒸餾），並回應 predict 請求
-     *
-     * syncQTableToWorker()    — 把主執行緒 QTable 的變動增量同步給 Worker
-     * syncStateInfoToWorker() — 遊戲初始化後同步 stateRange / numBins
-     * pendingPredictResolve   — DQN 模式下等待 predictResult 的 Promise resolve 暫存
-     *
-     * Worker 訊息協定（完整規格見「Q表蒸餾式DQN：實作規格.md」）：
-     *   主→Worker：updateQTable / updateStateInfo / fit / predict / batchPredict / resetQTable / initModel
-     *   Worker→主：log / ready / predictResult / fitDone / batchPredictResult
+     * [10] DQN Web Worker Bridge
      ***************************************************/
-    const dqnWorker = new Worker('dqnWebWorker.js');
+    const dqnWorker = new Worker('../dqnWebWorker.js');
 
-    let dqnFitted             = false;  // 第一次 fit 成功前不讓 DQN 估值污染 Q-Table
-    let pendingPredictResolve = null;   // DQN predict Promise 暫存
-    let pendingFitResolve     = null;   // DQN fit   Promise 暫存
-    let fitInProgress         = false;  // 防止 Q-Table 模式下 fire-and-forget fit 重疊
-    let chartDataSource       = 'qtable'; // 圖表繪製資料來源（'qtable' | 'dqn'）
-    let dqnPreviewTable       = {};     // DQN 對各 Q-Table 格子的批量預測快取
+    let dqnFitted             = false;
+    let pendingPredictResolve = null;
+    let pendingFitResolve     = null;
+    let fitInProgress         = false;
+    let chartDataSource       = 'qtable';
+    let dqnPreviewTable       = {};
 
-    // 全量同步 QTable → Worker（陣列比較參考相等性，增量 diff 無意義）
     function syncQTableToWorker() {
       dqnWorker.postMessage({ type: 'updateQTable', data: { ...QTable } });
     }
@@ -672,7 +584,6 @@
       dqnWorker.postMessage({ type: 'updateStateInfo', data: { stateRange, numBins } });
     }
 
-    // 等待 Worker 完成一次蒸餾訓練（回傳 Promise，resolve 在 fitDone 訊息觸發）
     function requestFit() {
       return new Promise((resolve) => {
         pendingFitResolve = resolve;
@@ -680,19 +591,16 @@
       });
     }
 
-    // 請 Worker 對所有已知 Q-Table 格子做一次批量推論，刷新 dqnPreviewTable
     function requestBatchPredict() {
       if (!dqnFitted) return;
       dqnWorker.postMessage({ type: 'batchPredict', keys: Object.keys(QTable) });
     }
 
-    // 圖表資料來源切換（由 HTML radio onchange 呼叫）
     function handleChartSourceSelection() {
       chartDataSource = document.querySelector('input[name="chart-source"]:checked')?.value ?? 'qtable';
-      if (chartDataSource === 'dqn') requestBatchPredict(); // 立即刷新一次
+      if (chartDataSource === 'dqn') requestBatchPredict();
     }
 
-    // 供 qualityCharts.js 呼叫：根據 chartDataSource 決定用哪張表
     function getQArrayForChart(state) {
       if (chartDataSource === 'dqn' && dqnFitted) {
         const key = getStateKey(state);
@@ -710,11 +618,11 @@
           pendingPredictResolve = null;
         }
       } else if (event.data.type === 'fitDone') {
-        dqnFitted     = true;                                  // 第一次 fit 後開始信任 DQN
-        fitInProgress = false;                                 // 解鎖 fire-and-forget
+        dqnFitted     = true;
+        fitInProgress = false;
         const loss = event.data.loss;
         const syncRate = event.data.syncRate;
-        console.log(`[DQN] fit 完成，loss=${loss?.toFixed(4)}`);
+        console.log(`[DQN] fit done, loss=${loss?.toFixed(4)}`);
         if (syncRate != null) {
           document.getElementById('stat-sync').textContent = `${(syncRate * 100).toFixed(1)}%`;
         }
@@ -722,18 +630,16 @@
           pendingFitResolve(loss);
           pendingFitResolve = null;
         }
-        if (chartDataSource === 'dqn') requestBatchPredict(); // 每次 fit 後自動刷新預覽
+        if (chartDataSource === 'dqn') requestBatchPredict();
       } else if (event.data.type === 'batchPredictResult') {
-        dqnPreviewTable = event.data.results;                  // 整張表一次更新
+        dqnPreviewTable = event.data.results;
       }
     };
 
     dqnWorker.onerror = (error) => {
-      console.error("Web Worker 錯誤:", error);
+      console.error("Web Worker Error:", error);
     };
 
-    // Qt 模式專用：持續背景蒸餾迴圈，不受遊戲暫停影響
-    // DQN 模式的 fit 在 episode 結束時 await 觸發，不走這裡
     async function runQtDistillationLoop() {
       while (true) {
         if (currentAlgorithm !== 'DQN' && !fitInProgress && Object.keys(QTable).length > 0) {
@@ -749,20 +655,7 @@
 
 
     /***************************************************
-     * [11] postMessage 通訊 Part B：reward_state 主訓練迴圈
-     *
-     * 每步流程（收到 reward_state 後）：
-     *   0. sessionId 驗證（過濾換遊戲後的舊訊息）
-     *   1. evaluateQuality(nextState) → qArray
-     *   2. planningStrategy(qArray) → strategy → selectAction → nextAction
-     *   3. recordStep；reward≠0 → learnFromTrace；否則 learnOneStep（單步更新）
-     *   4. updateQtableStats（更新分析面板）
-     *   5. done:true → 更新回合圖表，重置計數；DQN 模式 → syncQTable → await fit
-     *   6. setTimeout(送 action，delayTime ms)
-     *
-     * 同一個 listener 也處理：
-     *   frame      — 統計幀數（目前未使用）
-     *   endEpisode — 舊協定相容，新遊戲改用 done:true，此分支保留但不依賴
+     * [11] reward_state Training Loop
      ***************************************************/
     let frameNumber = 0;
 
@@ -771,7 +664,6 @@
 
       if (message.type === "reward_state") {
 
-        // 過濾過期的 sessionId（換遊戲後舊訊息不處理）
         if (!message.sessionId) return;
         if (message.sessionId !== currentSessionId) return;
 
@@ -784,15 +676,13 @@
         episodeSteps  += 1;
         window.rrStepCount = (window.rrStepCount ?? 0) + 1;
 
-        // 演算法管線
-        let qArray   = await evaluateQuality(nextState);  // 1. 評估價值（DQN 模式為非同步）
-        let strategy = planningStrategy(qArray);          // 2. 擬定策略
-        nextAction   = selectAction(strategy);            // 3. 選擇動作
+        let qArray   = await evaluateQuality(nextState);
+        let strategy = planningStrategy(qArray);
+        nextAction   = selectAction(strategy);
 
-        // 學習（qArray 傳入，DQN 模式下 qTableUpdate 可用 DQN 估值做 Bellman target）
         recordStep(prevState, prevAction, reward, nextState, nextAction, qArray);
         if (reward !== 0) {
-          learnFromTrace();   // 非零 reward：整段 trace 回溯更新
+          learnFromTrace();
         } else {
           learnOneStep(prevState, prevAction, reward, nextState, nextAction, qArray);
         }
@@ -803,7 +693,6 @@
         prevAction = nextAction;
         frameNumber = 0;
 
-        // 回合結束
         if (message.done === true) {
           if (plotGeneralCharts) updateEpisodeChart();
           window.rrLog.episodes.push({ ep: episodeCount, reward: episodeReward, steps: episodeSteps });
@@ -812,8 +701,6 @@
           episodeReward  = 0;
           episodeSteps   = 0;
 
-          // 回合結束：DQN 模式需 await fit（下一局動作需要 DQN 估值）
-          // Qt 模式由 runQtDistillationLoop 背景持續處理，此處不再觸發
           if (currentAlgorithm === 'DQN') {
             syncQTableToWorker();
             fitInProgress = true;
@@ -821,7 +708,6 @@
           }
         }
 
-        // 送出下一步動作
         if (isPaused) return;
         setTimeout(() => {
           gameIframe.contentWindow.postMessage({ type: "action", action: nextAction }, "*");
@@ -833,7 +719,6 @@
         frameNumber += 1;
       }
 
-      // 舊協定相容（新遊戲應使用 done:true，不應再依賴此分支）
       if (message.type === "endEpisode") {
         console.log('endEpisode');
         if (plotGeneralCharts) updateEpisodeChart();
@@ -845,12 +730,7 @@
 
 
     /***************************************************
-     * [12] 圖表全局變數
-     * 供 generalCharts.js 的 updateSecondChart / updateEpisodeChart 消費
-     *
-     * secondReward / secondSteps：每步由主迴圈累加，每秒圖表更新後歸零
-     * episodeReward / episodeSteps：每步累加，done:true 後歸零
-     * episodeCount：每回合結束 +1，不歸零（作為 x 軸編號）
+     * [12] Chart Variables
      ***************************************************/
     let secondReward = 0;
     let secondSteps  = 0;
@@ -885,8 +765,6 @@
 
     /***************************************************
      * [13] QTable Export / Import
-     * exportQtable() — 序列化為 JSON 下載
-     * importQtable() — 從 JSON 檔案還原，可銜接繼續訓練
      ***************************************************/
     function exportQtable() {
       const dataStr = JSON.stringify(QTable, null, 2);
@@ -906,7 +784,7 @@
       dqnPreviewTable = {};
       dqnWorker.postMessage({ type: 'resetQTable' });
       dqnWorker.postMessage({ type: 'initModel', stateDim: stateInfo?.length ?? 1, actionCount: action_size ?? 1 });
-      document.getElementById('stat-sync').textContent = '神經網路建立中';
+      document.getElementById('stat-sync').textContent = 'Syncing...';
       updateQtableStats();
     }
 
@@ -920,8 +798,8 @@
           dqnFitted     = false;
           fitInProgress = false;
           dqnPreviewTable = {};
-          document.getElementById('stat-sync').textContent = '神經網路建立中';
-          syncQTableToWorker();   // 讓 Worker 副本與載入的 QTable 一致
+          document.getElementById('stat-sync').textContent = 'Syncing...';
+          syncQTableToWorker();
           updateQtableStats();
           console.log("QTable imported successfully:", Object.keys(QTable).length, "entries");
         } catch (error) {
@@ -929,18 +807,12 @@
         }
       };
       reader.readAsText(file, "utf-8");
-      // 清空 input value，讓同一個檔案下次仍能觸發 onchange
       evt.target.value = '';
     }
 
 
     /***************************************************
-     * [14] QTable 統計面板更新
-     * 計算並顯示：狀態池化尺寸、動作數、已探索格數 / 總格數、覆蓋率
-     *
-     * ⚠ 潛在問題：依賴 stateInfo[x].bin 存在
-     *   若遊戲未宣告 bin，stateBins 會含 undefined，導致乘積計算出 NaN
-     *   （numBins 已補預設值 20，但 stateInfo 原始物件不受影響）
+     * [14] QTable Stats
      ***************************************************/
     function updateQtableStats() {
       const stateBins       = stateInfo.map(s => s.bin);
@@ -964,7 +836,7 @@
       document.getElementById("stat-cover").textContent   = `${coverage}%`;
     }
 
-    // ── ?game= URL 參數自動載入 ────────────────────────────────────────────────
+    // --- ?game= URL parameter ---
     (function () {
       const params   = new URLSearchParams(window.location.search);
       const gameParam = params.get("game");
@@ -973,23 +845,8 @@
 
   </script>
   <script>window.chartLang = window.chartLang ?? "en";</script>
-  <script src="./generalCharts.js"></script>
-  <script src="./qualityCharts.js"></script>
-  <script src="./reinforceEngine.js"></script>
-
-  <script>
-    // 豎屏模式：若當前 active tab 在 portrait 下被隱藏，自動切到遊戲 tab
-    const PORTRAIT_HIDDEN_TABS = ['tutorial', 'privacy-policy', 'p1-qtable'];
-    function handlePortraitTabSwitch() {
-      if (!window.matchMedia('(orientation: portrait)').matches) return;
-      const active = document.querySelector('.sub-tab-content.active');
-      if (active && PORTRAIT_HIDDEN_TABS.includes(active.id)) {
-        document.querySelector('.sub-tab-link[data-subtab="offical-games"]').click();
-      }
-    }
-    window.addEventListener('orientationchange', handlePortraitTabSwitch);
-    window.addEventListener('resize', handlePortraitTabSwitch);
-    handlePortraitTabSwitch();
-  </script>
+  <script src="../generalCharts.js"></script>
+  <script src="../qualityCharts.js"></script>
+  <script src="../reinforceEngine.js"></script>
 </body>
 </html>

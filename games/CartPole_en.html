@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RR CartPole</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <link rel="stylesheet" href="game-info.css">
+  <style>
+    body {
+      max-width: 700px;
+      margin: auto;
+      padding: 0 16px;
+      font-family: Arial, sans-serif;
+      color: #111827;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #eee;
+    }
+    #controls {
+      margin: 12px 0 16px;
+      line-height: 1.9;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container"></div>
+
+<div id="info">
+  <h3>Task Description</h3>
+  <p>A pole is balanced on top of a cart. The agent must move the cart left or right to keep the pole upright. The episode ends if the pole tilts beyond ±90° or the cart hits the boundary.</p>
+
+  <details>
+    <summary>🎯 Reward</summary>
+    <ul>
+      <li>Each survival frame: +0.1</li>
+      <li>Pole falls or cart out of bounds: -10, episode ends</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>🧭 State</summary>
+    <ul>
+      <li><code>cartX</code>: cart center X position (0 ~ 600)</li>
+      <li><code>cartVelX</code>: cart horizontal velocity (approx. -10 ~ 10)</li>
+      <li><code>poleAngle</code>: pole tilt angle in radians (-1.57 ~ 1.57)</li>
+      <li><code>poleAngularVel</code>: pole angular velocity (approx. -6 ~ 6)</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>🕹️ Actions</summary>
+    <ul>
+      <li><code>0</code>: none (no force)</li>
+      <li><code>1</code>: left (push left)</li>
+      <li><code>2</code>: right (push right)</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>⚙️ Suggested Parameters</summary>
+    <div class="param-grid">
+      <div class="param-col">
+        <h4>Beginner</h4>
+        <ul>
+          <li>bins = 6 (default)</li>
+          <li>ε = 0.3, α = 0.5, γ = 0.95</li>
+          <li>High-dimensional state — needs more episodes</li>
+        </ul>
+      </div>
+      <div class="param-col">
+        <h4>Advanced</h4>
+        <ul>
+          <li>Enable DQN, observe distillation</li>
+          <li>Adjust bins to see discretization effects</li>
+          <li>R² sync rate above 0.8 is ideal</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+const { Engine, Render, Runner, Bodies, Body, World, Constraint, Events } = Matter;
+
+const CANVAS_W = 600;
+const CANVAS_H = 400;
+
+const FORCE = 0.005;
+const CART_Y = 320;
+
+let isLeftPressed  = false;
+let isRightPressed = false;
+let isPaused       = false;
+let isAccel        = false;
+let rewardBuffer   = 0;
+let currentState   = [0, 0, 0, 0];
+let gameOver       = false;
+let episodeCount   = 0;
+let currentSessionId = 0;
+
+const engine = Engine.create();
+const world   = engine.world;
+
+const render = Render.create({
+  element: document.getElementById('game-container'),
+  engine,
+  options: {
+    width: CANVAS_W,
+    height: CANVAS_H,
+    wireframes: false,
+    background: '#f0f9ff',
+  },
+});
+Render.run(render);
+
+const runner = Runner.create();
+Runner.run(runner, engine);
+
+const ground    = Bodies.rectangle(CANVAS_W / 2, CANVAS_H, CANVAS_W + 20, 20,
+  { isStatic: true, render: { fillStyle: '#2ecc71' } });
+const leftWall  = Bodies.rectangle(-10, CANVAS_H / 2, 20, CANVAS_H, { isStatic: true });
+const rightWall = Bodies.rectangle(CANVAS_W + 10, CANVAS_H / 2, 20, CANVAS_H, { isStatic: true });
+World.add(world, [ground, leftWall, rightWall]);
+
+const CART_CAT = 0x0001;
+const POLE_CAT = 0x0002;
+
+let cart, pole, pivot;
+
+function buildCartPole() {
+  cart = Bodies.rectangle(CANVAS_W / 2, CART_Y, 80, 20, {
+    friction: 0,
+    mass: 5,
+    render: { fillStyle: '#3b82f6' },
+    collisionFilter: { category: CART_CAT, mask: ~POLE_CAT },
+  });
+
+  pole = Bodies.rectangle(CANVAS_W / 2, CART_Y - 85, 10, 150, {
+    friction: 0,
+    mass: 1,
+    render: { fillStyle: '#f97316' },
+    collisionFilter: { category: POLE_CAT, mask: ~CART_CAT },
+  });
+
+  Body.setVelocity(cart, { x: (Math.random() * 2 - 1) * 3, y: 0 });
+
+  pivot = Constraint.create({
+    bodyA: cart,
+    pointA: { x: 0, y: -10 },
+    bodyB: pole,
+    pointB: { x: 0, y: 75 },
+    stiffness: 1,
+    length: 0,
+  });
+
+  World.add(world, [cart, pole, pivot]);
+}
+
+Events.on(engine, 'beforeUpdate', () => {
+  if (isPaused || gameOver) return;
+
+  if (isLeftPressed) {
+    Body.applyForce(cart, cart.position, { x: -FORCE, y: 0 });
+  }
+  if (isRightPressed) {
+    Body.applyForce(cart, cart.position, { x: FORCE, y: 0 });
+  }
+
+  rewardBuffer += 0.1;
+
+  updateState();
+
+  if (Math.abs(pole.angle) > Math.PI / 2 ||
+      cart.position.x < 10 || cart.position.x > CANVAS_W - 10) {
+    triggerEndEpisode();
+  }
+});
+
+function updateState() {
+  currentState = [
+    cart.position.x,
+    cart.velocity.x,
+    pole.angle,
+    pole.angularVelocity,
+  ].map(v => Number(v.toFixed(4)));
+}
+
+function triggerEndEpisode() {
+  if (gameOver) return;
+  rewardBuffer -= 10;
+  gameOver = true;
+}
+
+function resetGame() {
+  gameOver = false;
+  rewardBuffer = 0;
+  isLeftPressed = false;
+  isRightPressed = false;
+  episodeCount++;
+
+  World.remove(world, [cart, pole, pivot]);
+  buildCartPole();
+  updateState();
+}
+
+function sendRewardState(done = false) {
+  updateState();
+  window.parent.postMessage({
+    type: 'reward_state',
+    reward: Number(rewardBuffer.toFixed(4)),
+    state: currentState,
+    done: done,
+    sessionId: currentSessionId,
+  }, '*');
+  rewardBuffer = 0;
+}
+
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg || typeof msg !== 'object') return;
+
+  if (msg.type === 'questInfo') {
+    currentSessionId = msg.sessionId || 0;
+    window.parent.postMessage({
+      type: 'gameInfo',
+      players: [{
+        stateInfo: [
+          { name: 'cartX',         min: 0,     max: 600,  bin: 6 },
+          { name: 'cartVelX',      min: -20,   max: 20,   bin: 6 },
+          { name: 'poleAngle',     min: -1.57, max: 1.57, bin: 6 },
+          { name: 'poleAngularVel',min: -10,   max: 10,   bin: 6 },
+        ],
+        actionInfo: [
+          { type: 'switch', level: 3, name: ['⬜none', '⬅️left', '➡️right'] }
+        ],
+      }]
+    }, '*');
+
+  } else if (msg.type === 'action') {
+    if (gameOver) {
+      sendRewardState(true);
+      resetGame();
+      return;
+    }
+    isLeftPressed  = (msg.action === 1);
+    isRightPressed = (msg.action === 2);
+    sendRewardState();
+
+  } else if (msg.type === 'pause') {
+    isPaused = !isPaused;
+    runner.enabled = !isPaused;
+
+  } else if (msg.type === 'accel') {
+    isAccel = !isAccel;
+    engine.timing.timeScale = isAccel ? 4 : 1;
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'ArrowLeft'  || e.code === 'KeyA') isLeftPressed  = true;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') isRightPressed = true;
+  if (e.code === 'Space') { e.preventDefault(); resetGame(); }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'ArrowLeft'  || e.code === 'KeyA') isLeftPressed  = false;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') isRightPressed = false;
+});
+
+buildCartPole();
+</script>
+</body>
+</html>

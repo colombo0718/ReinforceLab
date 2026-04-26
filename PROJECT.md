@@ -172,7 +172,7 @@ DQN 為 Q-Table 蒸餾式架構，已完整實作。設計細節見 `Q表蒸餾�
 
 ## 實驗數據介面（Playwright 用）
 
-`index.html` 暴露以下 window 變數，供外部腳本（Playwright）自動讀取訓練結果：
+`index.html` 和 `en/index.html` 均暴露以下 window 變數，供外部腳本（Playwright）自動讀取訓練結果：
 
 ```js
 window.rrLog          // { game, params, episodes: [{ep, reward, steps}] }
