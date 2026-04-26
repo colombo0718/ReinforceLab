@@ -124,14 +124,17 @@ RR 平台透過 `postMessage` 與嵌入的遊戲 iframe 雙向通訊。
 }
 ```
 
-| 欄位 | 說明 |
-|------|------|
-| `reward` | 本步獲得的獎勵（正數、負數或 0）；若本步終局，死亡懲罰需已加入此值 |
-| `state` | 執行動作後的新狀態陣列，順序對應 `stateInfo` |
-| `done` | `false`：回合繼續；`true`：本步已使回合結束 |
-| `sessionId` | 從 `questInfo` 取得，原封不動帶回（用於 RR 識別當前回合） |
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `reward` | number | ✓ | 本步獲得的獎勵；若本步終局，死亡懲罰需已加入此值 |
+| `state` | array | ✓ | 執行動作後的新狀態陣列，順序對應 `stateInfo` |
+| `done` | boolean | ✓ | `false`：回合繼續；`true`：本步已使回合結束 |
+| `sessionId` | number | ✓ | 從 `questInfo` 取得，原封不動帶回（用於 RR 識別當前回合） |
+| `ticks` | number | 選用 | 距上一次 action 經過的遊戲幀數；**即時制遊戲必填**，讓 RR 正確折算時間折扣 |
 
 > **終局步規則**：`done: true` 時，`reward` 必須已包含終局懲罰。RR 收到後會完成學習更新、結算統計，再送出下一個 `action` 啟動新回合。
+
+> **`ticks` 使用時機**：回合制遊戲（MAB、Maze）每個 action 固定對應一步，不需要 ticks。即時制遊戲（Heli、Fighter、TradeTrail）每個 action 之間可能經過不同幀數，需附帶 ticks 讓 RR 計算正確的 γ^ticks 折扣。
 
 ### 4-2. `endEpisode`（遊戲 → RR，選用）
 

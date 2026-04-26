@@ -83,6 +83,81 @@ games/              各遊戲 HTML 環境
 
 ---
 
+## 外部專案接入 RR 指南
+
+> 給從其他專案（TradeTrail、CC2D、DataDojo 等）過來查閱的 Claude 實例：
+> 你的專案若想被 RR 平台控制，只需讓你的頁面能被 `<iframe>` 嵌入，並實作以下 postMessage 介面。
+
+### 最低要求
+
+你的頁面需要：
+
+1. **監聽 `questInfo`** → 回傳 `gameInfo`（告知狀態空間與動作空間）
+2. **監聽 `action`** → 執行動作 → 回傳 `reward_state`
+3. **監聽 `pause` / `accel`** → toggle 暫停 / 加速（加速期間仍需正常運作）
+
+```javascript
+let sessionId = 0;
+
+window.addEventListener("message", (e) => {
+  const msg = e.data;
+
+  if (msg.type === "questInfo") {
+    sessionId = msg.sessionId;
+    window.parent.postMessage({
+      type: "gameInfo",
+      players: [{
+        stateInfo: [
+          { name: "dim0", min: 0, max: 1, bin: 10 }   // bin 只有 Q-Table 用
+        ],
+        actionInfo: [
+          { type: "switch", level: 3, name: ["不動", "動A", "動B"] }
+        ]
+      }]
+    }, "*");
+  }
+
+  if (msg.type === "action") {
+    const action = msg.action;   // 整數 index
+    // ... 執行動作 ...
+    window.parent.postMessage({
+      type: "reward_state",
+      reward: 0,
+      state: [0.5],
+      done: false,
+      sessionId: sessionId,
+      // ticks: N   // 即時制遊戲必填：距上一次 action 的幀數
+    }, "*");
+  }
+
+  if (msg.type === "pause") { /* toggle 暫停 */ }
+  if (msg.type === "accel") { /* toggle 加速 */ }
+});
+```
+
+### 接入方式
+
+- **本地遊戲**（存放於 `games/`）：在 `docs/gamelist.html` 加入 game-card，`data-url` 用 root-relative 路徑
+- **外部應用**（獨立部署）：`data-url` 填完整 URL，RR 會把它嵌進 iframe。需確認該頁面允許跨域 iframe（不設 `X-Frame-Options: DENY`）
+- **多玩家**：`players` 陣列加多個 player 物件，每個各自有 stateInfo / actionInfo
+
+### 即時制 vs 回合制
+
+| 類型 | 典型遊戲 | ticks 欄位 |
+|------|----------|-----------|
+| 回合制 | MAB、Maze | 不需要（每 action 固定一步） |
+| 即時制 | Heli、Fighter、TradeTrail | **必填**，讓 RR 計算正確的 γ^ticks 折扣 |
+
+### 常見坑
+
+- `done: true` 時，`reward` 裡**必須已包含**終局懲罰，RR 不會再補
+- `sessionId` 從 `questInfo` 取得，原封不動帶回 `reward_state`，否則 RR 會忽略該訊息
+- 外部頁面不要設 `X-Frame-Options: DENY` 或 CSP `frame-ancestors 'none'`
+
+完整規格：`RR平台可控遊戲環境宣告與通訊協定.md`
+
+---
+
 ## Q-Learning 實作位置
 
 `index.html` 內依區塊有 JSDoc 式分段標記，關鍵位置：
