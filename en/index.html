@@ -106,22 +106,22 @@
           <div>
             <h4>Hyperparameters</h4>
             <label for="learning-rate-slider">Learning Rate (α):</label>
-            <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0.5"
+            <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0"
                   oninput="updateValue('Alpha', this.value)">
-            <span class="value-display" id="alpha-value">0.5</span>
+            <span class="value-display" id="alpha-value">0</span>
             <br>
 
             <label for="discount-factor-slider">Discount Factor (γ):</label>
-            <input id="discount-factor-slider" type="range" min="0" max="0.95" step="0.05" value="0.95"
+            <input id="discount-factor-slider" type="range" min="0" max="0.95" step="0.05" value="0"
                   oninput="updateValue('Gamma', this.value)">
-            <span class="value-display" id="gamma-value">0.95</span>
+            <span class="value-display" id="gamma-value">0</span>
             <br>
 
             <div id="epsilon-row">
             <label for="exploration-rate-slider">Exploration Rate (ε):</label>
-            <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.05" value="0.2"
+            <input id="exploration-rate-slider" type="range" min="0" max="1" step="0.05" value="0"
                   oninput="updateValue('Epsilon', this.value)">
-            <span class="value-display" id="epsilon-value">0.2</span>
+            <span class="value-display" id="epsilon-value">0</span>
             </div>
             <div id="tau-row" style="opacity:0.4">
             <label for="temperature-slider">Temperature (τ):</label>
