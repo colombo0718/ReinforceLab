@@ -183,7 +183,7 @@ window.rrStepCount    // 累計步數，用於防止 infinite episode 的安全�
 - `loadGame()` 呼叫時自動重置 `rrLog.episodes = []`
 - 每回合 `done: true` 時 push 一筆，同步更新 `params`
 - 使用說明：`docs/rr-experiment-agent-guide.md`
-- 實驗觀察紀錄：`docs/rr_experiment_findings.md`
+- 實驗觀察紀錄：`experiments/rr_experiment_findings.md`
 
 ---
 
