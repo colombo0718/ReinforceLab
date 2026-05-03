@@ -22,7 +22,8 @@ dqnWebWorker.js     Q-Table 蒸餾式 DQN（TensorFlow.js，Web Worker）
 generalCharts.js    每秒/每回合 Reward & Steps 折線/柱狀圖
 qualityCharts.js    Q-Table 熱力圖、動作分布、Q 值分析
 style.css           全站樣式
-docs/               教學文章、遊戲清單、關於頁（動態 fetch 載入進 index.html）
+pages/              index.html 動態 fetch 的頁面片段（tutorial、gamelist、about）
+docs/               工程文件、施工計畫、已知坑、協定規格
 docs/articles/      12 篇指南文章（共用 article.css，圖片在 img/）
 games/              各遊戲 HTML 環境
 ```
@@ -137,7 +138,7 @@ window.addEventListener("message", (e) => {
 
 ### 接入方式
 
-- **本地遊戲**（存放於 `games/`）：在 `docs/gamelist.html` 加入 game-card，`data-url` 用 root-relative 路徑
+- **本地遊戲**（存放於 `games/`）：在 `pages/gamelist.html` 加入 game-card，`data-url` 用 root-relative 路徑
 - **外部應用**（獨立部署）：`data-url` 填完整 URL，RR 會把它嵌進 iframe。需確認該頁面允許跨域 iframe（不設 `X-Frame-Options: DENY`）
 - **多玩家**：`players` 陣列加多個 player 物件，每個各自有 stateInfo / actionInfo
 
@@ -239,7 +240,7 @@ feature/xxx     ← 功能開發，完成後 merge dev，穩定後 merge master
 
 ## 注意事項
 
-- `docs/gamelist.html` 是動態載入進 index.html 的，不是獨立頁面
-- `docs/tutorial.html`、`docs/about.html` 同上，都是 HTML 片段不是獨立頁面
+- `pages/gamelist.html`、`pages/tutorial.html`、`pages/about.html` 是動態 fetch 的頁面片段，不是獨立頁面
+- `en/docs/` 下有同名副本供英文子平台使用，永久封存，不動
 - CartPole.html 裡有個 typo：`CANVAS_H \ 2`（反斜線），是 Matter.js 靜態邊界計算，目前不影響功能
 - 智能體 2 UI 已暫時隱藏（HTML 中保留註解），待多智能體自動建立後啟用

@@ -88,7 +88,7 @@ check/  檢核標準文件
         ── 各專案特有標準放各自的 check/
 ```
 
-**RR 專案特注：** `docs/` 下同時存放功能性 HTML 片段（`gamelist.html`、`tutorial.html`、`about.html`），這些是 index.html 動態 fetch 的頁面組件，不是文件。直到 RR 2.0 重構前，docs/ 目錄不做結構調整。
+**RR 專案特注：** 功能性 HTML 片段（`gamelist.html`、`tutorial.html`、`about.html`）放在 `pages/`，由 index.html 動態 fetch。`en/docs/` 下有同名副本供英文子平台使用，永久封存，不納入任何改動。
 
 ---
 
