@@ -1,0 +1,89 @@
+{
+  "_comment": "RR 平台英文旁白腳本。修改 text 即可重新合成旁白，不需動程式碼。",
+  "voice": "en-US-AriaNeural",
+  "rate": "-5%",
+  "lead_in": 0.4,
+  "lead_out": 0.5,
+  "scenes": [
+    {
+      "id": "開場總覽",
+      "text": "Welcome to Rein Room — a platform where you can train AI agents directly in your browser."
+    },
+    {
+      "id": "指南分頁",
+      "text": "The Guide tab is a great place to start. It introduces the platform and walks you through the learning path."
+    },
+    {
+      "id": "遊戲分頁",
+      "text": "The Games tab is where you choose an environment for your agent to train in."
+    },
+    {
+      "id": "拖曳路徑",
+      "text": "Each tab opens a different part of the platform — guide, games, training, and analysis."
+    },
+    {
+      "id": "控制列",
+      "text": "At the top, you can load a game, pause training, or speed things up."
+    },
+    {
+      "id": "遊戲 iframe",
+      "text": "On the left, you can watch the agent in real time as it explores the environment."
+    },
+    {
+      "id": "演算法與策略",
+      "text": "Here you choose the learning algorithm — Q-Table or DQN — and the exploration strategy."
+    },
+    {
+      "id": "超參數滑桿",
+      "text": "These sliders let you tune the key parameters: learning rate, discount factor, exploration, and delay."
+    },
+    {
+      "id": "模式切換",
+      "text": "You can switch between algorithms and strategies at any point during training."
+    },
+    {
+      "id": "精準點擊",
+      "text": "All controls are clearly labeled and easy to reach."
+    },
+    {
+      "id": "四張訓練圖表",
+      "text": "As training runs, these four charts track how rewards and episode lengths change over time."
+    },
+    {
+      "id": "分析頁統計",
+      "text": "The Analysis tab shows deeper statistics — state coverage, action counts, and model sync status."
+    },
+    {
+      "id": "柱狀圖",
+      "text": "This chart compares the value the agent assigns to each action against how often it actually picks them."
+    },
+    {
+      "id": "動作熱力圖",
+      "text": "The heatmap shows which action the agent prefers in each region of the state space."
+    },
+    {
+      "id": "最大 Q 值",
+      "text": "The max Q-value view reveals where the agent is most confident in its decisions."
+    },
+    {
+      "id": "最小 Q 值",
+      "text": "The min Q-value view highlights areas where the agent is still uncertain."
+    },
+    {
+      "id": "切片折線圖",
+      "text": "The slice chart lets you examine how values shift along a single dimension of the state."
+    },
+    {
+      "id": "動作色環",
+      "text": "And the action wheel maps each action to a distinct color, making patterns easier to spot."
+    },
+    {
+      "id": "快節奏路徑",
+      "text": "The pointer guide can also speed up when you just need a quick overview."
+    },
+    {
+      "id": "關閉 overlay",
+      "text": "When you're ready to train on your own, the guide steps aside and leaves you with a clean interface."
+    }
+  ]
+}

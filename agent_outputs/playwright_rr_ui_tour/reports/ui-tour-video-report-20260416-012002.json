@@ -1,0 +1,148 @@
+{
+  "created_at": "2026-04-16T01:20:02",
+  "base_url": "http://127.0.0.1:8765",
+  "video": {
+    "path": "C:\\Users\\USER\\ReinforceLab\\agent_outputs\\playwright_rr_ui_tour\\videos\\rr-ui-tour-20260416-011632.webm",
+    "validation": {
+      "file": "rr-ui-tour-20260416-011632.webm",
+      "bytes": 21567341,
+      "checks": [
+        {
+          "name": "exists",
+          "ok": true
+        },
+        {
+          "name": "suffix=.webm",
+          "ok": true
+        },
+        {
+          "name": "filesize>=150KB",
+          "ok": true
+        }
+      ],
+      "ok": true
+    }
+  },
+  "steps": [
+    {
+      "title": "開場總覽",
+      "detail": "先框住整個 RR 平台，作為教學影片的開場。",
+      "start": 31.437,
+      "end": 39.109
+    },
+    {
+      "title": "指南分頁",
+      "detail": "指出指南分頁入口。",
+      "start": 39.109,
+      "end": 50.781
+    },
+    {
+      "title": "遊戲分頁",
+      "detail": "切到遊戲分頁並框出內容區。",
+      "start": 50.781,
+      "end": 58.0
+    },
+    {
+      "title": "拖曳路徑",
+      "detail": "讓觀眾跟著上方 tab 列走。",
+      "start": 58.0,
+      "end": 66.265
+    },
+    {
+      "title": "控制列",
+      "detail": "框出上方控制列與載入遊戲輸入框。",
+      "start": 66.265,
+      "end": 76.843
+    },
+    {
+      "title": "遊戲 iframe",
+      "detail": "載入 Maze2D 後框住左側遊戲區。",
+      "start": 76.843,
+      "end": 84.75
+    },
+    {
+      "title": "演算法與策略",
+      "detail": "介紹儀錶頁左上角的演算法與策略區。",
+      "start": 84.75,
+      "end": 96.547
+    },
+    {
+      "title": "超參數滑桿",
+      "detail": "用 hover 高亮右側滑桿區，並示範修改參數。",
+      "start": 96.547,
+      "end": 110.25
+    },
+    {
+      "title": "模式切換",
+      "detail": "示範演算法與探索策略切換。",
+      "start": 110.25,
+      "end": 118.375
+    },
+    {
+      "title": "精準點擊",
+      "detail": "展示以真實按鈕中心點做精準點擊與波紋。",
+      "start": 118.375,
+      "end": 123.203
+    },
+    {
+      "title": "四張訓練圖表",
+      "detail": "框出儀錶頁四張訓練圖表。",
+      "start": 123.203,
+      "end": 133.843
+    },
+    {
+      "title": "分析頁統計",
+      "detail": "切到分析頁，介紹統計面板。",
+      "start": 133.843,
+      "end": 143.375
+    },
+    {
+      "title": "柱狀圖",
+      "detail": "動作價值與機率柱狀圖。",
+      "start": 143.375,
+      "end": 152.843
+    },
+    {
+      "title": "動作熱力圖",
+      "detail": "動作選擇熱力圖。",
+      "start": 152.843,
+      "end": 161.547
+    },
+    {
+      "title": "最大 Q 值",
+      "detail": "最大 Q 值熱力圖。",
+      "start": 161.547,
+      "end": 169.984
+    },
+    {
+      "title": "最小 Q 值",
+      "detail": "最小 Q 值熱力圖。",
+      "start": 169.984,
+      "end": 177.359
+    },
+    {
+      "title": "切片折線圖",
+      "detail": "切片折線圖。",
+      "start": 177.359,
+      "end": 185.297
+    },
+    {
+      "title": "動作色環",
+      "detail": "動作色環。",
+      "start": 185.297,
+      "end": 193.187
+    },
+    {
+      "title": "快節奏路徑",
+      "detail": "切換較快節奏重播一段拖曳路徑。",
+      "start": 193.187,
+      "end": 198.906
+    },
+    {
+      "title": "關閉 overlay",
+      "detail": "最後停用 AgentVisualizer，收乾淨畫面。",
+      "start": 198.906,
+      "end": 206.125
+    }
+  ]
+}

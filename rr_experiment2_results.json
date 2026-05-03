@@ -1,0 +1,338 @@
+[
+  {
+    "label": "L3-Detour γ=0.3",
+    "n": 200,
+    "early_r": 135.0,
+    "late_r": 149.5,
+    "delta": 14.5,
+    "late_steps": 38.0,
+    "max_r": 150,
+    "min_r": 120,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.3,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour γ=0.5",
+    "n": 200,
+    "early_r": 136.5,
+    "late_r": 149.0,
+    "delta": 12.5,
+    "late_steps": 38.2,
+    "max_r": 150,
+    "min_r": 100,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.5,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour γ=0.7",
+    "n": 200,
+    "early_r": 130.0,
+    "late_r": 120.5,
+    "delta": -9.5,
+    "late_steps": 61.2,
+    "max_r": 150,
+    "min_r": 100,
+    "converge_ep": 1,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.7,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour γ=0.9",
+    "n": 200,
+    "early_r": 135.5,
+    "late_r": 138.5,
+    "delta": 3.0,
+    "late_steps": 25.6,
+    "max_r": 150,
+    "min_r": 100,
+    "converge_ep": 5,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.9,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour γ=0.95",
+    "n": 200,
+    "early_r": 138.5,
+    "late_r": 131.0,
+    "delta": -7.5,
+    "late_steps": 24.4,
+    "max_r": 150,
+    "min_r": 120,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.95,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L4-Fire ε=0.05",
+    "n": 200,
+    "early_r": 94.0,
+    "late_r": 100.0,
+    "delta": 6.0,
+    "late_steps": 16.4,
+    "max_r": 100,
+    "min_r": 80,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.9,
+      "epsilon": 0.05,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L4-Fire ε=0.15",
+    "n": 200,
+    "early_r": 93.5,
+    "late_r": 99.5,
+    "delta": 6.0,
+    "late_steps": 14.8,
+    "max_r": 100,
+    "min_r": 80,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.9,
+      "epsilon": 0.15,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L4-Fire ε=0.3",
+    "n": 200,
+    "early_r": 92.0,
+    "late_r": 100.0,
+    "delta": 8.0,
+    "late_steps": 26.8,
+    "max_r": 100,
+    "min_r": 80,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.9,
+      "epsilon": 0.3,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L4-Fire ε=0.5",
+    "n": 200,
+    "early_r": 92.5,
+    "late_r": 90.5,
+    "delta": -2.0,
+    "late_steps": 29.9,
+    "max_r": 100,
+    "min_r": 80,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.3,
+      "gamma": 0.9,
+      "epsilon": 0.5,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour α=0.05",
+    "n": 200,
+    "early_r": 141.0,
+    "late_r": 150.0,
+    "delta": 9.0,
+    "late_steps": 27.1,
+    "max_r": 150,
+    "min_r": 100,
+    "converge_ep": 1,
+    "params": {
+      "alpha": 0.05,
+      "gamma": 0.9,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour α=0.2",
+    "n": 200,
+    "early_r": 135.0,
+    "late_r": 139.5,
+    "delta": 4.5,
+    "late_steps": 23.7,
+    "max_r": 150,
+    "min_r": 100,
+    "converge_ep": 8,
+    "params": {
+      "alpha": 0.2,
+      "gamma": 0.9,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour α=0.5",
+    "n": 200,
+    "early_r": 139.5,
+    "late_r": 142.0,
+    "delta": 2.5,
+    "late_steps": 31.4,
+    "max_r": 150,
+    "min_r": 110,
+    "converge_ep": 1,
+    "params": {
+      "alpha": 0.5,
+      "gamma": 0.9,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "L3-Detour α=0.9",
+    "n": 200,
+    "early_r": 144.5,
+    "late_r": 141.5,
+    "delta": -3.0,
+    "late_steps": 33.8,
+    "max_r": 150,
+    "min_r": 110,
+    "converge_ep": 0,
+    "params": {
+      "alpha": 0.9,
+      "gamma": 0.9,
+      "epsilon": 0.2,
+      "bins": [
+        10,
+        10
+      ]
+    }
+  },
+  {
+    "label": "Maze1D ε=0.05",
+    "n": 150,
+    "early_r": 9.0,
+    "late_r": 10.0,
+    "delta": 1.0,
+    "late_steps": 6.2,
+    "max_r": 10,
+    "min_r": -10,
+    "converge_ep": 2,
+    "params": {
+      "alpha": 0.5,
+      "gamma": 0.9,
+      "epsilon": 0.05,
+      "bins": [
+        10
+      ]
+    }
+  },
+  {
+    "label": "Maze1D ε=0.2",
+    "n": 152,
+    "early_r": 9.0,
+    "late_r": 10.0,
+    "delta": 1.0,
+    "late_steps": 7.0,
+    "max_r": 10,
+    "min_r": -10,
+    "converge_ep": 1,
+    "params": {
+      "alpha": 0.5,
+      "gamma": 0.9,
+      "epsilon": 0.2,
+      "bins": [
+        10
+      ]
+    }
+  },
+  {
+    "label": "Maze1D ε=0.5",
+    "n": 150,
+    "early_r": 7.0,
+    "late_r": 8.0,
+    "delta": 1.0,
+    "late_steps": 14.7,
+    "max_r": 10,
+    "min_r": -10,
+    "converge_ep": 2,
+    "params": {
+      "alpha": 0.5,
+      "gamma": 0.9,
+      "epsilon": 0.5,
+      "bins": [
+        10
+      ]
+    }
+  },
+  {
+    "label": "Maze1D ε=0.9",
+    "n": 150,
+    "early_r": -8.0,
+    "late_r": -10.0,
+    "delta": -2.0,
+    "late_steps": 10.3,
+    "max_r": 10,
+    "min_r": -10,
+    "converge_ep": null,
+    "params": {
+      "alpha": 0.5,
+      "gamma": 0.9,
+      "epsilon": 0.9,
+      "bins": [
+        10
+      ]
+    }
+  }
+]

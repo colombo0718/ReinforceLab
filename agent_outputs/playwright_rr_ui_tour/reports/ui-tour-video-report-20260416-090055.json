@@ -1,0 +1,148 @@
+{
+  "created_at": "2026-04-16T09:00:55",
+  "base_url": "http://127.0.0.1:8765",
+  "video": {
+    "path": "C:\\Users\\USER\\ReinforceLab\\agent_outputs\\playwright_rr_ui_tour\\videos\\rr-ui-tour-20260416-085704.webm",
+    "validation": {
+      "file": "rr-ui-tour-20260416-085704.webm",
+      "bytes": 20989134,
+      "checks": [
+        {
+          "name": "exists",
+          "ok": true
+        },
+        {
+          "name": "suffix=.webm",
+          "ok": true
+        },
+        {
+          "name": "filesize>=150KB",
+          "ok": true
+        }
+      ],
+      "ok": true
+    }
+  },
+  "steps": [
+    {
+      "title": "開場總覽",
+      "detail": "游標出現在畫面中央，平台已載入。",
+      "start": 9.844,
+      "end": 17.485
+    },
+    {
+      "title": "指南分頁",
+      "detail": "指出指南分頁入口。",
+      "start": 17.485,
+      "end": 29.297
+    },
+    {
+      "title": "遊戲分頁",
+      "detail": "切到遊戲分頁並框出內容區。",
+      "start": 29.297,
+      "end": 37.438
+    },
+    {
+      "title": "拖曳路徑",
+      "detail": "讓觀眾跟著上方 tab 列走。",
+      "start": 37.438,
+      "end": 45.844
+    },
+    {
+      "title": "控制列",
+      "detail": "框出上方控制列與載入遊戲輸入框。",
+      "start": 45.844,
+      "end": 56.313
+    },
+    {
+      "title": "遊戲 iframe",
+      "detail": "載入 Maze2D 後框住左側遊戲區。",
+      "start": 56.313,
+      "end": 64.282
+    },
+    {
+      "title": "演算法與策略",
+      "detail": "介紹儀錶頁左上角的演算法與策略區。",
+      "start": 64.282,
+      "end": 74.797
+    },
+    {
+      "title": "超參數滑桿",
+      "detail": "用紅框高亮右側滑桿區，並示範修改參數。",
+      "start": 74.797,
+      "end": 86.969
+    },
+    {
+      "title": "模式切換",
+      "detail": "示範演算法與探索策略切換。",
+      "start": 86.969,
+      "end": 94.547
+    },
+    {
+      "title": "精準點擊",
+      "detail": "展示以真實按鈕中心點做精準點擊與波紋。",
+      "start": 94.547,
+      "end": 99.438
+    },
+    {
+      "title": "四張訓練圖表",
+      "detail": "框出儀錶頁四張訓練圖表。",
+      "start": 99.438,
+      "end": 110.844
+    },
+    {
+      "title": "分析頁統計",
+      "detail": "切到分析頁，介紹統計面板。",
+      "start": 110.844,
+      "end": 121.032
+    },
+    {
+      "title": "柱狀圖",
+      "detail": "動作價值與機率柱狀圖。",
+      "start": 121.032,
+      "end": 130.469
+    },
+    {
+      "title": "動作熱力圖",
+      "detail": "動作選擇熱力圖。",
+      "start": 130.469,
+      "end": 138.86
+    },
+    {
+      "title": "最大 Q 值",
+      "detail": "最大 Q 值熱力圖。",
+      "start": 138.86,
+      "end": 146.985
+    },
+    {
+      "title": "最小 Q 值",
+      "detail": "最小 Q 值熱力圖。",
+      "start": 146.985,
+      "end": 154.516
+    },
+    {
+      "title": "切片折線圖",
+      "detail": "切片折線圖。",
+      "start": 154.516,
+      "end": 163.391
+    },
+    {
+      "title": "動作色環",
+      "detail": "動作色環。",
+      "start": 163.391,
+      "end": 171.938
+    },
+    {
+      "title": "快節奏路徑",
+      "detail": "切換較快節奏重播一段游標路徑。",
+      "start": 171.938,
+      "end": 177.688
+    },
+    {
+      "title": "關閉 overlay",
+      "detail": "最後停用 AgentVisualizer，收乾淨畫面。",
+      "start": 177.688,
+      "end": 184.891
+    }
+  ]
+}
