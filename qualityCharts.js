@@ -322,7 +322,7 @@ function generateActionHeatmap() {
     xaxis: { title: hasX ? dimLabel(cutX) : (L_ah?.noStateDim ?? "(no state dim)") },
     yaxis: { title: hasY ? dimLabel(cutY) : (L_ah?.noStateDim ?? "(no state dim)") },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 }
 
 // 最大 Q 值熱力圖：青（負）→ 白（0）→ 橘（正）
@@ -372,7 +372,7 @@ function generateMaxQHeatmap() {
     xaxis: { title: hasX ? dimLabel(cutX) : (L_mxq?.noStateDim ?? "(no state dim)") },
     yaxis: { title: hasY ? dimLabel(cutY) : (L_mxq?.noStateDim ?? "(no state dim)") },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 }
 
 // 最小 Q 值熱力圖：藍（負）→ 白（0）→ 紅（正）
@@ -422,7 +422,7 @@ function generateMinQHeatmap() {
     xaxis: { title: hasX ? dimLabel(cutX) : (L_mnq?.noStateDim ?? "(no state dim)") },
     yaxis: { title: hasY ? dimLabel(cutY) : (L_mnq?.noStateDim ?? "(no state dim)") },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 }
 
 // 1D Q 值折線圖：沿 cutX 掃描，各動作一條線
@@ -456,7 +456,7 @@ function generateQLineSlice() {
     yaxis: { title: L_ql?.qValueAxis ?? "Q-Value" },
     showlegend: false,
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 }
 
 // 當前狀態動作柱狀圖：focusState 的各動作 Q 值
@@ -508,7 +508,7 @@ function generateQBarSlice() {
               range: [0, 1], showgrid: false },
     barmode: 'overlay', showlegend: false,
     margin: { t: 30, b: 40, l: 50, r: 50 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 }
 
 

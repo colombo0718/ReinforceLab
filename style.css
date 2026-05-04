@@ -114,7 +114,8 @@ iframe {
  * 右側：父平台 (多Agent / 多 Tabs)
  ************************************************************/
 #rightPanel {
-  width: 70%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -124,11 +125,14 @@ iframe {
 .sub-tab-buttons {
   font-family: Consolas, sans-serif;
   display: flex;
-  align-items: flex-end; /* 讓按鈕與容器底緣貼齊 */
+  align-items: flex-end;
   height: 35px;
   background: #cef;
   border-bottom: 1px solid #ddd;
   padding: 0 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  flex-shrink: 0;
 }
 
 /* 「Agent 1:」等標籤 */
@@ -173,8 +177,8 @@ iframe {
 
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;         /* 設定每個格子之間的間距 */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
 }
 
 /* ── 指南分頁：摘要卡 ── */
@@ -265,7 +269,7 @@ iframe {
 }
 .gamelist-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 10px;
 }
 .game-card {
@@ -340,8 +344,8 @@ iframe {
 }
 
 .chart {
-    width: 500px;
-    height: 300px;
+  width: 100%;
+  min-height: 240px;
 }
 /************************************************************
  * 下面是每個Tab裡的細部內容：Blockly / config / Logs 等
@@ -394,9 +398,10 @@ button:hover {
 /* 動作色環容器 */
 #p1-acti-color{
   position: relative;
-  width: 260px;      /* ✅ 比環大一點，留字的空間 */
-  height: 260px;
-  margin: 0 auto;    /* ✅ 在格子裡水平置中 */
+  width: min(260px, 100%);
+  height: min(260px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto;
 }
 
 /* 固定漸變色環：紅色在右邊 */

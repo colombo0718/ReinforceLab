@@ -84,7 +84,7 @@ function initSecondChart() {
     xaxis: { title: L.timeAxis },
     yaxis: { title: L.rewardAxis },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 
   Plotly.newPlot('p1-second-steps', [{
     x: stepsLabels,
@@ -97,7 +97,7 @@ function initSecondChart() {
     xaxis: { title: L.timeAxis },
     yaxis: { title: L.stepsAxis },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 }
 
 function updateSecondChart() {
@@ -144,7 +144,7 @@ function initEpisodeChart() {
     xaxis: { title: L.episodeAxis },
     yaxis: { title: L.rewardAxis },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 
   Plotly.newPlot("p1-episode-steps", [{
     x: episodeIndex,
@@ -156,7 +156,7 @@ function initEpisodeChart() {
     xaxis: { title: L.episodeAxis },
     yaxis: { title: L.stepsAxisEp },
     margin: { t: 30, b: 40, l: 50, r: 20 }
-  }, { displayModeBar: false });
+  }, { displayModeBar: false, responsive: true });
 }
 
 function updateEpisodeChart() {
