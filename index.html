@@ -412,8 +412,7 @@
         if (window.Plotly) {
           requestAnimationFrame(() => requestAnimationFrame(() => {
             document.querySelectorAll(`#${target} .chart`).forEach(el => {
-              const w = el.offsetWidth;
-              if (el.id && w > 0) Plotly.relayout(el.id, { width: w });
+              if (el.id) Plotly.Plots.resize(el.id);
             });
           }));
         }
