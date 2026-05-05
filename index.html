@@ -106,7 +106,7 @@
           <!-- <label>Q-Learning 更新公式：</label><br>
           <img src="q_learning_formula.png" alt="Q-learning 更新公式">
           <br><br> -->
-          <div>
+          <div id="p1-sliders">
             <h4>超參數設置</h4>
             <label for="learning-rate-slider">學習率 (α):</label>
             <input id="learning-rate-slider" type="range" min="0" max="1" step="0.05" value="0.5"
@@ -978,13 +978,13 @@
   <script src="./reinforceEngine.js"></script>
 
   <script>
-    // 豎屏模式：若當前 active tab 在 portrait 下被隱藏，自動切到遊戲 tab
-    const PORTRAIT_HIDDEN_TABS = ['tutorial', 'privacy-policy', 'p1-qtable'];
+    // 豎屏模式：強制切換到儀錶 tab
+    const PORTRAIT_HIDDEN_TABS = ['tutorial', 'privacy-policy', 'p1-qtable', 'offical-games'];
     function handlePortraitTabSwitch() {
       if (!window.matchMedia('(orientation: portrait)').matches) return;
       const active = document.querySelector('.sub-tab-content.active');
-      if (active && PORTRAIT_HIDDEN_TABS.includes(active.id)) {
-        document.querySelector('.sub-tab-link[data-subtab="offical-games"]').click();
+      if (!active || PORTRAIT_HIDDEN_TABS.includes(active.id)) {
+        document.querySelector('.sub-tab-link[data-subtab="p1-config"]')?.click();
       }
     }
     window.addEventListener('orientationchange', handlePortraitTabSwitch);

@@ -739,36 +739,76 @@ button:hover {
     cursor: pointer;
   }
 
-  /* 控制區：下半 50% */
+  /* 控制區：下半 50%，flex column 讓圖表能填滿剩餘高度 */
   #rightPanel {
     width: 100%;
     height: 50dvh;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
-  /* Tab 列：只保留遊戲、儀錶 */
+  /* tab 按鈕列不縮放 */
+  .sub-tab-buttons {
+    flex-shrink: 0;
+  }
+
+  /* 只保留 儀錶 tab，其他全隱藏 */
   .sub-tab-link[data-subtab="tutorial"],
   .sub-tab-link[data-subtab="privacy-policy"],
+  .sub-tab-link[data-subtab="offical-games"],
   .sub-tab-link[data-subtab="p1-qtable"],
   .agent-label,
   .rr-version {
     display: none;
   }
 
-  /* 演算法選擇區隱藏 */
-  #algo-selection {
-    display: none;
+  /* active tab content 撐滿 rightPanel 剩餘高度 */
+  .sub-tab-content.active {
+    flex: 1;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 6px 8px 4px;
   }
 
-  /* Steps 圖隱藏，只留 reward 圖 */
+  /* p1-config 的 grid-container 改為 flex column */
+  #p1-config .grid-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0;
+  }
+
+  /* 演算法選擇、heading、Steps 圖 全部隱藏 */
+  #algo-selection,
+  #p1-sliders h4,
   #p1-second-steps,
   #p1-episode-reward,
   #p1-episode-steps {
     display: none;
   }
 
-  /* Reward 圖撐滿整欄 */
-  #p1-second-reward {
-    grid-column: 1 / -1;
+  /* slider 區不縮放，讓圖表佔滿剩餘空間 */
+  #p1-sliders {
+    flex-shrink: 0;
+    padding-bottom: 4px;
+  }
+
+  /* slider 行更緊湊 */
+  #p1-sliders label {
+    font-size: 12px;
+  }
+  #p1-sliders input[type="range"] {
+    width: 110px;
+  }
+
+  /* Reward/Second 圖填滿剩餘高度 */
+  #p1-second-reward.chart {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    height: auto !important;
   }
 }
