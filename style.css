@@ -352,7 +352,9 @@ iframe {
 
 .chart {
   width: 100%;
+  min-width: 0;    /* 防止 grid cell 裡的 Plotly canvas 溢出 */
   min-height: 240px;
+  overflow: hidden;
 }
 /************************************************************
  * 下面是每個Tab裡的細部內容：Blockly / config / Logs 等

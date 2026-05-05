@@ -410,11 +410,12 @@
         if (target === "p1-blocks" && workspace1) Blockly.svgResize(workspace1);
         if (target === "p2-blocks" && workspace2) Blockly.svgResize(workspace2);
         if (window.Plotly) {
-          requestAnimationFrame(() => {
+          requestAnimationFrame(() => requestAnimationFrame(() => {
             document.querySelectorAll(`#${target} .chart`).forEach(el => {
-              if (el.id) Plotly.Plots.resize(el.id);
+              const w = el.offsetWidth;
+              if (el.id && w > 0) Plotly.relayout(el.id, { width: w });
             });
-          });
+          }));
         }
       });
     });
@@ -994,11 +995,12 @@
         document.querySelector('.sub-tab-link[data-subtab="p1-config"]')?.click();
       }
       if (window.Plotly) {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
           document.querySelectorAll('#p1-config .chart').forEach(el => {
-            if (el.id) Plotly.Plots.resize(el.id);
+            const w = el.offsetWidth;
+            if (el.id && w > 0) Plotly.relayout(el.id, { width: w });
           });
-        });
+        }));
       }
     }
     window.addEventListener('orientationchange', handlePortraitTabSwitch);
