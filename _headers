@@ -1,0 +1,15 @@
+# Cloudflare Pages cache control
+# HTML / CSS / JS 永遠跟 server revalidate（沒改就 304，改了立刻拿新版）
+# 圖片/字型可長期 cache（檔名改了會自動破 cache）
+
+/*.html
+  Cache-Control: no-cache, must-revalidate
+
+/*.css
+  Cache-Control: no-cache, must-revalidate
+
+/*.js
+  Cache-Control: no-cache, must-revalidate
+
+/
+  Cache-Control: no-cache, must-revalidate
