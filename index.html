@@ -409,6 +409,10 @@
         document.getElementById(target).classList.add("active");
         if (target === "p1-blocks" && workspace1) Blockly.svgResize(workspace1);
         if (target === "p2-blocks" && workspace2) Blockly.svgResize(workspace2);
+        // 豎屏切到儀錶 tab 時強制 Plotly 重算尺寸
+        if (target === "p1-config" && window.Plotly) {
+          requestAnimationFrame(() => Plotly.Plots.resize('p1-second-reward'));
+        }
       });
     });
 
@@ -985,6 +989,10 @@
       const active = document.querySelector('.sub-tab-content.active');
       if (!active || PORTRAIT_HIDDEN_TABS.includes(active.id)) {
         document.querySelector('.sub-tab-link[data-subtab="p1-config"]')?.click();
+      }
+      // 強制 Plotly 重算尺寸（portrait 下容器高度由 CSS calc 決定）
+      if (window.Plotly) {
+        requestAnimationFrame(() => Plotly.Plots.resize('p1-second-reward'));
       }
     }
     window.addEventListener('orientationchange', handlePortraitTabSwitch);

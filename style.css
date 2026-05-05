@@ -804,11 +804,12 @@ button:hover {
     width: 110px;
   }
 
-  /* Reward/Second 圖填滿剩餘高度 */
+  /* Reward/Second 圖：明確高度讓 Plotly 正確渲染
+     50dvh - 35px(tabbar) - 16px(padding) - 195px(sliders) = 50dvh - 246px */
   #p1-second-reward.chart {
-    flex: 1;
-    min-height: 0;
     width: 100%;
-    height: auto !important;
+    height: calc(50dvh - 246px) !important;
+    min-height: 120px;
+    flex: none;
   }
 }
